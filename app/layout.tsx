@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { Geist, Geist_Mono } from "next/font/google"
 
 import "./globals.css"
@@ -33,9 +34,13 @@ export default function RootLayout({
         <ThemeProvider>
           <TooltipProvider>
             <SidebarProvider>
-              <AppSidebar />
+              <Suspense fallback={null}>
+                <AppSidebar />
+              </Suspense>
               <SidebarInset>
-                <PlatformNavbar />
+                <Suspense fallback={<div className="h-10 border-b border-border" />}>
+                  <PlatformNavbar />
+                </Suspense>
                 {children}
               </SidebarInset>
             </SidebarProvider>
