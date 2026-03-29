@@ -1,8 +1,12 @@
 import { Geist, Geist_Mono } from "next/font/google"
 
 import "./globals.css"
+import { AppSidebar } from "@/components/app-sidebar"
+import { PlatformNavbar } from "@/components/platform-navbar"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { cn } from "@/lib/utils"
 
 const fontSans = Geist({
   subsets: ["latin"],
@@ -26,7 +30,17 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", fontSans.variable)}
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <SidebarProvider>
+              <AppSidebar />
+              <SidebarInset>
+                <PlatformNavbar />
+                {children}
+              </SidebarInset>
+            </SidebarProvider>
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
