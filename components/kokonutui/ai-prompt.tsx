@@ -1156,6 +1156,7 @@ export default function AI_Prompt({
     keyPrefix: string,
     options?: { badgeClassName?: string; showLogo?: boolean; plainInline?: boolean }
   ) => {
+    const useInlineMentionStyle = options?.plainInline ?? true;
     const mentionableSkills = SKILLS.filter((skill) => skill !== "No skill");
     const escapedApps = APPS.map((app) => app.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).sort(
       (a, b) => b.length - a.length
@@ -1192,45 +1193,59 @@ export default function AI_Prompt({
         nodes.push(content.slice(cursor, start));
       }
 
-      if (options?.plainInline) {
+      if (useInlineMentionStyle) {
         nodes.push(
           <span
             key={`${keyPrefix}-mention-${mentionIndex}`}
             className={cn(
               isSkillMention
-                ? "inline rounded-[min(var(--radius-sm),8px)] bg-pink-500/12 align-baseline text-pink-600 font-normal leading-[inherit] tracking-normal dark:bg-pink-400/14 dark:text-pink-300"
-                : "inline rounded-[min(var(--radius-sm),8px)] bg-cyan-500/12 align-baseline text-cyan-600 font-normal leading-[inherit] tracking-normal dark:bg-cyan-400/14 dark:text-cyan-300",
+                ? "relative inline whitespace-nowrap align-baseline text-pink-600 font-normal leading-[inherit] tracking-normal dark:text-pink-300"
+                : "relative inline whitespace-nowrap align-baseline text-cyan-600 font-normal leading-[inherit] tracking-normal dark:text-cyan-300",
               options?.badgeClassName
             )}
           >
-            {isSkillMention ? (
-              <span>/{skillName}</span>
-            ) : (
-              <>
-                <span className="relative inline-block align-baseline">
-                  <span className="opacity-0">@</span>
-                  <span className="pointer-events-none absolute inset-y-0 left-0 inline-flex origin-left items-center [transform:translateY(0.02em)_scale(0.88)]">
-                    {renderAppLogo(appName)}
+            <span
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute -inset-x-[0.14em] -inset-y-[0.12em] rounded-[min(var(--radius-sm),8px)]",
+                isSkillMention ? "bg-pink-500/12 dark:bg-pink-400/14" : "bg-cyan-500/12 dark:bg-cyan-400/14"
+              )}
+            />
+            <span className="relative z-[1]">
+              {isSkillMention ? (
+                <span>/{skillName}</span>
+              ) : (
+                <>
+                  <span className="relative inline-block align-baseline">
+                    <span className="opacity-0">@</span>
+                    <span className="pointer-events-none absolute inset-y-0 left-0 inline-flex origin-left items-center [transform:translateY(0.02em)_scale(0.88)]">
+                      {renderAppLogo(appName)}
+                    </span>
                   </span>
-                </span>
-                <span>{appName}</span>
-              </>
-            )}
+                  <span>{appName}</span>
+                </>
+              )}
+            </span>
           </span>
         );
       } else {
         nodes.push(
-          <Badge
+          <span
             key={`${keyPrefix}-mention-${mentionIndex}`}
-            variant="outline"
             className={cn(
-              "mx-0.5 inline-flex align-middle",
+              isSkillMention
+                ? "mx-0.5 inline-flex items-center rounded-[min(var(--radius-sm),8px)] bg-pink-500/12 px-1.5 py-0.5 align-middle text-pink-600 dark:bg-pink-400/14 dark:text-pink-300"
+                : "mx-0.5 inline-flex items-center rounded-[min(var(--radius-sm),8px)] bg-cyan-500/12 px-1.5 py-0.5 align-middle text-cyan-600 dark:bg-cyan-400/14 dark:text-cyan-300",
               options?.badgeClassName
             )}
           >
-            {!isSkillMention && options?.showLogo !== false ? renderAppLogo(appName) : null}
-            <span>{isSkillMention ? `/${skillName}` : `@${appName}`}</span>
-          </Badge>
+            {!isSkillMention && options?.showLogo !== false ? (
+              <span className="mr-1 inline-flex translate-y-[0.02em] align-middle">
+                {renderAppLogo(appName)}
+              </span>
+            ) : null}
+            <span>{isSkillMention ? `/${skillName}` : appName}</span>
+          </span>
         );
       }
 
