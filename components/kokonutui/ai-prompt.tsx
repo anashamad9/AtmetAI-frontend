@@ -47,7 +47,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Kbd } from "@/components/ui/kbd";
 import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/reui/badge";
 import {
   Artifact,
   ArtifactAction,
@@ -251,15 +250,22 @@ export default function AI_Prompt({
     },
   };
 
-  const renderAppLogo = (app: string, size: "sm" | "md" = "sm") => {
+  const renderAppLogo = (app: string, size: "sm" | "md" | "mention" = "sm") => {
     const meta = APP_LOGOS[app];
-    const baseSize = size === "md" ? "h-5 w-5 text-[11px]" : "h-4 w-4 text-[10px]";
+    const baseSize =
+      size === "md"
+        ? "h-5 w-5 text-[11px]"
+        : size === "mention"
+          ? "h-[1.18em] w-[1.18em] text-[0.8em] leading-none"
+          : "h-4 w-4 text-[10px]";
+    const radiusClass = size === "mention" ? "rounded-[0.36em]" : "rounded-sm";
 
     if (!meta) {
       return (
         <span
           className={cn(
-            "inline-flex shrink-0 items-center justify-center rounded-sm border border-border/40 bg-muted/70 font-semibold text-muted-foreground",
+            "inline-flex shrink-0 items-center justify-center border border-border/40 bg-muted/70 font-semibold text-muted-foreground",
+            radiusClass,
             baseSize
           )}
         >
@@ -271,7 +277,8 @@ export default function AI_Prompt({
     return (
       <span
         className={cn(
-          "inline-flex shrink-0 items-center justify-center rounded-sm font-semibold",
+          "inline-flex shrink-0 items-center justify-center font-semibold",
+          radiusClass,
           meta.bgClass,
           meta.textClass,
           baseSize
@@ -700,11 +707,135 @@ export default function AI_Prompt({
     });
   };
 
+  const applyMentionAutoSpace = (
+    inputValue: string,
+    cursorPosition: number
+  ): { nextValue: string; nextCursor: number } => {
+    const beforeCursor = inputValue.slice(0, cursorPosition);
+    const afterCursor = inputValue.slice(cursorPosition);
+
+    if (afterCursor.startsWith(" ") || afterCursor.startsWith("\n")) {
+      return { nextValue: inputValue, nextCursor: cursorPosition };
+    }
+
+    const mentionableSkills = SKILLS.filter((skill) => skill !== "No skill");
+    const mentionTokens = [
+      ...APPS.map((app) => `@${app}`),
+      ...mentionableSkills.map((skill) => `/${skill}`),
+    ].sort((a, b) => b.length - a.length);
+
+    const lowerBefore = beforeCursor.toLowerCase();
+
+    for (const token of mentionTokens) {
+      const lowerToken = token.toLowerCase();
+      if (!lowerBefore.endsWith(lowerToken)) continue;
+
+      const tokenStart = beforeCursor.length - token.length;
+      const charBeforeToken = tokenStart > 0 ? beforeCursor[tokenStart - 1] : "";
+      if (tokenStart > 0 && !/\s/.test(charBeforeToken)) {
+        continue;
+      }
+
+      const nextValue = `${beforeCursor} ${afterCursor}`;
+      return { nextValue, nextCursor: cursorPosition + 1 };
+    }
+
+    return { nextValue: inputValue, nextCursor: cursorPosition };
+  };
+
+  const getMentionRanges = (inputValue: string): Array<{ start: number; end: number }> => {
+    const mentionableSkills = SKILLS.filter((skill) => skill !== "No skill");
+    const escapedApps = APPS.map((app) => app.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).sort(
+      (a, b) => b.length - a.length
+    );
+    const escapedSkills = mentionableSkills
+      .map((skill) => skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .sort((a, b) => b.length - a.length);
+    const mentionRegex = new RegExp(
+      `(@(${escapedApps.join("|")})|\\/(${escapedSkills.join("|")}))(?=\\s|$|[.,!?;:])`,
+      "gi"
+    );
+
+    const ranges: Array<{ start: number; end: number }> = [];
+    let match: RegExpExecArray | null;
+
+    while ((match = mentionRegex.exec(inputValue)) !== null) {
+      const mention = match[0] ?? "";
+      ranges.push({
+        start: match.index,
+        end: match.index + mention.length,
+      });
+    }
+
+    return ranges;
+  };
+
+  const removeWholeMentionAtCursor = (
+    inputValue: string,
+    cursorPosition: number,
+    key: "Backspace" | "Delete"
+  ): { nextValue: string; nextCursor: number } | null => {
+    const ranges = getMentionRanges(inputValue);
+
+    for (const range of ranges) {
+      const isBackspace = key === "Backspace";
+      const isInsideMention = cursorPosition > range.start && cursorPosition < range.end;
+      const isAtMentionEdge = isBackspace
+        ? cursorPosition === range.end
+        : cursorPosition === range.start;
+      const isBackspaceAfterMentionSpace =
+        isBackspace &&
+        cursorPosition === range.end + 1 &&
+        inputValue[range.end] === " ";
+
+      if (!(isInsideMention || isAtMentionEdge || isBackspaceAfterMentionSpace)) {
+        continue;
+      }
+
+      let removeStart = range.start;
+      let removeEnd = range.end;
+
+      if (isBackspaceAfterMentionSpace || inputValue[removeEnd] === " ") {
+        removeEnd += 1;
+      }
+
+      if (
+        removeStart > 0 &&
+        inputValue[removeStart - 1] === " " &&
+        removeEnd < inputValue.length &&
+        inputValue[removeEnd] === " "
+      ) {
+        removeEnd += 1;
+      }
+
+      return {
+        nextValue: inputValue.slice(0, removeStart) + inputValue.slice(removeEnd),
+        nextCursor: removeStart,
+      };
+    }
+
+    return null;
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const nextValue = e.target.value;
+    const rawValue = e.target.value;
+    const rawCursor = e.target.selectionStart ?? rawValue.length;
+    const nativeInput = e.nativeEvent as InputEvent | undefined;
+    const isDeleteAction = nativeInput?.inputType?.startsWith("delete") ?? false;
+    const { nextValue, nextCursor } = isDeleteAction
+      ? { nextValue: rawValue, nextCursor: rawCursor }
+      : applyMentionAutoSpace(rawValue, rawCursor);
+
     setValue(nextValue);
     adjustHeight();
-    updateCommandMenuFromInput(nextValue, e.target.selectionStart ?? nextValue.length);
+    updateCommandMenuFromInput(nextValue, nextCursor);
+
+    if (nextValue !== rawValue) {
+      requestAnimationFrame(() => {
+        if (!textareaRef.current) return;
+        textareaRef.current.setSelectionRange(nextCursor, nextCursor);
+      });
+    }
   };
 
   const handleComposerScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
@@ -1154,9 +1285,15 @@ export default function AI_Prompt({
   const renderTextWithAppMentions = (
     content: string,
     keyPrefix: string,
-    options?: { badgeClassName?: string; showLogo?: boolean; plainInline?: boolean }
+    options?: {
+      badgeClassName?: string;
+      showLogo?: boolean;
+      plainInline?: boolean;
+      preserveComposerCaret?: boolean;
+    }
   ) => {
     const useInlineMentionStyle = options?.plainInline ?? true;
+    const preserveComposerCaret = options?.preserveComposerCaret ?? false;
     const mentionableSkills = SKILLS.filter((skill) => skill !== "No skill");
     const escapedApps = APPS.map((app) => app.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).sort(
       (a, b) => b.length - a.length
@@ -1194,40 +1331,71 @@ export default function AI_Prompt({
       }
 
       if (useInlineMentionStyle) {
-        nodes.push(
-          <span
-            key={`${keyPrefix}-mention-${mentionIndex}`}
-            className={cn(
-              isSkillMention
-                ? "relative inline whitespace-nowrap align-baseline text-pink-600 font-normal leading-[inherit] tracking-normal dark:text-pink-300"
-                : "relative inline whitespace-nowrap align-baseline text-cyan-600 font-normal leading-[inherit] tracking-normal dark:text-cyan-300",
-              options?.badgeClassName
-            )}
-          >
+        if (preserveComposerCaret) {
+          nodes.push(
             <span
-              aria-hidden="true"
-              className={cn(
-                "pointer-events-none absolute -inset-x-[0.14em] -inset-y-[0.12em] rounded-[min(var(--radius-sm),8px)]",
-                isSkillMention ? "bg-pink-500/12 dark:bg-pink-400/14" : "bg-cyan-500/12 dark:bg-cyan-400/14"
-              )}
-            />
-            <span className="relative z-[1]">
-              {isSkillMention ? (
-                <span>/{skillName}</span>
-              ) : (
-                <>
-                  <span className="relative inline-block align-baseline">
-                    <span className="opacity-0">@</span>
-                    <span className="pointer-events-none absolute inset-y-0 left-0 inline-flex origin-left items-center [transform:translateY(0.02em)_scale(0.88)]">
-                      {renderAppLogo(appName)}
+              key={`${keyPrefix}-mention-${mentionIndex}`}
+                className={cn(
+                  isSkillMention
+                    ? "relative inline whitespace-nowrap align-baseline text-pink-600 font-normal leading-[inherit] tracking-normal dark:text-pink-300"
+                    : "relative inline whitespace-nowrap align-baseline text-[#01a4f3] font-normal leading-[inherit] tracking-normal",
+                  options?.badgeClassName
+                )}
+              >
+              <span
+                aria-hidden="true"
+                  className={cn(
+                    "pointer-events-none absolute -inset-x-[0.14em] -inset-y-[0.1em] rounded-[min(var(--radius-sm),8px)]",
+                    isSkillMention
+                      ? "bg-pink-500/12 dark:bg-pink-400/14"
+                      : "bg-[#01a4f3]/12 dark:bg-[#01a4f3]/16"
+                  )}
+                />
+              <span className="relative z-[1]">
+                {isSkillMention ? (
+                  <span>/{skillName}</span>
+                ) : (
+                  <>
+                    <span className="relative inline-block align-baseline">
+                      <span className="opacity-0">@</span>
+                      <span className="pointer-events-none absolute inset-y-0 -left-[0.04em] inline-flex items-center [transform:translateY(0.01em)_scale(1.06)]">
+                        {renderAppLogo(appName, "mention")}
+                      </span>
                     </span>
-                  </span>
-                  <span>{appName}</span>
-                </>
-              )}
+                    <span>{appName}</span>
+                  </>
+                )}
+              </span>
             </span>
-          </span>
-        );
+          );
+        } else {
+          if (isSkillMention) {
+            nodes.push(
+              <span
+                key={`${keyPrefix}-mention-${mentionIndex}`}
+                className={cn(
+                  "mx-[0.02em] inline-flex whitespace-nowrap items-center rounded-[min(var(--radius-sm),8px)] bg-pink-500/12 px-[0.14em] py-[0.08em] align-baseline text-pink-600 font-normal leading-[inherit] tracking-normal dark:bg-pink-400/14 dark:text-pink-300",
+                  options?.badgeClassName
+                )}
+              >
+                /{skillName}
+              </span>
+            );
+          } else {
+            nodes.push(
+                <span
+                  key={`${keyPrefix}-mention-${mentionIndex}`}
+                  className={cn(
+                    "mx-[0.02em] inline-flex whitespace-nowrap items-center gap-[0.24em] rounded-[min(var(--radius-sm),8px)] bg-[#01a4f3]/12 px-[0.14em] py-[0.08em] align-baseline text-[#01a4f3] font-normal leading-[inherit] tracking-normal dark:bg-[#01a4f3]/16",
+                    options?.badgeClassName
+                  )}
+                >
+                {renderAppLogo(appName, "mention")}
+                <span>{appName}</span>
+              </span>
+            );
+          }
+        }
       } else {
         nodes.push(
           <span
@@ -1235,7 +1403,7 @@ export default function AI_Prompt({
             className={cn(
               isSkillMention
                 ? "mx-0.5 inline-flex items-center rounded-[min(var(--radius-sm),8px)] bg-pink-500/12 px-1.5 py-0.5 align-middle text-pink-600 dark:bg-pink-400/14 dark:text-pink-300"
-                : "mx-0.5 inline-flex items-center rounded-[min(var(--radius-sm),8px)] bg-cyan-500/12 px-1.5 py-0.5 align-middle text-cyan-600 dark:bg-cyan-400/14 dark:text-cyan-300",
+                : "mx-0.5 inline-flex items-center rounded-[min(var(--radius-sm),8px)] bg-[#01a4f3]/12 px-1.5 py-0.5 align-middle text-[#01a4f3] dark:bg-[#01a4f3]/16",
               options?.badgeClassName
             )}
           >
@@ -1275,6 +1443,7 @@ export default function AI_Prompt({
       badgeClassName: "",
       showLogo: false,
       plainInline: true,
+      preserveComposerCaret: true,
     });
   };
 
@@ -1491,6 +1660,39 @@ export default function AI_Prompt({
         e.preventDefault();
         setCommandMenu(null);
         return;
+      }
+    }
+
+    if (
+      (e.key === "Backspace" || e.key === "Delete") &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.altKey
+    ) {
+      const selectionStart = e.currentTarget.selectionStart ?? 0;
+      const selectionEnd = e.currentTarget.selectionEnd ?? selectionStart;
+
+      if (selectionStart === selectionEnd) {
+        const removal = removeWholeMentionAtCursor(
+          value,
+          selectionStart,
+          e.key as "Backspace" | "Delete"
+        );
+
+        if (removal) {
+          e.preventDefault();
+          setValue(removal.nextValue);
+          setCommandMenu(null);
+          setHighlightedCommandIndex(0);
+
+          requestAnimationFrame(() => {
+            if (!textareaRef.current) return;
+            textareaRef.current.focus();
+            textareaRef.current.setSelectionRange(removal.nextCursor, removal.nextCursor);
+            adjustHeight();
+          });
+          return;
+        }
       }
     }
 
@@ -1801,24 +2003,21 @@ export default function AI_Prompt({
           <div className="mb-1 flex min-h-8 items-center justify-start gap-2 px-1.5">
             <div className="flex items-center gap-1">
               {connectedApps.map((app) => (
-                <Badge
+                <div
                   key={app}
-                  variant="outline"
-                  className="inline-flex h-7 items-center gap-1.5 px-1 text-xs text-foreground"
+                  className="group inline-flex h-7 items-center gap-1.5 px-1 text-xs text-foreground"
                 >
                   {renderAppLogo(app)}
                   <span className="max-w-24 truncate">{app}</span>
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="icon"
                     onClick={() => removeConnectedApp(app)}
-                    className="size-3 hover:bg-transparent"
+                    className="-ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
                     aria-label={`Remove ${app}`}
                   >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </Badge>
+                    <X className="size-2.5" />
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -2083,9 +2282,9 @@ export default function AI_Prompt({
             </div>
           )}
           {(attachedFiles.length > 0 || messages.length === 0) && (
-            <div className="relative z-10 -mt-px px-2 py-1 sm:px-2.5">
+            <div className="relative z-10 -mt-px p-2 sm:p-2.5">
               {attachedFiles.length === 0 ? (
-              <div className="flex min-h-9 items-center justify-between gap-2 px-0.5 py-0.5">
+              <div className="flex min-h-9 items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
                   <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm border border-sidebar-border bg-background/70 text-[10px]">
                     +
@@ -2104,7 +2303,7 @@ export default function AI_Prompt({
                 </div>
               </div>
               ) : (
-              <div className="flex max-h-36 min-h-9 flex-wrap items-start gap-2 overflow-y-auto px-0.5 py-0.5">
+              <div className="flex max-h-36 min-h-9 flex-wrap items-start gap-2 overflow-y-auto">
                 {attachedFiles.map((attachment) => (
                   <div
                     key={attachment.id}

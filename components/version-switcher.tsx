@@ -85,7 +85,7 @@ export function VersionSwitcher({
               render={
                 <button
                   type="button"
-                  className="inline-flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  className="inline-flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md pl-0.5 pr-1.5 text-left text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 />
               }
             >
@@ -131,7 +131,7 @@ export function VersionSwitcher({
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <Crown className="h-4 w-4 opacity-80" />
-                Upgrade plan
+                Upgrade plan (soon)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

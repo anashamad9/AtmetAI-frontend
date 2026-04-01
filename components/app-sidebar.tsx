@@ -81,7 +81,7 @@ const settingsSections = [
   "Members",
   "Usage and limits",
   "Data controls",
-  "Plans and upgrade",
+  "Plans (soon)",
   "Billing",
   "Help Docs",
   "Contact Support",
@@ -320,7 +320,7 @@ const settingsContent: Record<(typeof settingsSections)[number], string[]> = {
   Members: ["Members", "Roles and permissions", "Invites"],
   "Usage and limits": ["Usage summary", "Rate limits", "Quota alerts"],
   "Data controls": ["Retention policy", "Data export", "Delete requests"],
-  "Plans and upgrade": ["Current plan", "Billing", "Upgrade options"],
+  "Plans (soon)": ["Current plan", "Billing", "Upgrade options"],
   Billing: ["Payment methods", "Invoices", "Billing history"],
   "Help Docs": ["Help center", "Guides", "API references"],
   "Contact Support": ["Support contact", "Live chat", "Report a bug"],
@@ -333,7 +333,7 @@ const settingsSectionIcons: Record<(typeof settingsSections)[number], React.Comp
   Members: IconUsers,
   "Usage and limits": IconChartBar,
   "Data controls": IconShield,
-  "Plans and upgrade": IconSettings,
+  "Plans (soon)": IconSettings,
   Billing: IconCreditCard,
   "Help Docs": IconFileText,
   "Contact Support": IconHelpCircle,
@@ -2840,7 +2840,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup className="group-data-[collapsible=icon]:hidden mt-12 pt-2">
-          <div className="mb-1 flex items-center justify-between px-2">
+          <div className="mb-1 flex items-center justify-between pl-0 pr-2">
             <button
               type="button"
               onClick={() =>
@@ -2853,15 +2853,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 })
               }
               aria-label={isChatsExpanded ? "Collapse chats" : "Expand chats"}
-              className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
+              <span className="text-xs font-medium">Chats</span>
               <IconChevronRight
                 className={cn(
                   "h-3.5 w-3.5 transition-transform duration-200",
                   isChatsExpanded && "rotate-90"
                 )}
               />
-              <span className="text-xs font-medium">Chats</span>
             </button>
             <button
               type="button"
