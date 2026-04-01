@@ -3177,6 +3177,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <UsageLimitsSettingsContent />
                       ) : activeSettingsSection === "Data controls" ? (
                         <DataControlsSettingsContent />
+                      ) : activeSettingsSection === "Plans (soon)" ? (
+                        <div className="flex min-h-[calc(78vh-9rem)] items-center justify-center rounded-xl bg-blue-600 px-6 py-10">
+                          <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">Soon</h2>
+                        </div>
                       ) : activeSettingsSection === "Billing" ? (
                         <BillingSettingsContent
                           onGoToMembers={() => setActiveSettingsSection("Members")}
