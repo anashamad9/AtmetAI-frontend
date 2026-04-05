@@ -9,7 +9,13 @@ import { VersionSwitcher } from "@/components/version-switcher"
 import { BarInteractive } from "@/components/charts/bar-interactive"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +26,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   Sidebar,
   SidebarContent,
@@ -63,7 +73,31 @@ import {
   IconX,
 } from "@tabler/icons-react"
 import { useTheme } from "next-themes"
-import { Briefcase, Camera, Check, Clock3, Copy, Globe2, Hash, KeyRound, Languages, Mail, Monitor, MoreHorizontal, Palette, PenLine, Phone, Pin, PinOff, Plus, Search, SlidersHorizontal, Trash2, User, UserPlus } from "lucide-react"
+import {
+  Briefcase,
+  Camera,
+  Check,
+  Clock3,
+  Copy,
+  Globe2,
+  Hash,
+  KeyRound,
+  Languages,
+  Mail,
+  Monitor,
+  MoreHorizontal,
+  Palette,
+  PenLine,
+  Phone,
+  Pin,
+  PinOff,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+  User,
+  UserPlus,
+} from "lucide-react"
 
 const navItems = [
   { title: "AI Core", url: "/ai-core", icon: AiBrain01Icon },
@@ -314,7 +348,11 @@ const workspaceMembers: WorkspaceMember[] = [
 
 const settingsContent: Record<(typeof settingsSections)[number], string[]> = {
   Account: ["Profile details", "Email and login", "Security"],
-  Notifications: ["Email notifications", "Push notifications", "Digest frequency"],
+  Notifications: [
+    "Email notifications",
+    "Push notifications",
+    "Digest frequency",
+  ],
   General: ["Theme and colors", "Font size", "Time zone", "Language"],
   Workspace: ["Workspace name", "Default workflow", "Region"],
   Members: ["Members", "Roles and permissions", "Invites"],
@@ -325,7 +363,10 @@ const settingsContent: Record<(typeof settingsSections)[number], string[]> = {
   "Help Docs": ["Help center", "Guides", "API references"],
   "Contact Support": ["Support contact", "Live chat", "Report a bug"],
 }
-const settingsSectionIcons: Record<(typeof settingsSections)[number], React.ComponentType<{ className?: string }>> = {
+const settingsSectionIcons: Record<
+  (typeof settingsSections)[number],
+  React.ComponentType<{ className?: string }>
+> = {
   Account: IconUser,
   Notifications: IconBell,
   General: Monitor,
@@ -371,7 +412,13 @@ const usageRangeStats = {
   },
 } as const
 const usageLimitsRows = [
-  { key: "credits", label: "Credits", limitKey: "creditsLimit" as const, usedKey: "creditsUsed" as const, unit: "" },
+  {
+    key: "credits",
+    label: "Credits",
+    limitKey: "creditsLimit" as const,
+    usedKey: "creditsUsed" as const,
+    unit: "",
+  },
   {
     key: "requests",
     label: "API requests",
@@ -405,6 +452,15 @@ type StoredChatItem = {
 
 const AI_CORE_CHATS_STORAGE_KEY = "ai-core-chats"
 const AI_CORE_CHATS_UPDATED_EVENT = "ai-core-chats-updated"
+const OPEN_SETTINGS_PANEL_EVENT = "open-settings-panel"
+
+type OpenSettingsPanelDetail = {
+  section?: (typeof settingsSections)[number]
+  memberId?: string
+  memberQuery?: string
+  membersAction?: "invite"
+}
+
 const INITIAL_VISIBLE_CHATS = 4
 const CHAT_LOAD_STEP = 10
 const APPEARANCE_SETTINGS_STORAGE_KEY = "atmet-appearance-settings"
@@ -508,13 +564,17 @@ type AppearanceSettings = {
 function applyAppearanceColor(colorId: AppearanceColorId) {
   if (typeof document === "undefined") return
   const targetColor =
-    appearanceColorOptions.find((option) => option.id === colorId) ?? appearanceColorOptions[0]
+    appearanceColorOptions.find((option) => option.id === colorId) ??
+    appearanceColorOptions[0]
   const root = document.documentElement
 
   root.style.setProperty("--primary", targetColor.primary)
   root.style.setProperty("--primary-foreground", targetColor.primaryForeground)
   root.style.setProperty("--sidebar-primary", targetColor.primary)
-  root.style.setProperty("--sidebar-primary-foreground", targetColor.primaryForeground)
+  root.style.setProperty(
+    "--sidebar-primary-foreground",
+    targetColor.primaryForeground
+  )
   root.style.setProperty("--ring", targetColor.ring)
 }
 
@@ -552,12 +612,15 @@ function AccountSettingsContent() {
   const [firstName, setFirstName] = React.useState(accountProfile.firstName)
   const [lastName, setLastName] = React.useState(accountProfile.lastName)
   const [email, setEmail] = React.useState(accountProfile.email)
-  const [phoneNumber, setPhoneNumber] = React.useState(accountProfile.phoneNumber)
-  const [selectedRole, setSelectedRole] = React.useState<(typeof roleOptions)[number] | string>(
-    accountProfile.role
+  const [phoneNumber, setPhoneNumber] = React.useState(
+    accountProfile.phoneNumber
   )
+  const [selectedRole, setSelectedRole] = React.useState<
+    (typeof roleOptions)[number] | string
+  >(accountProfile.role)
   const [customRole, setCustomRole] = React.useState("")
-  const displayedRole = selectedRole === "Other" ? customRole || "Other" : selectedRole
+  const displayedRole =
+    selectedRole === "Other" ? customRole || "Other" : selectedRole
   const hasUnsavedChanges =
     firstName !== savedProfile.firstName ||
     lastName !== savedProfile.lastName ||
@@ -582,14 +645,14 @@ function AccountSettingsContent() {
                   {currentUser.initials}
                 </AvatarFallback>
               </Avatar>
-              <span className="pointer-events-none absolute inset-0 rounded-lg bg-background/20 opacity-0 backdrop-blur-sm transition-opacity duration-200 group-hover/avatar-edit:opacity-100 group-focus-within/avatar-edit:opacity-100" />
+              <span className="pointer-events-none absolute inset-0 rounded-lg bg-background/20 opacity-0 backdrop-blur-sm transition-opacity duration-200 group-focus-within/avatar-edit:opacity-100 group-hover/avatar-edit:opacity-100" />
               <DropdownMenuTrigger
                 render={
                   <Button
                     type="button"
                     size="icon-xs"
                     variant="outline"
-                    className="absolute inset-0 z-10 m-auto border-border/70 bg-background/90 opacity-0 shadow-xs transition-opacity duration-200 pointer-events-none group-hover/avatar-edit:pointer-events-auto group-hover/avatar-edit:opacity-100 group-focus-within/avatar-edit:pointer-events-auto group-focus-within/avatar-edit:opacity-100"
+                    className="pointer-events-none absolute inset-0 z-10 m-auto border-border/70 bg-background/90 opacity-0 shadow-xs transition-opacity duration-200 group-focus-within/avatar-edit:pointer-events-auto group-focus-within/avatar-edit:opacity-100 group-hover/avatar-edit:pointer-events-auto group-hover/avatar-edit:opacity-100"
                     aria-label="Edit profile image"
                   />
                 }
@@ -597,7 +660,10 @@ function AccountSettingsContent() {
                 <PenLine className="h-3.5 w-3.5" />
               </DropdownMenuTrigger>
             </div>
-            <DropdownMenuContent align="start" className="min-w-44 rounded-lg p-1">
+            <DropdownMenuContent
+              align="start"
+              className="min-w-44 rounded-lg p-1"
+            >
               <DropdownMenuItem>
                 <Camera className="h-3.5 w-3.5" />
                 Upload image
@@ -618,7 +684,10 @@ function AccountSettingsContent() {
 
         <div className="grid gap-2.5 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label className="text-muted-foreground" htmlFor="settings-first-name">
+            <Label
+              className="text-muted-foreground"
+              htmlFor="settings-first-name"
+            >
               <User className="h-3.5 w-3.5 text-muted-foreground/80" />
               First name
             </Label>
@@ -631,7 +700,10 @@ function AccountSettingsContent() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-muted-foreground" htmlFor="settings-last-name">
+            <Label
+              className="text-muted-foreground"
+              htmlFor="settings-last-name"
+            >
               <User className="h-3.5 w-3.5 text-muted-foreground/80" />
               Last name
             </Label>
@@ -691,7 +763,10 @@ function AccountSettingsContent() {
                 <span>{selectedRole}</span>
                 <IconChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-56 rounded-lg p-1">
+              <DropdownMenuContent
+                align="start"
+                className="min-w-56 rounded-lg p-1"
+              >
                 {roleOptions.map((role) => (
                   <DropdownMenuItem
                     key={role}
@@ -721,7 +796,10 @@ function AccountSettingsContent() {
               User ID
             </Label>
             <div className="flex items-center gap-2">
-              <p id="settings-user-id" className="font-mono text-sm text-foreground">
+              <p
+                id="settings-user-id"
+                className="font-mono text-sm text-foreground"
+              >
                 {accountProfile.userId}
               </p>
               <Button
@@ -729,7 +807,9 @@ function AccountSettingsContent() {
                 variant="ghost"
                 size="icon-xs"
                 aria-label="Copy user ID"
-                onClick={() => void navigator.clipboard.writeText(accountProfile.userId)}
+                onClick={() =>
+                  void navigator.clipboard.writeText(accountProfile.userId)
+                }
               >
                 <Copy className="h-3.5 w-3.5" />
               </Button>
@@ -738,7 +818,7 @@ function AccountSettingsContent() {
         </div>
       </div>
 
-      <div className="space-y-2 pb-1 pt-5">
+      <div className="space-y-2 pt-5 pb-1">
         <section>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-0.5">
@@ -757,7 +837,9 @@ function AccountSettingsContent() {
         <section>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-0.5">
-              <p className="text-sm font-medium text-destructive">Danger Zone</p>
+              <p className="text-sm font-medium text-destructive">
+                Danger Zone
+              </p>
               <p className="text-sm text-muted-foreground">
                 Permanently delete your account and all associated workspaces.
               </p>
@@ -769,7 +851,7 @@ function AccountSettingsContent() {
           </div>
         </section>
       </div>
-      <div className="mt-auto flex justify-end pb-1 pt-5">
+      <div className="mt-auto flex justify-end pt-5 pb-1">
         <Button
           type="button"
           size="sm"
@@ -794,7 +876,12 @@ function AccountSettingsContent() {
 }
 
 function NotificationSettingsContent() {
-  const digestOptions = ["Real-time", "Daily digest", "Weekly digest", "Off"] as const
+  const digestOptions = [
+    "Real-time",
+    "Daily digest",
+    "Weekly digest",
+    "Off",
+  ] as const
   const notificationCategories = [
     {
       key: "security",
@@ -828,15 +915,19 @@ function NotificationSettingsContent() {
     quietTo: "07:00",
   }
 
-  const [notificationSettings, setNotificationSettings] = React.useState(defaultSettings)
-  const [savedNotificationSettings, setSavedNotificationSettings] = React.useState(defaultSettings)
+  const [notificationSettings, setNotificationSettings] =
+    React.useState(defaultSettings)
+  const [savedNotificationSettings, setSavedNotificationSettings] =
+    React.useState(defaultSettings)
   const categoryChannels =
     notificationSettings.categoryChannels ?? defaultSettings.categoryChannels
   const savedCategoryChannels =
-    savedNotificationSettings.categoryChannels ?? defaultSettings.categoryChannels
+    savedNotificationSettings.categoryChannels ??
+    defaultSettings.categoryChannels
 
   const hasUnsavedChanges =
-    JSON.stringify(categoryChannels) !== JSON.stringify(savedCategoryChannels) ||
+    JSON.stringify(categoryChannels) !==
+      JSON.stringify(savedCategoryChannels) ||
     notificationSettings.digest !== savedNotificationSettings.digest ||
     notificationSettings.quietHours !== savedNotificationSettings.quietHours ||
     notificationSettings.quietFrom !== savedNotificationSettings.quietFrom ||
@@ -859,22 +950,30 @@ function NotificationSettingsContent() {
                     <div className="flex items-center gap-2">
                       <CategoryIcon className="h-3.5 w-3.5 text-muted-foreground/80" />
                       <div className="space-y-0.5">
-                        <p className="text-sm font-medium text-foreground">{category.label}</p>
-                        <p className="text-xs text-muted-foreground">{category.description}</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {category.label}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {category.description}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <input
                           type="checkbox"
-                          checked={categoryChannels[category.key]?.email ?? false}
+                          checked={
+                            categoryChannels[category.key]?.email ?? false
+                          }
                           onChange={(event) =>
                             setNotificationSettings((prev) => ({
                               ...prev,
                               categoryChannels: {
-                                ...(prev.categoryChannels ?? defaultSettings.categoryChannels),
+                                ...(prev.categoryChannels ??
+                                  defaultSettings.categoryChannels),
                                 [category.key]: {
-                                  ...(prev.categoryChannels ?? defaultSettings.categoryChannels)[
+                                  ...(prev.categoryChannels ??
+                                    defaultSettings.categoryChannels)[
                                     category.key
                                   ],
                                   email: event.target.checked,
@@ -890,14 +989,18 @@ function NotificationSettingsContent() {
                       <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <input
                           type="checkbox"
-                          checked={categoryChannels[category.key]?.inApp ?? false}
+                          checked={
+                            categoryChannels[category.key]?.inApp ?? false
+                          }
                           onChange={(event) =>
                             setNotificationSettings((prev) => ({
                               ...prev,
                               categoryChannels: {
-                                ...(prev.categoryChannels ?? defaultSettings.categoryChannels),
+                                ...(prev.categoryChannels ??
+                                  defaultSettings.categoryChannels),
                                 [category.key]: {
-                                  ...(prev.categoryChannels ?? defaultSettings.categoryChannels)[
+                                  ...(prev.categoryChannels ??
+                                    defaultSettings.categoryChannels)[
                                     category.key
                                   ],
                                   inApp: event.target.checked,
@@ -919,7 +1022,10 @@ function NotificationSettingsContent() {
         </section>
 
         <div className="space-y-1.5">
-          <Label className="text-muted-foreground" htmlFor="settings-digest-frequency">
+          <Label
+            className="text-muted-foreground"
+            htmlFor="settings-digest-frequency"
+          >
             <IconBell className="h-3.5 w-3.5 text-muted-foreground/80" />
             Digest frequency
           </Label>
@@ -938,7 +1044,10 @@ function NotificationSettingsContent() {
               <span>{notificationSettings.digest}</span>
               <IconChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-56 rounded-lg p-1">
+            <DropdownMenuContent
+              align="start"
+              className="min-w-56 rounded-lg p-1"
+            >
               {digestOptions.map((digest) => (
                 <DropdownMenuItem
                   key={digest}
@@ -957,7 +1066,7 @@ function NotificationSettingsContent() {
         </div>
       </div>
 
-      <div className="space-y-2 pb-1 pt-5">
+      <div className="space-y-2 pt-5 pb-1">
         <section>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div className="space-y-0.5">
@@ -984,7 +1093,10 @@ function NotificationSettingsContent() {
                 type="time"
                 value={notificationSettings.quietFrom}
                 onChange={(event) =>
-                  setNotificationSettings((prev) => ({ ...prev, quietFrom: event.target.value }))
+                  setNotificationSettings((prev) => ({
+                    ...prev,
+                    quietFrom: event.target.value,
+                  }))
                 }
                 disabled={!notificationSettings.quietHours}
                 className="h-7 w-28"
@@ -994,7 +1106,10 @@ function NotificationSettingsContent() {
                 type="time"
                 value={notificationSettings.quietTo}
                 onChange={(event) =>
-                  setNotificationSettings((prev) => ({ ...prev, quietTo: event.target.value }))
+                  setNotificationSettings((prev) => ({
+                    ...prev,
+                    quietTo: event.target.value,
+                  }))
                 }
                 disabled={!notificationSettings.quietHours}
                 className="h-7 w-28"
@@ -1003,7 +1118,7 @@ function NotificationSettingsContent() {
           </div>
         </section>
       </div>
-      <div className="mt-auto flex justify-end pb-1 pt-5">
+      <div className="mt-auto flex justify-end pt-5 pb-1">
         <Button
           type="button"
           size="sm"
@@ -1050,22 +1165,31 @@ function GeneralSettingsContent({
     ]
     return base.includes(inferredTimezone) ? base : [inferredTimezone, ...base]
   }, [inferredTimezone])
-  const languageOptions = ["English", "Arabic", "French", "Spanish", "German", "Japanese"] as const
+  const languageOptions = [
+    "English",
+    "Arabic",
+    "French",
+    "Spanish",
+    "German",
+    "Japanese",
+  ] as const
   const initializedRef = React.useRef(false)
-  const [appearanceSettings, setAppearanceSettings] = React.useState<AppearanceSettings>({
-    theme: "system",
-    colorId: "graphite",
-    timezone: inferredTimezone,
-    language: "English",
-    fontScale: "default",
-  })
-  const [savedAppearanceSettings, setSavedAppearanceSettings] = React.useState<AppearanceSettings>({
-    theme: "system",
-    colorId: "graphite",
-    timezone: inferredTimezone,
-    language: "English",
-    fontScale: "default",
-  })
+  const [appearanceSettings, setAppearanceSettings] =
+    React.useState<AppearanceSettings>({
+      theme: "system",
+      colorId: "graphite",
+      timezone: inferredTimezone,
+      language: "English",
+      fontScale: "default",
+    })
+  const [savedAppearanceSettings, setSavedAppearanceSettings] =
+    React.useState<AppearanceSettings>({
+      theme: "system",
+      colorId: "graphite",
+      timezone: inferredTimezone,
+      language: "English",
+      fontScale: "default",
+    })
 
   React.useEffect(() => {
     if (initializedRef.current) return
@@ -1085,7 +1209,9 @@ function GeneralSettingsContent({
       return
     }
 
-    const rawSettings = window.localStorage.getItem(APPEARANCE_SETTINGS_STORAGE_KEY)
+    const rawSettings = window.localStorage.getItem(
+      APPEARANCE_SETTINGS_STORAGE_KEY
+    )
     if (!rawSettings) {
       setAppearanceSettings(fallbackSettings)
       setSavedAppearanceSettings(fallbackSettings)
@@ -1098,15 +1224,24 @@ function GeneralSettingsContent({
       const parsed = JSON.parse(rawSettings) as Partial<AppearanceSettings>
       const nextSettings: AppearanceSettings = {
         theme:
-          parsed.theme === "light" || parsed.theme === "dark" || parsed.theme === "system"
+          parsed.theme === "light" ||
+          parsed.theme === "dark" ||
+          parsed.theme === "system"
             ? parsed.theme
             : fallbackSettings.theme,
-        colorId:
-          appearanceColorOptions.some((option) => option.id === parsed.colorId)
-            ? (parsed.colorId as AppearanceColorId)
-            : fallbackSettings.colorId,
-        timezone: typeof parsed.timezone === "string" ? parsed.timezone : fallbackSettings.timezone,
-        language: typeof parsed.language === "string" ? parsed.language : fallbackSettings.language,
+        colorId: appearanceColorOptions.some(
+          (option) => option.id === parsed.colorId
+        )
+          ? (parsed.colorId as AppearanceColorId)
+          : fallbackSettings.colorId,
+        timezone:
+          typeof parsed.timezone === "string"
+            ? parsed.timezone
+            : fallbackSettings.timezone,
+        language:
+          typeof parsed.language === "string"
+            ? parsed.language
+            : fallbackSettings.language,
         fontScale:
           parsed.fontScale === "smaller" ||
           parsed.fontScale === "default" ||
@@ -1146,11 +1281,13 @@ function GeneralSettingsContent({
               Theme mode
             </Label>
             <div className="grid gap-2 sm:grid-cols-3">
-              {([
-                { id: "light", label: "Light", icon: IconSun },
-                { id: "dark", label: "Dark", icon: IconMoon },
-                { id: "system", label: "System", icon: Monitor },
-              ] as const).map((themeOption) => {
+              {(
+                [
+                  { id: "light", label: "Light", icon: IconSun },
+                  { id: "dark", label: "Dark", icon: IconMoon },
+                  { id: "system", label: "System", icon: Monitor },
+                ] as const
+              ).map((themeOption) => {
                 const ThemeIcon = themeOption.icon
                 return (
                   <button
@@ -1172,8 +1309,10 @@ function GeneralSettingsContent({
                     <div
                       className={cn(
                         "h-20 rounded-lg border p-2",
-                        themeOption.id === "light" && "border-input/70 bg-muted/25",
-                        themeOption.id === "dark" && "border-white/10 bg-slate-950",
+                        themeOption.id === "light" &&
+                          "border-input/70 bg-muted/25",
+                        themeOption.id === "dark" &&
+                          "border-white/10 bg-slate-950",
                         themeOption.id === "system" &&
                           "border-input/70 bg-gradient-to-r from-muted/25 from-55% to-slate-950 to-55%"
                       )}
@@ -1182,7 +1321,9 @@ function GeneralSettingsContent({
                         <div
                           className={cn(
                             "col-span-1 rounded-md",
-                            themeOption.id === "dark" ? "bg-white/5" : "bg-foreground/5"
+                            themeOption.id === "dark"
+                              ? "bg-white/5"
+                              : "bg-foreground/5"
                           )}
                         />
                         <div
@@ -1191,7 +1332,8 @@ function GeneralSettingsContent({
                             themeOption.id === "dark"
                               ? "border-white/10 bg-white/[0.03]"
                               : "border-foreground/10 bg-background/70",
-                            themeOption.id === "system" && "border-foreground/10 bg-background/75"
+                            themeOption.id === "system" &&
+                              "border-foreground/10 bg-background/75"
                           )}
                         >
                           <div className="grid h-full grid-cols-3 gap-1 p-1">
@@ -1200,8 +1342,12 @@ function GeneralSettingsContent({
                                 key={idx}
                                 className={cn(
                                   "rounded-sm",
-                                  themeOption.id === "dark" ? "bg-white/7" : "bg-foreground/8",
-                                  themeOption.id === "system" && idx > 5 && "bg-white/12"
+                                  themeOption.id === "dark"
+                                    ? "bg-white/7"
+                                    : "bg-foreground/8",
+                                  themeOption.id === "system" &&
+                                    idx > 5 &&
+                                    "bg-white/12"
                                 )}
                               />
                             ))}
@@ -1257,15 +1403,21 @@ function GeneralSettingsContent({
           </div>
 
           <div className="grid grid-cols-3 gap-2">
-            {([
-              { id: "smaller", label: "Smaller" },
-              { id: "default", label: "Default" },
-              { id: "bigger", label: "Bigger" },
-            ] as const).map((fontOption) => (
+            {(
+              [
+                { id: "smaller", label: "Smaller" },
+                { id: "default", label: "Default" },
+                { id: "bigger", label: "Bigger" },
+              ] as const
+            ).map((fontOption) => (
               <Button
                 key={fontOption.id}
                 type="button"
-                variant={appearanceSettings.fontScale === fontOption.id ? "default" : "outline"}
+                variant={
+                  appearanceSettings.fontScale === fontOption.id
+                    ? "default"
+                    : "outline"
+                }
                 size="sm"
                 className="h-7"
                 onClick={() =>
@@ -1285,9 +1437,14 @@ function GeneralSettingsContent({
         </section>
 
         <section className="space-y-2">
-          <p className="text-sm font-medium text-foreground">Time and language</p>
+          <p className="text-sm font-medium text-foreground">
+            Time and language
+          </p>
           <div className="space-y-1.5">
-            <Label className="text-muted-foreground" htmlFor="settings-timezone">
+            <Label
+              className="text-muted-foreground"
+              htmlFor="settings-timezone"
+            >
               <Clock3 className="h-3.5 w-3.5 text-muted-foreground/80" />
               Time zone
             </Label>
@@ -1306,7 +1463,10 @@ function GeneralSettingsContent({
                 <span>{appearanceSettings.timezone}</span>
                 <IconChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-56 rounded-lg p-1">
+              <DropdownMenuContent
+                align="start"
+                className="min-w-56 rounded-lg p-1"
+              >
                 {timezoneOptions.map((timezone) => (
                   <DropdownMenuItem
                     key={timezone}
@@ -1324,7 +1484,10 @@ function GeneralSettingsContent({
             </DropdownMenu>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-muted-foreground" htmlFor="settings-language">
+            <Label
+              className="text-muted-foreground"
+              htmlFor="settings-language"
+            >
               <Languages className="h-3.5 w-3.5 text-muted-foreground/80" />
               Language
             </Label>
@@ -1343,7 +1506,10 @@ function GeneralSettingsContent({
                 <span>{appearanceSettings.language}</span>
                 <IconChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-56 rounded-lg p-1">
+              <DropdownMenuContent
+                align="start"
+                className="min-w-56 rounded-lg p-1"
+              >
                 {languageOptions.map((language) => (
                   <DropdownMenuItem
                     key={language}
@@ -1363,7 +1529,7 @@ function GeneralSettingsContent({
           </div>
         </section>
       </div>
-      <div className="mt-auto flex justify-end pb-1 pt-5">
+      <div className="mt-auto flex justify-end pt-5 pb-1">
         <Button
           type="button"
           size="sm"
@@ -1398,8 +1564,12 @@ function WorkspaceSettingsContent({
     name: workspaceProfile.name,
     description: workspaceProfile.description,
   })
-  const [workspaceName, setWorkspaceName] = React.useState(workspaceProfile.name)
-  const [description, setDescription] = React.useState(workspaceProfile.description)
+  const [workspaceName, setWorkspaceName] = React.useState(
+    workspaceProfile.name
+  )
+  const [description, setDescription] = React.useState(
+    workspaceProfile.description
+  )
 
   const hasUnsavedChanges =
     workspaceName !== savedWorkspace.name ||
@@ -1421,14 +1591,14 @@ function WorkspaceSettingsContent({
                   {workspaceProfile.initials}
                 </AvatarFallback>
               </Avatar>
-              <span className="pointer-events-none absolute inset-0 rounded-lg bg-background/20 opacity-0 backdrop-blur-sm transition-opacity duration-200 group-hover/workspace-avatar:opacity-100 group-focus-within/workspace-avatar:opacity-100" />
+              <span className="pointer-events-none absolute inset-0 rounded-lg bg-background/20 opacity-0 backdrop-blur-sm transition-opacity duration-200 group-focus-within/workspace-avatar:opacity-100 group-hover/workspace-avatar:opacity-100" />
               <DropdownMenuTrigger
                 render={
                   <Button
                     type="button"
                     size="icon-xs"
                     variant="outline"
-                    className="pointer-events-none absolute inset-0 z-10 m-auto border-border/70 bg-background/90 opacity-0 shadow-xs transition-opacity duration-200 group-hover/workspace-avatar:pointer-events-auto group-hover/workspace-avatar:opacity-100 group-focus-within/workspace-avatar:pointer-events-auto group-focus-within/workspace-avatar:opacity-100"
+                    className="pointer-events-none absolute inset-0 z-10 m-auto border-border/70 bg-background/90 opacity-0 shadow-xs transition-opacity duration-200 group-focus-within/workspace-avatar:pointer-events-auto group-focus-within/workspace-avatar:opacity-100 group-hover/workspace-avatar:pointer-events-auto group-hover/workspace-avatar:opacity-100"
                     aria-label="Edit workspace image"
                   />
                 }
@@ -1436,7 +1606,10 @@ function WorkspaceSettingsContent({
                 <PenLine className="h-3.5 w-3.5" />
               </DropdownMenuTrigger>
             </div>
-            <DropdownMenuContent align="start" className="min-w-44 rounded-lg p-1">
+            <DropdownMenuContent
+              align="start"
+              className="min-w-44 rounded-lg p-1"
+            >
               <DropdownMenuItem>
                 <Camera className="h-3.5 w-3.5" />
                 Upload image
@@ -1456,7 +1629,10 @@ function WorkspaceSettingsContent({
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-muted-foreground" htmlFor="settings-workspace-name">
+          <Label
+            className="text-muted-foreground"
+            htmlFor="settings-workspace-name"
+          >
             <IconBuilding className="h-3.5 w-3.5 text-muted-foreground/80" />
             Workspace name
           </Label>
@@ -1471,7 +1647,10 @@ function WorkspaceSettingsContent({
 
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5">
-            <Label className="text-muted-foreground" htmlFor="settings-workspace-email">
+            <Label
+              className="text-muted-foreground"
+              htmlFor="settings-workspace-email"
+            >
               <Mail className="h-3.5 w-3.5 text-muted-foreground/80" />
               Primary email
             </Label>
@@ -1480,7 +1659,7 @@ function WorkspaceSettingsContent({
                 render={
                   <button
                     type="button"
-                    className="inline-flex size-4 items-center justify-center rounded-full border border-border text-[10px] font-semibold leading-none text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+                    className="inline-flex size-4 items-center justify-center rounded-full border border-border text-[10px] leading-none font-semibold text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
                     aria-label="Primary email cannot be edited"
                   >
                     !
@@ -1488,8 +1667,8 @@ function WorkspaceSettingsContent({
                 }
               />
               <TooltipContent className="max-w-64 text-xs">
-                You can&apos;t edit the primary email. Contact support to update your primary
-                email.
+                You can&apos;t edit the primary email. Contact support to update
+                your primary email.
               </TooltipContent>
             </Tooltip>
           </div>
@@ -1501,14 +1680,17 @@ function WorkspaceSettingsContent({
               disabled
               className="h-7 cursor-not-allowed border-dashed bg-muted/55 pr-20 text-muted-foreground disabled:opacity-100"
             />
-            <span className="pointer-events-none absolute inset-y-0 right-2 inline-flex items-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="pointer-events-none absolute inset-y-0 right-2 inline-flex items-center text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
               Read only
             </span>
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-muted-foreground" htmlFor="settings-workspace-description">
+          <Label
+            className="text-muted-foreground"
+            htmlFor="settings-workspace-description"
+          >
             <IconFileText className="h-3.5 w-3.5 text-muted-foreground/80" />
             Description
           </Label>
@@ -1522,7 +1704,7 @@ function WorkspaceSettingsContent({
         </div>
       </div>
 
-      <div className="space-y-3 pb-1 pt-6">
+      <div className="space-y-3 pt-6 pb-1">
         <section>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-0.5">
@@ -1531,7 +1713,12 @@ function WorkspaceSettingsContent({
                 Manage workspace members, invites, and permissions.
               </p>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={onGoToMembers}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onGoToMembers}
+            >
               <IconUsers className="h-3.5 w-3.5" />
               Go to members
             </Button>
@@ -1541,7 +1728,9 @@ function WorkspaceSettingsContent({
         <section className="space-y-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-0.5">
-              <p className="text-sm font-medium text-destructive">Delete workspace</p>
+              <p className="text-sm font-medium text-destructive">
+                Delete workspace
+              </p>
               <p className="text-sm text-muted-foreground">
                 Permanently delete this workspace and all associated data.
               </p>
@@ -1553,7 +1742,7 @@ function WorkspaceSettingsContent({
           </div>
         </section>
       </div>
-      <div className="mt-auto flex justify-end pb-1 pt-5">
+      <div className="mt-auto flex justify-end pt-5 pb-1">
         <Button
           type="button"
           size="sm"
@@ -1573,14 +1762,27 @@ function WorkspaceSettingsContent({
   )
 }
 
-function MembersSettingsContent() {
+function MembersSettingsContent({
+  quickActionToken = 0,
+  quickSearchQuery = "",
+  quickSelectedMemberId = null,
+  quickInviteToken = 0,
+}: {
+  quickActionToken?: number
+  quickSearchQuery?: string
+  quickSelectedMemberId?: string | null
+  quickInviteToken?: number
+}) {
   const roleFilters = ["All users", "Super Admin", "Admin", "Member"] as const
   const inviteRoleOptions = ["Member", "Admin", "Super Admin"] as const
   const creditsRanges = ["All time", "This month", "This week"] as const
   const seatsLimit = 10
   const [searchQuery, setSearchQuery] = React.useState("")
-  const [roleFilter, setRoleFilter] = React.useState<(typeof roleFilters)[number]>("All users")
-  const [selectedMemberId, setSelectedMemberId] = React.useState<string | null>(null)
+  const [roleFilter, setRoleFilter] =
+    React.useState<(typeof roleFilters)[number]>("All users")
+  const [selectedMemberId, setSelectedMemberId] = React.useState<string | null>(
+    null
+  )
   const [creditsRange, setCreditsRange] =
     React.useState<(typeof creditsRanges)[number]>("All time")
   const [isInviteOpen, setIsInviteOpen] = React.useState(false)
@@ -1597,14 +1799,16 @@ function MembersSettingsContent() {
     Member: "border-border bg-muted/55 text-muted-foreground",
   }
   const appStatusClasses: Record<WorkspaceMemberApp["status"], string> = {
-    Connected: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+    Connected:
+      "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
     Disconnected: "border-border bg-muted/55 text-muted-foreground",
   }
 
   const filteredMembers = React.useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
     return workspaceMembers.filter((member) => {
-      const matchesRole = roleFilter === "All users" || member.role === roleFilter
+      const matchesRole =
+        roleFilter === "All users" || member.role === roleFilter
       if (!matchesRole) return false
       if (!query) return true
       return (
@@ -1616,13 +1820,16 @@ function MembersSettingsContent() {
   const seatsUsed = workspaceMembers.length
   const seatsProgress = Math.min(100, (seatsUsed / seatsLimit) * 100)
   const selectedMember = React.useMemo(
-    () => workspaceMembers.find((member) => member.id === selectedMemberId) ?? null,
+    () =>
+      workspaceMembers.find((member) => member.id === selectedMemberId) ?? null,
     [selectedMemberId]
   )
   const selectedCreditsUsage = React.useMemo(() => {
     if (!selectedMember) return 0
-    if (creditsRange === "This month") return selectedMember.creditsUsage.thisMonth
-    if (creditsRange === "This week") return selectedMember.creditsUsage.thisWeek
+    if (creditsRange === "This month")
+      return selectedMember.creditsUsage.thisMonth
+    if (creditsRange === "This week")
+      return selectedMember.creditsUsage.thisWeek
     return selectedMember.creditsUsage.allTime
   }, [selectedMember, creditsRange])
   const formattedCreditsUsage = React.useMemo(
@@ -1634,23 +1841,40 @@ function MembersSettingsContent() {
 
     const buildSeries = (total: number, weights: number[]) => {
       const weightSum = weights.reduce((sum, weight) => sum + weight, 0) || 1
-      return weights.map((weight) => Math.max(0, Math.round((total * weight) / weightSum)))
+      return weights.map((weight) =>
+        Math.max(0, Math.round((total * weight) / weightSum))
+      )
     }
 
     if (creditsRange === "All time") {
       const labels = ["Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr"]
-      const values = buildSeries(selectedMember.creditsUsage.allTime, [9, 12, 11, 15, 16, 19, 18])
-      return labels.map((label, index) => ({ label, value: values[index] ?? 0 }))
+      const values = buildSeries(
+        selectedMember.creditsUsage.allTime,
+        [9, 12, 11, 15, 16, 19, 18]
+      )
+      return labels.map((label, index) => ({
+        label,
+        value: values[index] ?? 0,
+      }))
     }
 
     if (creditsRange === "This month") {
       const labels = ["Week 1", "Week 2", "Week 3", "Week 4"]
-      const values = buildSeries(selectedMember.creditsUsage.thisMonth, [22, 28, 24, 26])
-      return labels.map((label, index) => ({ label, value: values[index] ?? 0 }))
+      const values = buildSeries(
+        selectedMember.creditsUsage.thisMonth,
+        [22, 28, 24, 26]
+      )
+      return labels.map((label, index) => ({
+        label,
+        value: values[index] ?? 0,
+      }))
     }
 
     const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    const values = buildSeries(selectedMember.creditsUsage.thisWeek, [12, 16, 15, 14, 13, 17, 13])
+    const values = buildSeries(
+      selectedMember.creditsUsage.thisWeek,
+      [12, 16, 15, 14, 13, 17, 13]
+    )
     return labels.map((label, index) => ({ label, value: values[index] ?? 0 }))
   }, [selectedMember, creditsRange])
 
@@ -1705,6 +1929,32 @@ function MembersSettingsContent() {
     setCreditsRange("All time")
   }, [selectedMemberId])
 
+  React.useEffect(() => {
+    if (quickActionToken === 0) return
+
+    if (quickSelectedMemberId) {
+      setSelectedMemberId(quickSelectedMemberId)
+      setSearchQuery("")
+    } else {
+      setSelectedMemberId(null)
+      setSearchQuery(quickSearchQuery)
+    }
+
+    setRoleFilter("All users")
+  }, [quickActionToken, quickSearchQuery, quickSelectedMemberId])
+
+  React.useEffect(() => {
+    if (quickInviteToken === 0) return
+    setSelectedMemberId(null)
+    setSearchQuery("")
+    setRoleFilter("All users")
+    setInviteInput("")
+    setInviteEmails([])
+    setInviteError("")
+    setInviteRole("Member")
+    setIsInviteOpen(true)
+  }, [quickInviteToken])
+
   const submitInvite = () => {
     const tokens = inviteInput
       .split(/[\s,;]+/)
@@ -1713,7 +1963,10 @@ function MembersSettingsContent() {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     const validTokens = tokens.filter((token) => emailPattern.test(token))
     const merged = Array.from(
-      new Set([...inviteEmails.map((email) => email.toLowerCase()), ...validTokens])
+      new Set([
+        ...inviteEmails.map((email) => email.toLowerCase()),
+        ...validTokens,
+      ])
     )
 
     if (merged.length === 0) {
@@ -1743,21 +1996,25 @@ function MembersSettingsContent() {
 
           <div className="mt-2 min-h-0 flex-1 space-y-4 overflow-y-auto pe-1">
             <section className="space-y-2.5">
-              <p className="text-sm font-semibold text-foreground">User profile</p>
+              <p className="text-sm font-semibold text-foreground">
+                User profile
+              </p>
               <div className="flex items-center gap-2.5">
-                  <Avatar className="size-10 !rounded-full">
-                    <AvatarImage
-                      src={selectedMember.avatarUrl}
-                      alt={selectedMember.name}
-                      className="!rounded-full object-cover"
-                    />
-                    <AvatarFallback className="!rounded-full text-xs font-semibold">
-                      {selectedMember.initials}
-                    </AvatarFallback>
-                  </Avatar>
+                <Avatar className="size-10 !rounded-full">
+                  <AvatarImage
+                    src={selectedMember.avatarUrl}
+                    alt={selectedMember.name}
+                    className="!rounded-full object-cover"
+                  />
+                  <AvatarFallback className="!rounded-full text-xs font-semibold">
+                    {selectedMember.initials}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="space-y-0.5">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <p className="text-sm font-medium text-foreground">{selectedMember.name}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {selectedMember.name}
+                    </p>
                     <span
                       className={cn(
                         "inline-flex items-center rounded-[min(var(--radius-md),10px)] border px-2 py-0.5 text-[11px] font-medium",
@@ -1767,7 +2024,9 @@ function MembersSettingsContent() {
                       {selectedMember.role}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">{selectedMember.profileRole}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedMember.profileRole}
+                  </p>
                 </div>
               </div>
 
@@ -1794,7 +2053,9 @@ function MembersSettingsContent() {
 
             <section className="space-y-2.5">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-foreground">Usage of credits</p>
+                <p className="text-sm font-semibold text-foreground">
+                  Usage of credits
+                </p>
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
@@ -1809,9 +2070,15 @@ function MembersSettingsContent() {
                     <span>{creditsRange}</span>
                     <IconChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-32 rounded-lg p-1">
+                  <DropdownMenuContent
+                    align="end"
+                    className="min-w-32 rounded-lg p-1"
+                  >
                     {creditsRanges.map((range) => (
-                      <DropdownMenuItem key={range} onClick={() => setCreditsRange(range)}>
+                      <DropdownMenuItem
+                        key={range}
+                        onClick={() => setCreditsRange(range)}
+                      >
                         {range}
                       </DropdownMenuItem>
                     ))}
@@ -1819,29 +2086,47 @@ function MembersSettingsContent() {
                 </DropdownMenu>
               </div>
               <div className="rounded-xl border border-border bg-background px-3 py-2.5">
-                <p className="text-base font-semibold text-foreground">{formattedCreditsUsage} credits</p>
+                <p className="text-base font-semibold text-foreground">
+                  {formattedCreditsUsage} credits
+                </p>
                 <p className="text-xs text-muted-foreground">
                   Consumption for {creditsRange.toLowerCase()}.
                 </p>
-                <BarInteractive data={creditsChartData} className="mt-2.5 h-44" />
+                <BarInteractive
+                  data={creditsChartData}
+                  className="mt-2.5 h-44"
+                />
               </div>
             </section>
 
             <section className="space-y-2.5">
-              <p className="text-sm font-semibold text-foreground">Integrated apps</p>
+              <p className="text-sm font-semibold text-foreground">
+                Integrated apps
+              </p>
               <div className="overflow-hidden rounded-xl border border-border bg-background">
                 <table className="w-full table-fixed border-collapse text-[0.8rem]">
                   <thead>
                     <tr className="border-b border-border text-muted-foreground">
-                      <th className="w-[35%] px-2.5 py-1.5 text-left font-medium">App</th>
-                      <th className="w-[25%] px-2.5 py-1.5 text-left font-medium">Category</th>
-                      <th className="w-[20%] px-2.5 py-1.5 text-left font-medium">Status</th>
-                      <th className="w-[20%] px-2.5 py-1.5 text-left font-medium">Last used</th>
+                      <th className="w-[35%] px-2.5 py-1.5 text-left font-medium">
+                        App
+                      </th>
+                      <th className="w-[25%] px-2.5 py-1.5 text-left font-medium">
+                        Category
+                      </th>
+                      <th className="w-[20%] px-2.5 py-1.5 text-left font-medium">
+                        Status
+                      </th>
+                      <th className="w-[20%] px-2.5 py-1.5 text-left font-medium">
+                        Last used
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {selectedMember.integratedApps.map((app) => (
-                      <tr key={app.name} className="border-b border-border/70 last:border-b-0">
+                      <tr
+                        key={app.name}
+                        className="border-b border-border/70 last:border-b-0"
+                      >
                         <td className="px-2.5 py-1.5 font-medium text-foreground">
                           <div className="flex items-center gap-2">
                             <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-[min(var(--radius-md),9px)] border border-border bg-muted/45 text-[10px] font-semibold text-foreground">
@@ -1863,7 +2148,9 @@ function MembersSettingsContent() {
                             {app.status}
                           </span>
                         </td>
-                        <td className="truncate px-2.5 py-1.5 text-muted-foreground">{app.lastUsed}</td>
+                        <td className="truncate px-2.5 py-1.5 text-muted-foreground">
+                          {app.lastUsed}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1877,7 +2164,7 @@ function MembersSettingsContent() {
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative w-full sm:max-w-sm">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="search"
                   value={searchQuery}
@@ -1887,159 +2174,179 @@ function MembersSettingsContent() {
                 />
               </div>
               <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-7 justify-between rounded-lg border-input bg-transparent px-2.5 text-[0.8rem] font-normal sm:min-w-36"
-                  />
-                }
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-                  {roleFilter}
-                </span>
-                <IconChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-40 rounded-lg p-1">
-                {roleFilters.map((role) => (
-                  <DropdownMenuItem key={role} onClick={() => setRoleFilter(role)}>
-                    {role}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 justify-between rounded-lg border-input bg-transparent px-2.5 text-[0.8rem] font-normal sm:min-w-36"
+                    />
+                  }
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                    {roleFilter}
+                  </span>
+                  <IconChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className="min-w-40 rounded-lg p-1"
+                >
+                  {roleFilters.map((role) => (
+                    <DropdownMenuItem
+                      key={role}
+                      onClick={() => setRoleFilter(role)}
+                    >
+                      {role}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setIsInviteOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Invite
+            </Button>
           </div>
-          <Button type="button" size="sm" onClick={() => setIsInviteOpen(true)}>
-            <Plus className="h-3.5 w-3.5" />
-            Invite
-          </Button>
-        </div>
 
-        <section className="mt-3 space-y-2 rounded-xl border border-border bg-background px-3 py-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
-              <IconUsers className="h-3.5 w-3.5 text-muted-foreground" />
-              Seat limit
-            </p>
-            <span className="text-sm text-muted-foreground">
-              {seatsUsed} / {seatsLimit}
-            </span>
-          </div>
-          <div className="h-1.5 rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary/80" style={{ width: `${seatsProgress}%` }} />
-          </div>
-        </section>
+          <section className="mt-3 space-y-2 rounded-xl border border-border bg-background px-3 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <IconUsers className="h-3.5 w-3.5 text-muted-foreground" />
+                Seat limit
+              </p>
+              <span className="text-sm text-muted-foreground">
+                {seatsUsed} / {seatsLimit}
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary/80"
+                style={{ width: `${seatsProgress}%` }}
+              />
+            </div>
+          </section>
 
-        <div className="mt-3 min-h-0 flex-1 overflow-auto">
-          <div className="overflow-hidden rounded-xl border border-border bg-background">
-            <table className="w-full min-w-0 table-fixed border-collapse text-[0.8rem]">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground">
-                  <th className="w-[48%] px-2.5 py-1.5 text-left font-medium">
-                    <span className="inline-flex items-center gap-1.5">
-                      <User className="h-3.5 w-3.5" />
-                      Name & email
-                    </span>
-                  </th>
-                  <th className="w-[20%] px-2.5 py-1.5 text-left font-medium">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Briefcase className="h-3.5 w-3.5" />
-                      User type
-                    </span>
-                  </th>
-                  <th className="w-[24%] px-2.5 py-1.5 text-left font-medium">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Clock3 className="h-3.5 w-3.5" />
-                      Last login
-                    </span>
-                  </th>
-                  <th className="w-11 px-2 py-1.5 text-center font-medium">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMembers.map((member) => (
-                  <tr
-                    key={member.id}
-                    onClick={() => setSelectedMemberId(member.id)}
-                    className="cursor-pointer border-b border-border/70 transition-colors hover:bg-muted/35 last:border-b-0"
-                  >
-                    <td className="px-2.5 py-1.5 pe-3">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar className="size-7 !rounded-full">
-                          <AvatarImage
-                            src={member.avatarUrl}
-                            alt={member.name}
-                            className="!rounded-full object-cover"
-                          />
-                          <AvatarFallback className="!rounded-full text-[10px] font-semibold">
-                            {member.initials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <p className="truncate text-[0.8rem] font-medium text-foreground">
-                            {member.name}
-                          </p>
-                          <p className="truncate text-[11px] text-muted-foreground">{member.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-2.5 py-1.5 pe-3 text-[0.8rem] text-foreground">
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-[min(var(--radius-md),10px)] border px-2 py-0.5 text-[11px] font-medium",
-                          roleBadgeClasses[member.role]
-                        )}
-                      >
-                        {member.role}
+          <div className="mt-3 min-h-0 flex-1 overflow-auto">
+            <div className="overflow-hidden rounded-xl border border-border bg-background">
+              <table className="w-full min-w-0 table-fixed border-collapse text-[0.8rem]">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="w-[48%] px-2.5 py-1.5 text-left font-medium">
+                      <span className="inline-flex items-center gap-1.5">
+                        <User className="h-3.5 w-3.5" />
+                        Name & email
                       </span>
-                    </td>
-                    <td className="px-2.5 py-1.5 text-[0.8rem] text-muted-foreground">
-                      {member.lastLogin}
-                    </td>
-                    <td className="px-2 py-1.5 text-center">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              type="button"
-                              size="icon-xs"
-                              variant="ghost"
-                              className="text-muted-foreground hover:text-foreground"
-                              aria-label={`Actions for ${member.name}`}
-                              onClick={(event) => event.stopPropagation()}
-                            />
-                          }
-                        >
-                          <MoreHorizontal className="h-3.5 w-3.5" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-40 rounded-lg p-1">
-                          <DropdownMenuItem onClick={() => setSelectedMemberId(member.id)}>
-                            <User className="h-3.5 w-3.5" />
-                            Go to profile
-                          </DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive">
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Delete user
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
+                    </th>
+                    <th className="w-[20%] px-2.5 py-1.5 text-left font-medium">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Briefcase className="h-3.5 w-3.5" />
+                        User type
+                      </span>
+                    </th>
+                    <th className="w-[24%] px-2.5 py-1.5 text-left font-medium">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock3 className="h-3.5 w-3.5" />
+                        Last login
+                      </span>
+                    </th>
+                    <th className="w-11 px-2 py-1.5 text-center font-medium">
+                      <span className="sr-only">Actions</span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {filteredMembers.length === 0 && (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                No members match your current search or filter.
-              </div>
-            )}
+                </thead>
+                <tbody>
+                  {filteredMembers.map((member) => (
+                    <tr
+                      key={member.id}
+                      onClick={() => setSelectedMemberId(member.id)}
+                      className="cursor-pointer border-b border-border/70 transition-colors last:border-b-0 hover:bg-muted/35"
+                    >
+                      <td className="px-2.5 py-1.5 pe-3">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="size-7 !rounded-full">
+                            <AvatarImage
+                              src={member.avatarUrl}
+                              alt={member.name}
+                              className="!rounded-full object-cover"
+                            />
+                            <AvatarFallback className="!rounded-full text-[10px] font-semibold">
+                              {member.initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="truncate text-[0.8rem] font-medium text-foreground">
+                              {member.name}
+                            </p>
+                            <p className="truncate text-[11px] text-muted-foreground">
+                              {member.email}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-2.5 py-1.5 pe-3 text-[0.8rem] text-foreground">
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-[min(var(--radius-md),10px)] border px-2 py-0.5 text-[11px] font-medium",
+                            roleBadgeClasses[member.role]
+                          )}
+                        >
+                          {member.role}
+                        </span>
+                      </td>
+                      <td className="px-2.5 py-1.5 text-[0.8rem] text-muted-foreground">
+                        {member.lastLogin}
+                      </td>
+                      <td className="px-2 py-1.5 text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                type="button"
+                                size="icon-xs"
+                                variant="ghost"
+                                className="text-muted-foreground hover:text-foreground"
+                                aria-label={`Actions for ${member.name}`}
+                                onClick={(event) => event.stopPropagation()}
+                              />
+                            }
+                          >
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="min-w-40 rounded-lg p-1"
+                          >
+                            <DropdownMenuItem
+                              onClick={() => setSelectedMemberId(member.id)}
+                            >
+                              <User className="h-3.5 w-3.5" />
+                              Go to profile
+                            </DropdownMenuItem>
+                            <DropdownMenuItem variant="destructive">
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Delete user
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredMembers.length === 0 && (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  No members match your current search or filter.
+                </div>
+              )}
+            </div>
           </div>
-        </div>
         </>
       )}
 
@@ -2054,7 +2361,9 @@ function MembersSettingsContent() {
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="inline-flex items-center gap-2.5">
                 <UserPlus className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm font-semibold text-foreground">Invite team members</p>
+                <p className="text-sm font-semibold text-foreground">
+                  Invite team members
+                </p>
               </div>
               <Button
                 type="button"
@@ -2069,7 +2378,9 @@ function MembersSettingsContent() {
 
             <div className="space-y-3.5 px-4 py-3.5">
               <div className="space-y-2">
-                <Label className="text-muted-foreground">Send invite to ...</Label>
+                <Label className="text-muted-foreground">
+                  Send invite to ...
+                </Label>
                 <div className="flex min-h-24 flex-wrap content-start items-start gap-1.5 rounded-lg border border-input bg-background px-2.5 py-2 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30">
                   {inviteEmails.map((email) => (
                     <span
@@ -2080,7 +2391,9 @@ function MembersSettingsContent() {
                       <button
                         type="button"
                         onClick={() =>
-                          setInviteEmails((previous) => previous.filter((item) => item !== email))
+                          setInviteEmails((previous) =>
+                            previous.filter((item) => item !== email)
+                          )
                         }
                         className="text-muted-foreground transition-colors hover:text-foreground"
                         aria-label={`Remove ${email}`}
@@ -2109,7 +2422,9 @@ function MembersSettingsContent() {
                         const { invalid } = addInviteEmails(inviteInput)
                         setInviteInput("")
                         if (invalid > 0) {
-                          setInviteError("Some entries were ignored because they are invalid.")
+                          setInviteError(
+                            "Some entries were ignored because they are invalid."
+                          )
                         }
                       }
                     }}
@@ -2119,7 +2434,9 @@ function MembersSettingsContent() {
                       event.preventDefault()
                       const { invalid } = addInviteEmails(pasted)
                       if (invalid > 0) {
-                        setInviteError("Some entries were ignored because they are invalid.")
+                        setInviteError(
+                          "Some entries were ignored because they are invalid."
+                        )
                       }
                     }}
                     onBlur={() => {
@@ -2127,10 +2444,14 @@ function MembersSettingsContent() {
                       const { invalid } = addInviteEmails(inviteInput)
                       setInviteInput("")
                       if (invalid > 0) {
-                        setInviteError("Some entries were ignored because they are invalid.")
+                        setInviteError(
+                          "Some entries were ignored because they are invalid."
+                        )
                       }
                     }}
-                    placeholder={inviteEmails.length === 0 ? "name@company.com" : ""}
+                    placeholder={
+                      inviteEmails.length === 0 ? "name@company.com" : ""
+                    }
                     className="h-6 min-w-[180px] flex-1 border-0 bg-transparent text-[0.8rem] text-foreground outline-none placeholder:text-muted-foreground"
                   />
                 </div>
@@ -2152,9 +2473,15 @@ function MembersSettingsContent() {
                     <span>{inviteRole}</span>
                     <IconChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="min-w-40 rounded-lg p-1">
+                  <DropdownMenuContent
+                    align="start"
+                    className="min-w-40 rounded-lg p-1"
+                  >
                     {inviteRoleOptions.map((role) => (
-                      <DropdownMenuItem key={role} onClick={() => setInviteRole(role)}>
+                      <DropdownMenuItem
+                        key={role}
+                        onClick={() => setInviteRole(role)}
+                      >
                         {role}
                       </DropdownMenuItem>
                     ))}
@@ -2162,11 +2489,18 @@ function MembersSettingsContent() {
                 </DropdownMenu>
               </div>
 
-              {inviteError && <p className="text-xs text-destructive">{inviteError}</p>}
+              {inviteError && (
+                <p className="text-xs text-destructive">{inviteError}</p>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
-              <Button type="button" variant="outline" size="sm" onClick={closeInviteModal}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={closeInviteModal}
+              >
                 Cancel
               </Button>
               <Button type="button" size="sm" onClick={submitInvite}>
@@ -2183,23 +2517,32 @@ function MembersSettingsContent() {
 
 function UsageLimitsSettingsContent() {
   const usageRanges = ["This week", "This month", "All time"] as const
-  const [usageRange, setUsageRange] = React.useState<(typeof usageRanges)[number]>("This month")
+  const [usageRange, setUsageRange] =
+    React.useState<(typeof usageRanges)[number]>("This month")
   const defaultUserLimits = React.useMemo<Record<string, number>>(
     () =>
       Object.fromEntries(
         workspaceMembers.map((member) => [
           member.id,
-          member.role === "Super Admin" ? 6000 : member.role === "Admin" ? 4000 : 2500,
+          member.role === "Super Admin"
+            ? 6000
+            : member.role === "Admin"
+              ? 4000
+              : 2500,
         ])
       ),
     []
   )
-  const [userLimits, setUserLimits] = React.useState<Record<string, number>>(defaultUserLimits)
+  const [userLimits, setUserLimits] =
+    React.useState<Record<string, number>>(defaultUserLimits)
   const [savedUserLimits, setSavedUserLimits] =
     React.useState<Record<string, number>>(defaultUserLimits)
 
   const stats = usageRangeStats[usageRange]
-  const creditsPercentage = Math.min(100, (stats.creditsUsed / stats.creditsLimit) * 100)
+  const creditsPercentage = Math.min(
+    100,
+    (stats.creditsUsed / stats.creditsLimit) * 100
+  )
   const hasUserLimitsChanges =
     JSON.stringify(userLimits) !== JSON.stringify(savedUserLimits)
   const chartData = React.useMemo(() => {
@@ -2237,7 +2580,9 @@ function UsageLimitsSettingsContent() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-0.5">
-          <p className="text-sm font-semibold text-foreground">Usage overview</p>
+          <p className="text-sm font-semibold text-foreground">
+            Usage overview
+          </p>
           <p className="text-sm text-muted-foreground">
             Monitor consumption, quotas, and workspace limits.
           </p>
@@ -2258,7 +2603,10 @@ function UsageLimitsSettingsContent() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-32 rounded-lg p-1">
             {usageRanges.map((range) => (
-              <DropdownMenuItem key={range} onClick={() => setUsageRange(range)}>
+              <DropdownMenuItem
+                key={range}
+                onClick={() => setUsageRange(range)}
+              >
                 {range}
               </DropdownMenuItem>
             ))}
@@ -2271,13 +2619,15 @@ function UsageLimitsSettingsContent() {
           <div className="rounded-xl border border-border bg-background px-3 py-2.5">
             <p className="text-[11px] text-muted-foreground">Credits used</p>
             <p className="text-sm font-semibold text-foreground">
-              {stats.creditsUsed.toLocaleString()} / {stats.creditsLimit.toLocaleString()}
+              {stats.creditsUsed.toLocaleString()} /{" "}
+              {stats.creditsLimit.toLocaleString()}
             </p>
           </div>
           <div className="rounded-xl border border-border bg-background px-3 py-2.5">
             <p className="text-[11px] text-muted-foreground">API requests</p>
             <p className="text-sm font-semibold text-foreground">
-              {stats.apiRequests.toLocaleString()} / {stats.apiLimit.toLocaleString()}
+              {stats.apiRequests.toLocaleString()} /{" "}
+              {stats.apiLimit.toLocaleString()}
             </p>
           </div>
           <div className="rounded-xl border border-border bg-background px-3 py-2.5">
@@ -2296,31 +2646,54 @@ function UsageLimitsSettingsContent() {
 
         <section className="rounded-xl border border-border bg-background px-3 py-2.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-foreground">Credits trend</p>
-            <span className="text-xs text-muted-foreground">{creditsPercentage.toFixed(0)}% of quota</span>
+            <p className="text-sm font-semibold text-foreground">
+              Credits trend
+            </p>
+            <span className="text-xs text-muted-foreground">
+              {creditsPercentage.toFixed(0)}% of quota
+            </span>
           </div>
-          <BarInteractive data={chartData} className="mt-2.5 h-44 border-0 bg-transparent p-0" />
+          <BarInteractive
+            data={chartData}
+            className="mt-2.5 h-44 border-0 bg-transparent p-0"
+          />
         </section>
 
         <section className="overflow-hidden rounded-xl border border-border bg-background">
           <table className="w-full table-fixed border-collapse text-[0.8rem]">
             <thead>
               <tr className="border-b border-border text-muted-foreground">
-                <th className="w-[30%] px-2.5 py-1.5 text-left font-medium">Resource</th>
-                <th className="w-[35%] px-2.5 py-1.5 text-left font-medium">Usage</th>
-                <th className="w-[20%] px-2.5 py-1.5 text-left font-medium">Limit</th>
-                <th className="w-[15%] px-2.5 py-1.5 text-left font-medium">Status</th>
+                <th className="w-[30%] px-2.5 py-1.5 text-left font-medium">
+                  Resource
+                </th>
+                <th className="w-[35%] px-2.5 py-1.5 text-left font-medium">
+                  Usage
+                </th>
+                <th className="w-[20%] px-2.5 py-1.5 text-left font-medium">
+                  Limit
+                </th>
+                <th className="w-[15%] px-2.5 py-1.5 text-left font-medium">
+                  Status
+                </th>
               </tr>
             </thead>
             <tbody>
               {usageLimitsRows.map((row) => {
                 const used = stats[row.usedKey]
                 const limit = stats[row.limitKey]
-                const progress = Math.min(100, (used / Math.max(limit, 1)) * 100)
+                const progress = Math.min(
+                  100,
+                  (used / Math.max(limit, 1)) * 100
+                )
                 const nearLimit = progress >= 80
                 return (
-                  <tr key={row.key} className="border-b border-border/70 last:border-b-0">
-                    <td className="px-2.5 py-1.5 font-medium text-foreground">{row.label}</td>
+                  <tr
+                    key={row.key}
+                    className="border-b border-border/70 last:border-b-0"
+                  >
+                    <td className="px-2.5 py-1.5 font-medium text-foreground">
+                      {row.label}
+                    </td>
                     <td className="px-2.5 py-1.5">
                       <div className="space-y-1">
                         <p className="text-[11px] text-muted-foreground">
@@ -2364,7 +2737,9 @@ function UsageLimitsSettingsContent() {
         <section className="overflow-hidden rounded-xl border border-border bg-background">
           <div className="border-b border-border px-3 py-2.5">
             <div className="space-y-0.5">
-              <p className="text-sm font-semibold text-foreground">Per-user limits</p>
+              <p className="text-sm font-semibold text-foreground">
+                Per-user limits
+              </p>
               <p className="text-xs text-muted-foreground">
                 Set a monthly credits cap for each member.
               </p>
@@ -2373,15 +2748,26 @@ function UsageLimitsSettingsContent() {
           <table className="w-full table-fixed border-collapse text-[0.8rem]">
             <thead>
               <tr className="border-b border-border text-muted-foreground">
-                <th className="w-[46%] px-2.5 py-1.5 text-left font-medium">User</th>
-                <th className="w-[22%] px-2.5 py-1.5 text-left font-medium">User type</th>
-                <th className="w-[24%] px-2.5 py-1.5 text-left font-medium">Monthly limit</th>
-                <th className="w-[8%] px-2.5 py-1.5 text-left font-medium">Unit</th>
+                <th className="w-[46%] px-2.5 py-1.5 text-left font-medium">
+                  User
+                </th>
+                <th className="w-[22%] px-2.5 py-1.5 text-left font-medium">
+                  User type
+                </th>
+                <th className="w-[24%] px-2.5 py-1.5 text-left font-medium">
+                  Monthly limit
+                </th>
+                <th className="w-[8%] px-2.5 py-1.5 text-left font-medium">
+                  Unit
+                </th>
               </tr>
             </thead>
             <tbody>
               {workspaceMembers.map((member) => (
-                <tr key={member.id} className="border-b border-border/70 last:border-b-0">
+                <tr
+                  key={member.id}
+                  className="border-b border-border/70 last:border-b-0"
+                >
                   <td className="px-2.5 py-1.5">
                     <div className="flex items-center gap-2.5">
                       <Avatar className="size-7 !rounded-full">
@@ -2395,8 +2781,12 @@ function UsageLimitsSettingsContent() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <p className="truncate text-[0.8rem] font-medium text-foreground">{member.name}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">{member.email}</p>
+                        <p className="truncate text-[0.8rem] font-medium text-foreground">
+                          {member.name}
+                        </p>
+                        <p className="truncate text-[11px] text-muted-foreground">
+                          {member.email}
+                        </p>
                       </div>
                     </div>
                   </td>
@@ -2422,13 +2812,17 @@ function UsageLimitsSettingsContent() {
                         const parsed = Number(event.target.value)
                         setUserLimits((previous) => ({
                           ...previous,
-                          [member.id]: Number.isFinite(parsed) ? Math.max(0, parsed) : 0,
+                          [member.id]: Number.isFinite(parsed)
+                            ? Math.max(0, parsed)
+                            : 0,
                         }))
                       }}
                       className="h-7"
                     />
                   </td>
-                  <td className="px-2.5 py-1.5 text-muted-foreground">credits</td>
+                  <td className="px-2.5 py-1.5 text-muted-foreground">
+                    credits
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -2463,7 +2857,9 @@ function DataControlsSettingsContent() {
       <div className="mt-4 space-y-3">
         <section className="flex flex-col gap-2 rounded-xl border border-border bg-background px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-0.5">
-            <p className="text-sm font-medium text-foreground">Delete all uploaded files</p>
+            <p className="text-sm font-medium text-foreground">
+              Delete all uploaded files
+            </p>
             <p className="text-sm text-muted-foreground">
               Permanently remove all uploaded documents and assets.
             </p>
@@ -2476,7 +2872,9 @@ function DataControlsSettingsContent() {
 
         <section className="flex flex-col gap-2 rounded-xl border border-border bg-background px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-0.5">
-            <p className="text-sm font-medium text-foreground">Delete all chats and workflows</p>
+            <p className="text-sm font-medium text-foreground">
+              Delete all chats and workflows
+            </p>
             <p className="text-sm text-muted-foreground">
               Permanently remove conversation history and workflow data.
             </p>
@@ -2517,8 +2915,12 @@ function BillingSettingsContent({
                   <IconBuilding className="h-4 w-4" />
                 </span>
                 <div className="space-y-0.5">
-                  <p className="text-sm font-semibold text-foreground">Free plan</p>
-                  <p className="text-sm text-muted-foreground">$0.00 per user/month, billed monthly</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    Free plan
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    $0.00 per user/month, billed monthly
+                  </p>
                 </div>
               </div>
               <div>
@@ -2535,7 +2937,9 @@ function BillingSettingsContent({
                   Upcoming bill
                   <IconHelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
                 </p>
-                <p className="text-sm text-muted-foreground">Renews on Apr 20, 2026</p>
+                <p className="text-sm text-muted-foreground">
+                  Renews on Apr 20, 2026
+                </p>
               </div>
               <div className="flex items-end justify-between">
                 <button
@@ -2544,7 +2948,9 @@ function BillingSettingsContent({
                 >
                   Show details
                 </button>
-                <p className="text-3xl font-semibold leading-none text-foreground">$0.00</p>
+                <p className="text-3xl leading-none font-semibold text-foreground">
+                  $0.00
+                </p>
               </div>
             </div>
           </div>
@@ -2560,9 +2966,17 @@ function BillingSettingsContent({
               {seatsUsed} / {seatsLimit}
             </p>
             <div className="h-1.5 rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary/80" style={{ width: `${seatsProgress}%` }} />
+              <div
+                className="h-full rounded-full bg-primary/80"
+                style={{ width: `${seatsProgress}%` }}
+              />
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={onGoToMembers}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onGoToMembers}
+            >
               Manage seats
             </Button>
           </div>
@@ -2577,9 +2991,17 @@ function BillingSettingsContent({
               {creditsUsed.toLocaleString()} / {creditsLimit.toLocaleString()}
             </p>
             <div className="h-1.5 rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary/35" style={{ width: `${creditsProgress}%` }} />
+              <div
+                className="h-full rounded-full bg-primary/35"
+                style={{ width: `${creditsProgress}%` }}
+              />
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={onGoToUsageLimits}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onGoToUsageLimits}
+            >
               Usage
             </Button>
           </div>
@@ -2589,13 +3011,23 @@ function BillingSettingsContent({
       <section className="rounded-xl border border-border bg-background px-4 py-3.5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-0.5">
-            <p className="text-sm font-semibold text-foreground">Manage billing</p>
-            <p className="text-sm text-muted-foreground">View and manage your billing details.</p>
+            <p className="text-sm font-semibold text-foreground">
+              Manage billing
+            </p>
+            <p className="text-sm text-muted-foreground">
+              View and manage your billing details.
+            </p>
           </div>
           <Button
             type="button"
             size="sm"
-            onClick={() => window.open(BILLING_PORTAL_EXTERNAL_URL, "_blank", "noopener,noreferrer")}
+            onClick={() =>
+              window.open(
+                BILLING_PORTAL_EXTERNAL_URL,
+                "_blank",
+                "noopener,noreferrer"
+              )
+            }
           >
             Billing portal
             <IconChevronRight className="h-3.5 w-3.5" />
@@ -2617,7 +3049,12 @@ function BillingSettingsContent({
             Contact support
           </Button>
         </div>
-        <Button type="button" variant="outline" size="sm" className="text-destructive hover:text-destructive">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="text-destructive hover:text-destructive"
+        >
           Cancel subscription
         </Button>
       </div>
@@ -2631,12 +3068,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter()
   const { theme, resolvedTheme, setTheme } = useTheme()
   const [settingsOpen, setSettingsOpen] = React.useState(false)
-  const [activeSettingsSection, setActiveSettingsSection] = React.useState<
-    (typeof settingsSections)[number]
-  >("Account")
+  const [activeSettingsSection, setActiveSettingsSection] =
+    React.useState<(typeof settingsSections)[number]>("Account")
+  const [membersQuickSearchQuery, setMembersQuickSearchQuery] =
+    React.useState("")
+  const [membersQuickSelectedId, setMembersQuickSelectedId] = React.useState<
+    string | null
+  >(null)
+  const [membersQuickActionToken, setMembersQuickActionToken] =
+    React.useState(0)
+  const [membersQuickInviteToken, setMembersQuickInviteToken] =
+    React.useState(0)
   const [storedChats, setStoredChats] = React.useState<StoredChatItem[]>([])
   const [isChatsExpanded, setIsChatsExpanded] = React.useState(true)
-  const [visibleChatsCount, setVisibleChatsCount] = React.useState(INITIAL_VISIBLE_CHATS)
+  const [visibleChatsCount, setVisibleChatsCount] = React.useState(
+    INITIAL_VISIBLE_CHATS
+  )
   const [editingChatId, setEditingChatId] = React.useState<string | null>(null)
   const [editingChatTitle, setEditingChatTitle] = React.useState("")
   const discardNextRenameSubmitRef = React.useRef(false)
@@ -2683,11 +3130,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
   }, [])
 
-  const persistStoredChats = React.useCallback((nextChats: StoredChatItem[]) => {
-    setStoredChats(nextChats)
-    window.localStorage.setItem(AI_CORE_CHATS_STORAGE_KEY, JSON.stringify(nextChats))
-    window.dispatchEvent(new CustomEvent(AI_CORE_CHATS_UPDATED_EVENT))
-  }, [])
+  const persistStoredChats = React.useCallback(
+    (nextChats: StoredChatItem[]) => {
+      setStoredChats(nextChats)
+      window.localStorage.setItem(
+        AI_CORE_CHATS_STORAGE_KEY,
+        JSON.stringify(nextChats)
+      )
+      window.dispatchEvent(new CustomEvent(AI_CORE_CHATS_UPDATED_EVENT))
+    },
+    []
+  )
 
   const toggleChatPin = React.useCallback(
     (chatId: string) => {
@@ -2791,20 +3244,74 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       syncChats()
     }
 
-    window.addEventListener(AI_CORE_CHATS_UPDATED_EVENT, syncChats as EventListener)
+    window.addEventListener(
+      AI_CORE_CHATS_UPDATED_EVENT,
+      syncChats as EventListener
+    )
     window.addEventListener("storage", onStorage)
 
     return () => {
-      window.removeEventListener(AI_CORE_CHATS_UPDATED_EVENT, syncChats as EventListener)
+      window.removeEventListener(
+        AI_CORE_CHATS_UPDATED_EVENT,
+        syncChats as EventListener
+      )
       window.removeEventListener("storage", onStorage)
     }
   }, [readStoredChats])
+
+  React.useEffect(() => {
+    const handleOpenSettingsPanel = (event: Event) => {
+      const detail = (event as CustomEvent<OpenSettingsPanelDetail>).detail
+      const requestedSection = detail?.section
+      const hasMemberTarget = Boolean(detail?.memberId || detail?.memberQuery)
+      const fallbackSection = hasMemberTarget ? "Members" : undefined
+      const targetSection = requestedSection ?? fallbackSection
+
+      if (
+        targetSection &&
+        settingsSections.includes(
+          targetSection as (typeof settingsSections)[number]
+        )
+      ) {
+        setActiveSettingsSection(
+          targetSection as (typeof settingsSections)[number]
+        )
+      }
+
+      if (targetSection === "Members") {
+        if (detail?.membersAction === "invite") {
+          setMembersQuickSearchQuery("")
+          setMembersQuickSelectedId(null)
+          setMembersQuickInviteToken((previous) => previous + 1)
+        } else {
+          setMembersQuickSearchQuery(detail?.memberQuery ?? "")
+          setMembersQuickSelectedId(detail?.memberId ?? null)
+          setMembersQuickActionToken((previous) => previous + 1)
+        }
+      }
+
+      setSettingsOpen(true)
+    }
+
+    window.addEventListener(
+      OPEN_SETTINGS_PANEL_EVENT,
+      handleOpenSettingsPanel as EventListener
+    )
+    return () =>
+      window.removeEventListener(
+        OPEN_SETTINGS_PANEL_EVENT,
+        handleOpenSettingsPanel as EventListener
+      )
+  }, [])
 
   return (
     <Sidebar variant="sidebar" collapsible="icon" {...props}>
       <SidebarHeader className="gap-0 p-0">
         <div className="h-10 border-b border-sidebar-border px-2 py-1 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:border-b-0">
-          <VersionSwitcher workspaces={workspaces} defaultWorkspace={workspaces[0]} />
+          <VersionSwitcher
+            workspaces={workspaces}
+            defaultWorkspace={workspaces[0]}
+          />
         </div>
         <div className="px-2 py-2 group-data-[collapsible=icon]:hidden">
           <SearchForm />
@@ -2821,7 +3328,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     className="h-7"
                     render={
                       item.url === "#" ? (
-                        <a href="#" onClick={(event) => event.preventDefault()} />
+                        <a
+                          href="#"
+                          onClick={(event) => event.preventDefault()}
+                        />
                       ) : (
                         <Link href={item.url} />
                       )
@@ -2839,8 +3349,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup className="group-data-[collapsible=icon]:hidden mt-12 pt-2">
-          <div className="mb-1 flex items-center justify-between pl-0 pr-2">
+        <SidebarGroup className="mt-12 pt-2 group-data-[collapsible=icon]:hidden">
+          <div className="mb-1 flex items-center justify-between pr-2 pl-0">
             <button
               type="button"
               onClick={() =>
@@ -2875,206 +3385,250 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <div
             className={cn(
               "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
-              isChatsExpanded ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"
+              isChatsExpanded
+                ? "grid-rows-[1fr] opacity-100"
+                : "pointer-events-none grid-rows-[0fr] opacity-0"
             )}
           >
             <div className="overflow-hidden">
               <SidebarGroupContent>
                 <SidebarMenu>
-              {pinnedChats.map((chat, index) => (
-                <SidebarMenuItem key={chat.id} className={cn("w-full", index > 0 && "mt-1")}>
-                  {editingChatId === chat.id ? (
-                    <SidebarMenuButton render={<div />} className="h-7 pr-2">
-                      <input
-                        autoFocus
-                        value={editingChatTitle}
-                        onChange={(event) => setEditingChatTitle(event.target.value)}
-                        onFocus={(event) => event.currentTarget.select()}
-                        onClick={(event) => event.stopPropagation()}
-                        onKeyDown={(event) => {
-                          event.stopPropagation()
-                          if (event.key === "Enter") {
-                            event.preventDefault()
-                            submitRenamingChat(chat.id)
-                          }
-                          if (event.key === "Escape") {
-                            event.preventDefault()
-                            discardNextRenameSubmitRef.current = true
-                            cancelRenamingChat()
-                          }
-                        }}
-                        onBlur={() => submitRenamingChat(chat.id)}
-                        className="h-6 w-full rounded-sm border border-sidebar-border bg-transparent px-1.5 text-sm outline-hidden focus-visible:ring-1 focus-visible:ring-sidebar-ring"
-                        aria-label="Rename chat"
-                      />
-                    </SidebarMenuButton>
-                  ) : (
-                    <>
-                      <SidebarMenuButton
-                        isActive={pathname.startsWith("/ai-core") && activeChatId === chat.id}
-                        render={<Link href={chat.path ?? `/ai-core?chat=${chat.id}`} />}
-                        className="h-7 pr-10 group-hover/menu-item:bg-sidebar-accent group-hover/menu-item:text-sidebar-accent-foreground"
-                      >
-                        <span className="truncate text-sm">{chat.title}</span>
-                      </SidebarMenuButton>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <SidebarMenuAction
-                              showOnHover
-                              className="z-10"
-                              onClick={(event) => {
-                                event.preventDefault()
-                                event.stopPropagation()
-                              }}
-                              aria-label="Chat options"
-                            />
-                          }
+                  {pinnedChats.map((chat, index) => (
+                    <SidebarMenuItem
+                      key={chat.id}
+                      className={cn("w-full", index > 0 && "mt-1")}
+                    >
+                      {editingChatId === chat.id ? (
+                        <SidebarMenuButton
+                          render={<div />}
+                          className="h-7 pr-2"
                         >
-                          <MoreHorizontal className="h-3.5 w-3.5" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" side="right" className="min-w-36">
-                          <DropdownMenuItem
-                            onClick={(event) => {
-                              event.preventDefault()
+                          <input
+                            autoFocus
+                            value={editingChatTitle}
+                            onChange={(event) =>
+                              setEditingChatTitle(event.target.value)
+                            }
+                            onFocus={(event) => event.currentTarget.select()}
+                            onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => {
                               event.stopPropagation()
-                              toggleChatPin(chat.id)
-                            }}
-                          >
-                            <PinOff className="h-4 w-4 opacity-80" />
-                            Unpin chat
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={(event) => {
-                              event.preventDefault()
-                              event.stopPropagation()
-                              startRenamingChat(chat.id)
-                            }}
-                          >
-                            <PenLine className="h-4 w-4 opacity-80" />
-                            Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={(event) => {
-                              event.preventDefault()
-                              event.stopPropagation()
-                              deleteChat(chat.id)
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
-                  )}
-                </SidebarMenuItem>
-              ))}
-              {pinnedChats.length > 0 && unpinnedChats.length > 0 && (
-                <li aria-hidden className="h-4" />
-              )}
-              {unpinnedChats.map((chat, index) => (
-                <SidebarMenuItem key={chat.id} className={cn("w-full", index > 0 && "mt-1")}>
-                  {editingChatId === chat.id ? (
-                    <SidebarMenuButton render={<div />} className="h-7 pr-2">
-                      <input
-                        autoFocus
-                        value={editingChatTitle}
-                        onChange={(event) => setEditingChatTitle(event.target.value)}
-                        onFocus={(event) => event.currentTarget.select()}
-                        onClick={(event) => event.stopPropagation()}
-                        onKeyDown={(event) => {
-                          event.stopPropagation()
-                          if (event.key === "Enter") {
-                            event.preventDefault()
-                            submitRenamingChat(chat.id)
-                          }
-                          if (event.key === "Escape") {
-                            event.preventDefault()
-                            discardNextRenameSubmitRef.current = true
-                            cancelRenamingChat()
-                          }
-                        }}
-                        onBlur={() => submitRenamingChat(chat.id)}
-                        className="h-6 w-full rounded-sm border border-sidebar-border bg-transparent px-1.5 text-sm outline-hidden focus-visible:ring-1 focus-visible:ring-sidebar-ring"
-                        aria-label="Rename chat"
-                      />
-                    </SidebarMenuButton>
-                  ) : (
-                    <>
-                      <SidebarMenuButton
-                        isActive={pathname.startsWith("/ai-core") && activeChatId === chat.id}
-                        render={<Link href={chat.path ?? `/ai-core?chat=${chat.id}`} />}
-                        className="h-7 pr-10 group-hover/menu-item:bg-sidebar-accent group-hover/menu-item:text-sidebar-accent-foreground"
-                      >
-                        <span className="truncate text-sm">{chat.title}</span>
-                      </SidebarMenuButton>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <SidebarMenuAction
-                              showOnHover
-                              className="z-10"
-                              onClick={(event) => {
+                              if (event.key === "Enter") {
                                 event.preventDefault()
-                                event.stopPropagation()
-                              }}
-                              aria-label="Chat options"
-                            />
-                          }
-                        >
-                          <MoreHorizontal className="h-3.5 w-3.5" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" side="right" className="min-w-36">
-                          <DropdownMenuItem
-                            onClick={(event) => {
-                              event.preventDefault()
-                              event.stopPropagation()
-                              toggleChatPin(chat.id)
+                                submitRenamingChat(chat.id)
+                              }
+                              if (event.key === "Escape") {
+                                event.preventDefault()
+                                discardNextRenameSubmitRef.current = true
+                                cancelRenamingChat()
+                              }
                             }}
+                            onBlur={() => submitRenamingChat(chat.id)}
+                            className="h-6 w-full rounded-sm border border-sidebar-border bg-transparent px-1.5 text-sm outline-hidden focus-visible:ring-1 focus-visible:ring-sidebar-ring"
+                            aria-label="Rename chat"
+                          />
+                        </SidebarMenuButton>
+                      ) : (
+                        <>
+                          <SidebarMenuButton
+                            isActive={
+                              pathname.startsWith("/ai-core") &&
+                              activeChatId === chat.id
+                            }
+                            render={
+                              <Link
+                                href={chat.path ?? `/ai-core?chat=${chat.id}`}
+                              />
+                            }
+                            className="h-7 pr-10 group-hover/menu-item:bg-sidebar-accent group-hover/menu-item:text-sidebar-accent-foreground"
                           >
-                            <Pin className="h-4 w-4 opacity-80" />
-                            Pin chat
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={(event) => {
-                              event.preventDefault()
-                              event.stopPropagation()
-                              startRenamingChat(chat.id)
-                            }}
-                          >
-                            <PenLine className="h-4 w-4 opacity-80" />
-                            Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={(event) => {
-                              event.preventDefault()
-                              event.stopPropagation()
-                              deleteChat(chat.id)
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
+                            <span className="truncate text-sm">
+                              {chat.title}
+                            </span>
+                          </SidebarMenuButton>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <SidebarMenuAction
+                                  showOnHover
+                                  className="z-10"
+                                  onClick={(event) => {
+                                    event.preventDefault()
+                                    event.stopPropagation()
+                                  }}
+                                  aria-label="Chat options"
+                                />
+                              }
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              side="right"
+                              className="min-w-36"
+                            >
+                              <DropdownMenuItem
+                                onClick={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  toggleChatPin(chat.id)
+                                }}
+                              >
+                                <PinOff className="h-4 w-4 opacity-80" />
+                                Unpin chat
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  startRenamingChat(chat.id)
+                                }}
+                              >
+                                <PenLine className="h-4 w-4 opacity-80" />
+                                Rename
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  deleteChat(chat.id)
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </>
+                      )}
+                    </SidebarMenuItem>
+                  ))}
+                  {pinnedChats.length > 0 && unpinnedChats.length > 0 && (
+                    <li aria-hidden className="h-4" />
                   )}
-                </SidebarMenuItem>
-              ))}
-              {sortedChats.length === 0 && (
-                <SidebarMenuItem>
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                    Chats will appear here automatically.
-                  </div>
-                </SidebarMenuItem>
-              )}
+                  {unpinnedChats.map((chat, index) => (
+                    <SidebarMenuItem
+                      key={chat.id}
+                      className={cn("w-full", index > 0 && "mt-1")}
+                    >
+                      {editingChatId === chat.id ? (
+                        <SidebarMenuButton
+                          render={<div />}
+                          className="h-7 pr-2"
+                        >
+                          <input
+                            autoFocus
+                            value={editingChatTitle}
+                            onChange={(event) =>
+                              setEditingChatTitle(event.target.value)
+                            }
+                            onFocus={(event) => event.currentTarget.select()}
+                            onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => {
+                              event.stopPropagation()
+                              if (event.key === "Enter") {
+                                event.preventDefault()
+                                submitRenamingChat(chat.id)
+                              }
+                              if (event.key === "Escape") {
+                                event.preventDefault()
+                                discardNextRenameSubmitRef.current = true
+                                cancelRenamingChat()
+                              }
+                            }}
+                            onBlur={() => submitRenamingChat(chat.id)}
+                            className="h-6 w-full rounded-sm border border-sidebar-border bg-transparent px-1.5 text-sm outline-hidden focus-visible:ring-1 focus-visible:ring-sidebar-ring"
+                            aria-label="Rename chat"
+                          />
+                        </SidebarMenuButton>
+                      ) : (
+                        <>
+                          <SidebarMenuButton
+                            isActive={
+                              pathname.startsWith("/ai-core") &&
+                              activeChatId === chat.id
+                            }
+                            render={
+                              <Link
+                                href={chat.path ?? `/ai-core?chat=${chat.id}`}
+                              />
+                            }
+                            className="h-7 pr-10 group-hover/menu-item:bg-sidebar-accent group-hover/menu-item:text-sidebar-accent-foreground"
+                          >
+                            <span className="truncate text-sm">
+                              {chat.title}
+                            </span>
+                          </SidebarMenuButton>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <SidebarMenuAction
+                                  showOnHover
+                                  className="z-10"
+                                  onClick={(event) => {
+                                    event.preventDefault()
+                                    event.stopPropagation()
+                                  }}
+                                  aria-label="Chat options"
+                                />
+                              }
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              side="right"
+                              className="min-w-36"
+                            >
+                              <DropdownMenuItem
+                                onClick={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  toggleChatPin(chat.id)
+                                }}
+                              >
+                                <Pin className="h-4 w-4 opacity-80" />
+                                Pin chat
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  startRenamingChat(chat.id)
+                                }}
+                              >
+                                <PenLine className="h-4 w-4 opacity-80" />
+                                Rename
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  deleteChat(chat.id)
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </>
+                      )}
+                    </SidebarMenuItem>
+                  ))}
+                  {sortedChats.length === 0 && (
+                    <SidebarMenuItem>
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                        Chats will appear here automatically.
+                      </div>
+                    </SidebarMenuItem>
+                  )}
                 </SidebarMenu>
                 {sortedChats.length > visibleChatsCount && (
                   <div className="mt-1 flex justify-center px-2">
@@ -3114,43 +3668,49 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </SheetTrigger>
               <SheetContent
                 side="right"
-                className="data-[side=right]:!inset-y-auto data-[side=right]:!right-1/2 data-[side=right]:!top-1/2 data-[side=right]:!h-[min(78vh,720px)] data-[side=right]:!w-[min(980px,92vw)] data-[side=right]:!max-w-none data-[side=right]:!-translate-y-1/2 data-[side=right]:!translate-x-1/2 rounded-2xl border border-border p-0"
+                className="rounded-2xl border border-border p-0 data-[side=right]:!inset-y-auto data-[side=right]:!top-1/2 data-[side=right]:!right-1/2 data-[side=right]:!h-[min(78vh,720px)] data-[side=right]:!w-[min(980px,92vw)] data-[side=right]:!max-w-none data-[side=right]:!translate-x-1/2 data-[side=right]:!-translate-y-1/2"
               >
                 <div className="flex h-full min-h-0 overflow-hidden rounded-2xl">
                   <aside className="w-64 border-r border-sidebar-border bg-sidebar">
                     <div className="px-4 py-3">
-                      <p className="text-sm font-semibold text-sidebar-foreground">Settings</p>
+                      <p className="text-sm font-semibold text-sidebar-foreground">
+                        Settings
+                      </p>
                     </div>
                     <nav className="space-y-1 px-2 pt-4">
                       {settingsSections.map((section) => {
                         const SectionIcon = settingsSectionIcons[section]
                         return (
-                        <button
-                          key={section}
-                          onClick={() => {
-                            if (section === "Contact Support") {
-                              window.location.href = "mailto:support@atmet.ai"
-                              return
-                            }
-                            if (section === "Help Docs") {
-                              window.open(HELP_DOCS_EXTERNAL_URL, "_blank", "noopener,noreferrer")
-                              return
-                            }
-                            setActiveSettingsSection(section)
-                          }}
-                          className={cn(
-                            "flex h-7 w-full items-center justify-between rounded-md px-2 text-left text-sm transition-colors",
-                            activeSettingsSection === section
-                              ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                          )}
-                        >
-                          <span className="flex items-center gap-2">
-                            <SectionIcon className="h-3.5 w-3.5 shrink-0 opacity-80" />
-                            <span>{section}</span>
-                          </span>
-                          <IconChevronRight className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                        </button>
+                          <button
+                            key={section}
+                            onClick={() => {
+                              if (section === "Contact Support") {
+                                window.location.href = "mailto:support@atmet.ai"
+                                return
+                              }
+                              if (section === "Help Docs") {
+                                window.open(
+                                  HELP_DOCS_EXTERNAL_URL,
+                                  "_blank",
+                                  "noopener,noreferrer"
+                                )
+                                return
+                              }
+                              setActiveSettingsSection(section)
+                            }}
+                            className={cn(
+                              "flex h-7 w-full items-center justify-between rounded-md px-2 text-left text-sm transition-colors",
+                              activeSettingsSection === section
+                                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                            )}
+                          >
+                            <span className="flex items-center gap-2">
+                              <SectionIcon className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                              <span>{section}</span>
+                            </span>
+                            <IconChevronRight className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                          </button>
                         )
                       })}
                     </nav>
@@ -3158,7 +3718,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
                   <div className="flex min-w-0 flex-1 flex-col">
                     <SheetHeader className="px-5 py-3 pe-10">
-                      <SheetTitle className="text-sm font-semibold">{activeSettingsSection}</SheetTitle>
+                      <SheetTitle className="text-sm font-semibold">
+                        {activeSettingsSection}
+                      </SheetTitle>
                     </SheetHeader>
                     <div className="min-h-0 flex-1 overflow-auto p-4">
                       {activeSettingsSection === "Account" ? (
@@ -3166,41 +3728,68 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       ) : activeSettingsSection === "Notifications" ? (
                         <NotificationSettingsContent />
                       ) : activeSettingsSection === "General" ? (
-                        <GeneralSettingsContent currentTheme={theme} setTheme={setTheme} />
+                        <GeneralSettingsContent
+                          currentTheme={theme}
+                          setTheme={setTheme}
+                        />
                       ) : activeSettingsSection === "Workspace" ? (
                         <WorkspaceSettingsContent
-                          onGoToMembers={() => setActiveSettingsSection("Members")}
+                          onGoToMembers={() =>
+                            setActiveSettingsSection("Members")
+                          }
                         />
                       ) : activeSettingsSection === "Members" ? (
-                        <MembersSettingsContent />
+                        <MembersSettingsContent
+                          quickActionToken={membersQuickActionToken}
+                          quickSearchQuery={membersQuickSearchQuery}
+                          quickSelectedMemberId={membersQuickSelectedId}
+                          quickInviteToken={membersQuickInviteToken}
+                        />
                       ) : activeSettingsSection === "Usage and limits" ? (
                         <UsageLimitsSettingsContent />
                       ) : activeSettingsSection === "Data controls" ? (
                         <DataControlsSettingsContent />
                       ) : activeSettingsSection === "Plans (soon)" ? (
                         <div className="flex min-h-[calc(78vh-9rem)] items-center justify-center rounded-xl bg-blue-600 px-6 py-10">
-                          <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">Soon</h2>
+                          <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
+                            Soon
+                          </h2>
                         </div>
                       ) : activeSettingsSection === "Billing" ? (
                         <BillingSettingsContent
-                          onGoToMembers={() => setActiveSettingsSection("Members")}
-                          onGoToUsageLimits={() => setActiveSettingsSection("Usage and limits")}
+                          onGoToMembers={() =>
+                            setActiveSettingsSection("Members")
+                          }
+                          onGoToUsageLimits={() =>
+                            setActiveSettingsSection("Usage and limits")
+                          }
                         />
                       ) : (
                         <>
                           <p className="text-sm text-muted-foreground">
-                            Manage {activeSettingsSection.toLowerCase()} settings for your account
-                            and workspace.
+                            Manage {activeSettingsSection.toLowerCase()}{" "}
+                            settings for your account and workspace.
                           </p>
                           <div className="mt-4 divide-y divide-border border-y border-border">
-                            {settingsContent[activeSettingsSection].map((item) => (
-                              <div key={item} className="flex items-center justify-between py-3">
-                                <span className="text-sm text-foreground">{item}</span>
-                                <Button size="xs" variant="ghost" className="px-1">
-                                  Edit
-                                </Button>
-                              </div>
-                            ))}
+                            {settingsContent[activeSettingsSection].map(
+                              (item) => (
+                                <div
+                                  key={item}
+                                  className="flex items-center justify-between py-3"
+                                >
+                                  <span className="text-sm text-foreground">
+                                    {item}
+                                  </span>
+                                  <Button
+                                    size="xs"
+                                    variant="ghost"
+                                    className="px-1"
+                                  >
+                                    Edit
+                                  </Button>
+                                </div>
+                              )
+                            )}
                           </div>
                         </>
                       )}
@@ -3214,15 +3803,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <SidebarMenuButton size="lg" className="group-data-[collapsible=icon]:p-0!" />
+                  <SidebarMenuButton
+                    size="lg"
+                    className="group-data-[collapsible=icon]:p-0!"
+                  />
                 }
               >
                 <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-xs font-semibold text-sidebar-primary-foreground">
                   {currentUser.initials}
                 </span>
                 <span className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
-                  <span className="truncate text-sm font-medium">{currentUser.name}</span>
-                  <span className="truncate text-xs text-muted-foreground">{currentUser.role}</span>
+                  <span className="truncate text-sm font-medium">
+                    {currentUser.name}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {currentUser.role}
+                  </span>
                 </span>
                 <IconChevronUp className="ms-auto h-4 w-4 text-muted-foreground group-data-[collapsible=icon]:hidden" />
               </DropdownMenuTrigger>

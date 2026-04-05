@@ -13,6 +13,13 @@ import {
 
 import { Button } from "@/components/ui/button"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   DropdownMenuCheckboxItem,
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
 
 type IntegrationApp = {
   id: string
@@ -73,7 +81,8 @@ const integrationApps: IntegrationApp[] = [
   {
     id: "notion",
     name: "Notion",
-    description: "Search and reference pages, databases, and documents from your Notion workspace.",
+    description:
+      "Search and reference pages, databases, and documents from your Notion workspace.",
     logo: "N",
     connected: true,
     company: "Notion",
@@ -82,7 +91,8 @@ const integrationApps: IntegrationApp[] = [
   {
     id: "cloudflare",
     name: "Cloudflare",
-    description: "Connect performance and security insights to improve support answers.",
+    description:
+      "Connect performance and security insights to improve support answers.",
     logo: "C",
     connected: false,
     company: "Cloudflare",
@@ -91,7 +101,8 @@ const integrationApps: IntegrationApp[] = [
   {
     id: "slack",
     name: "Slack",
-    description: "Search conversations and channels to surface insights from your Slack workspace.",
+    description:
+      "Search conversations and channels to surface insights from your Slack workspace.",
     logo: "S",
     connected: true,
     company: "Slack",
@@ -100,7 +111,8 @@ const integrationApps: IntegrationApp[] = [
   {
     id: "linear",
     name: "Linear",
-    description: "Access and query issues, projects, and roadmaps from your Linear workspace.",
+    description:
+      "Access and query issues, projects, and roadmaps from your Linear workspace.",
     logo: "L",
     connected: false,
     company: "Linear",
@@ -109,7 +121,8 @@ const integrationApps: IntegrationApp[] = [
   {
     id: "clickup",
     name: "ClickUp",
-    description: "Ask your workspace documents, tasks, and project files from one place.",
+    description:
+      "Ask your workspace documents, tasks, and project files from one place.",
     logo: "U",
     connected: false,
     company: "ClickUp",
@@ -244,7 +257,8 @@ const integrationApps: IntegrationApp[] = [
   {
     id: "freshdesk",
     name: "Freshdesk",
-    description: "Link support tickets and customer issues with your workflows.",
+    description:
+      "Link support tickets and customer issues with your workflows.",
     logo: "F",
     connected: false,
     company: "Freshworks",
@@ -305,22 +319,27 @@ const companyLogoPlaceholders: Record<IntegrationApp["company"], string> = {
 }
 
 export default function IntegrationsPage() {
+  const [apps, setApps] = React.useState<IntegrationApp[]>(integrationApps)
   const [nameQuery, setNameQuery] = React.useState("")
   const [connectionFilter, setConnectionFilter] = React.useState<
     "all" | "connected" | "not-connected"
   >("all")
-  const [selectedCompanies, setSelectedCompanies] = React.useState<IntegrationApp["company"][]>(
-    []
-  )
+  const [selectedCompanies, setSelectedCompanies] = React.useState<
+    IntegrationApp["company"][]
+  >([])
   const [companyQuery, setCompanyQuery] = React.useState("")
   const [isCompanyMenuOpen, setIsCompanyMenuOpen] = React.useState(false)
+  const [pendingInstallApp, setPendingInstallApp] =
+    React.useState<IntegrationApp | null>(null)
+  const [isMemoryReferenceEnabled, setIsMemoryReferenceEnabled] =
+    React.useState(false)
 
   const companyOptions = React.useMemo(
     () =>
-      Array.from(new Set(integrationApps.map((app) => app.company))).sort((a, b) =>
+      Array.from(new Set(apps.map((app) => app.company))).sort((a, b) =>
         a.localeCompare(b)
       ),
-    []
+    [apps]
   )
 
   const filteredCompanyOptions = React.useMemo(() => {
@@ -334,28 +353,55 @@ export default function IntegrationsPage() {
   const filteredApps = React.useMemo(() => {
     const normalizedQuery = nameQuery.trim().toLowerCase()
 
-    return integrationApps.filter((app) => {
+    return apps.filter((app) => {
       const matchesName =
-        normalizedQuery.length === 0 || app.name.toLowerCase().includes(normalizedQuery)
+        normalizedQuery.length === 0 ||
+        app.name.toLowerCase().includes(normalizedQuery)
       const matchesConnection =
         connectionFilter === "all" ||
         (connectionFilter === "connected" && app.connected) ||
         (connectionFilter === "not-connected" && !app.connected)
       const matchesCompany =
-        selectedCompanies.length === 0 || selectedCompanies.includes(app.company)
+        selectedCompanies.length === 0 ||
+        selectedCompanies.includes(app.company)
 
       return matchesName && matchesConnection && matchesCompany
     })
-  }, [connectionFilter, nameQuery, selectedCompanies])
+  }, [apps, connectionFilter, nameQuery, selectedCompanies])
 
-  const toggleCompanySelection = React.useCallback((company: IntegrationApp["company"]) => {
-    setSelectedCompanies((prev) => {
-      if (prev.includes(company)) {
-        return prev.filter((item) => item !== company)
-      }
-      return [...prev, company]
-    })
+  const toggleCompanySelection = React.useCallback(
+    (company: IntegrationApp["company"]) => {
+      setSelectedCompanies((prev) => {
+        if (prev.includes(company)) {
+          return prev.filter((item) => item !== company)
+        }
+        return [...prev, company]
+      })
+    },
+    []
+  )
+
+  const handleConnectApp = React.useCallback((appId: string) => {
+    setApps((prev) =>
+      prev.map((app) => (app.id === appId ? { ...app, connected: true } : app))
+    )
   }, [])
+
+  const openInstallDialog = React.useCallback((app: IntegrationApp) => {
+    setPendingInstallApp(app)
+    setIsMemoryReferenceEnabled(false)
+  }, [])
+
+  const closeInstallDialog = React.useCallback(() => {
+    setPendingInstallApp(null)
+    setIsMemoryReferenceEnabled(false)
+  }, [])
+
+  const handleConfirmInstall = React.useCallback(() => {
+    if (!pendingInstallApp) return
+    handleConnectApp(pendingInstallApp.id)
+    closeInstallDialog()
+  }, [closeInstallDialog, handleConnectApp, pendingInstallApp])
 
   const connectionFilterLabel =
     connectionFilter === "all"
@@ -372,13 +418,13 @@ export default function IntegrationsPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-2.5rem)] flex-1 flex-col bg-background">
-      <div className="flex h-10 items-center border-b px-4 sm:px-6">
+      <div className="flex h-10 items-center border-b px-3">
         <div
           className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto"
           data-slot="integrations-secondary-navbar"
         >
           <div className="relative h-7 min-w-64 shrink-0">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={nameQuery}
               onChange={(event) => setNameQuery(event.target.value)}
@@ -402,16 +448,23 @@ export default function IntegrationsPage() {
               <span>{connectionFilterLabel}</span>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-40 rounded-xl p-1">
+            <DropdownMenuContent
+              align="start"
+              className="min-w-40 rounded-xl p-1"
+            >
               <DropdownMenuItem onClick={() => setConnectionFilter("all")}>
                 <Circle className="h-3.5 w-3.5 text-muted-foreground" />
                 All
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setConnectionFilter("connected")}>
+              <DropdownMenuItem
+                onClick={() => setConnectionFilter("connected")}
+              >
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                 Connected
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setConnectionFilter("not-connected")}>
+              <DropdownMenuItem
+                onClick={() => setConnectionFilter("not-connected")}
+              >
                 <CircleSlash2 className="h-3.5 w-3.5 text-muted-foreground" />
                 Not connected
               </DropdownMenuItem>
@@ -439,9 +492,12 @@ export default function IntegrationsPage() {
               <span>{selectedCompaniesLabel}</span>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-56 rounded-xl p-1">
+            <DropdownMenuContent
+              align="start"
+              className="min-w-56 rounded-xl p-1"
+            >
               <div className="relative px-1 pb-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={companyQuery}
                   onChange={(event) => setCompanyQuery(event.target.value)}
@@ -462,7 +518,9 @@ export default function IntegrationsPage() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {filteredCompanyOptions.length === 0 && (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground">No apps found.</div>
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                  No apps found.
+                </div>
               )}
               {filteredCompanyOptions.map((company) => (
                 <DropdownMenuCheckboxItem
@@ -482,18 +540,24 @@ export default function IntegrationsPage() {
         </div>
       </div>
 
-      <div className="flex-1 px-4 py-4 sm:px-6">
+      <div className="flex-1 px-3 py-4">
         <section>
           <div className="space-y-5">
             {integrationCategories.map((category) => {
-              const categoryApps = filteredApps.filter((app) => app.category === category)
+              const categoryApps = filteredApps.filter(
+                (app) => app.category === category
+              )
               if (categoryApps.length === 0) return null
 
               return (
                 <div key={category}>
                   <div className="mb-2 flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-foreground">{category}</h2>
-                    <span className="text-xs text-muted-foreground">{categoryApps.length} apps</span>
+                    <h2 className="text-sm font-semibold text-foreground">
+                      {category}
+                    </h2>
+                    <span className="text-xs text-muted-foreground">
+                      {categoryApps.length} apps
+                    </span>
                   </div>
 
                   <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
@@ -515,11 +579,17 @@ export default function IntegrationsPage() {
                         </div>
                         <button
                           type="button"
+                          onClick={
+                            !app.connected
+                              ? () => openInstallDialog(app)
+                              : undefined
+                          }
                           className={
                             app.connected
-                              ? "inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-border bg-muted px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted/80"
+                              ? "inline-flex h-8 shrink-0 cursor-not-allowed items-center justify-center rounded-lg border border-border bg-muted px-3 text-xs font-medium text-foreground opacity-80"
                               : "inline-flex h-8 shrink-0 items-center justify-center rounded-lg bg-black px-3 text-xs font-medium text-white transition-colors hover:bg-black/90"
                           }
+                          disabled={app.connected}
                         >
                           {app.connected ? "Connected" : "Connect"}
                         </button>
@@ -537,6 +607,147 @@ export default function IntegrationsPage() {
           </div>
         </section>
       </div>
+
+      <Dialog
+        open={pendingInstallApp !== null}
+        onOpenChange={(open) => {
+          if (!open) closeInstallDialog()
+        }}
+      >
+        <DialogContent className="flex max-h-[85vh] max-w-[calc(100%-1rem)] flex-col overflow-hidden rounded-2xl p-0 sm:max-w-[42rem]">
+          <DialogHeader className="sr-only">
+            <DialogTitle>
+              {pendingInstallApp
+                ? `Install ${pendingInstallApp.name}`
+                : "Install app"}
+            </DialogTitle>
+            <DialogDescription>
+              Review permissions and confirm to connect this integration.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 pt-6 pb-4 sm:px-6">
+            <div className="space-y-3 text-center">
+              <div className="flex items-center justify-center gap-3">
+                <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-black text-sm font-semibold text-white">
+                  AI
+                </span>
+                <div className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-border" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-border" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-border" />
+                </div>
+                <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-background text-sm font-semibold text-foreground">
+                  {pendingInstallApp?.logo}
+                </span>
+              </div>
+
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                  {pendingInstallApp
+                    ? `Install ${pendingInstallApp.name}`
+                    : "Install app"}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Developed by {pendingInstallApp?.company}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-muted/20 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1 pr-2">
+                  <h3 className="text-base font-semibold tracking-tight text-foreground">
+                    Reference memories and chats
+                  </h3>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Allow Atmet AI to reference relevant chats when sharing data
+                    with {pendingInstallApp?.name} for more helpful responses.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Toggle memories and chats references"
+                  aria-pressed={isMemoryReferenceEnabled}
+                  onClick={() => setIsMemoryReferenceEnabled((prev) => !prev)}
+                  className={`relative mt-1 inline-flex h-7 w-12 shrink-0 rounded-full border transition-colors ${
+                    isMemoryReferenceEnabled
+                      ? "border-black bg-black"
+                      : "border-border bg-muted"
+                  }`}
+                >
+                  <span
+                    className={`mt-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                      isMemoryReferenceEnabled
+                        ? "translate-x-6"
+                        : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <Separator className="my-4 bg-border/80" />
+
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-base font-semibold tracking-tight text-foreground">
+                    You&apos;re in control
+                  </h4>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Atmet AI respects your data and only accesses information
+                    you explicitly permit.
+                  </p>
+                </div>
+
+                <Separator className="bg-border/80" />
+
+                <div>
+                  <h4 className="text-base font-semibold tracking-tight text-foreground">
+                    Apps may introduce elevated risk
+                  </h4>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    We secure your workspace, but connected apps can still be
+                    targeted by attackers. Connect only trusted providers.
+                  </p>
+                </div>
+
+                <Separator className="bg-border/80" />
+
+                <div>
+                  <h4 className="text-base font-semibold tracking-tight text-foreground">
+                    Data shared with this app
+                  </h4>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Installing this app allows access to basic request metadata
+                    and relevant context required to answer your prompts. Use of
+                    this data follows the app{" "}
+                    <span className="underline underline-offset-4">
+                      Terms of Use
+                    </span>{" "}
+                    and{" "}
+                    <span className="underline underline-offset-4">
+                      Privacy Notice
+                    </span>
+                    .
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-border bg-background px-4 py-3 sm:px-6">
+            <Button
+              type="button"
+              onClick={handleConfirmInstall}
+              className="h-10 w-full rounded-full bg-black text-sm font-semibold text-white hover:bg-black/90"
+            >
+              {pendingInstallApp
+                ? `Install ${pendingInstallApp.name}`
+                : "Install app"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

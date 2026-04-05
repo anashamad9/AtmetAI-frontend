@@ -1,5 +1,6 @@
 "use client"
 
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -8,15 +9,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { IconPhoto } from "@tabler/icons-react"
 import {
-  IconPhoto,
-} from "@tabler/icons-react"
-import { CheckCircle2, ChevronDown, Circle, Search, SlidersHorizontal } from "lucide-react"
+  CheckCircle2,
+  ChevronDown,
+  Circle,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react"
 import { useMemo, useState } from "react"
 
 type SkillCategory = "Reasoning" | "Data" | "Automation" | "Support"
 type SkillStatus = "Active" | "Draft"
-type SkillSection = "Marketing" | "Sales" | "Engineering" | "Operations" | "Support"
+type SkillSection =
+  | "Marketing"
+  | "Sales"
+  | "Engineering"
+  | "Finance"
+  | "Operations"
+  | "Support"
+  | "Product"
 
 type SkillItem = {
   id: string
@@ -34,8 +46,10 @@ const SECTION_ORDER: SkillSection[] = [
   "Marketing",
   "Sales",
   "Engineering",
+  "Finance",
   "Operations",
   "Support",
+  "Product",
 ]
 
 const skillItems: SkillItem[] = [
@@ -97,7 +111,8 @@ const skillItems: SkillItem[] = [
   {
     id: "skill-seo-cluster-writer",
     name: "SEO Cluster Writer",
-    description: "Creates SEO content clusters and internal linking suggestions.",
+    description:
+      "Creates SEO content clusters and internal linking suggestions.",
     category: "Automation",
     section: "Marketing",
     status: "Active",
@@ -119,7 +134,8 @@ const skillItems: SkillItem[] = [
   {
     id: "skill-release-notes-drafter",
     name: "Release Notes Drafter",
-    description: "Drafts changelogs from merged pull requests and ticket links.",
+    description:
+      "Drafts changelogs from merged pull requests and ticket links.",
     category: "Automation",
     section: "Engineering",
     status: "Draft",
@@ -138,6 +154,30 @@ const skillItems: SkillItem[] = [
     owner: "Leen Haddad",
     isUserCreated: false,
   },
+  {
+    id: "skill-finance-variance-monitor",
+    name: "Budget Variance Monitor",
+    description:
+      "Tracks spending variance and flags unusual cost deviations across teams.",
+    category: "Data",
+    section: "Finance",
+    status: "Active",
+    updatedAt: "2026-03-09",
+    owner: "Rana Kamel",
+    isUserCreated: false,
+  },
+  {
+    id: "skill-product-prioritizer",
+    name: "Product Prioritizer",
+    description:
+      "Ranks product opportunities by impact, effort, and business constraints.",
+    category: "Reasoning",
+    section: "Product",
+    status: "Draft",
+    updatedAt: "2026-03-07",
+    owner: "Adam Saleh",
+    isUserCreated: false,
+  },
 ]
 
 const statusStyles: Record<SkillStatus, string> = {
@@ -146,9 +186,20 @@ const statusStyles: Record<SkillStatus, string> = {
 }
 
 export default function SkillsPage() {
+  const searchParams = useSearchParams()
   const [nameFilter, setNameFilter] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  const sectionFilterParam = searchParams.get("section")
+
+  const sectionFilter = useMemo<SkillSection | null>(() => {
+    if (!sectionFilterParam) return null
+    return (
+      SECTION_ORDER.find(
+        (section) => section.toLowerCase() === sectionFilterParam.toLowerCase()
+      ) ?? null
+    )
+  }, [sectionFilterParam])
 
   const categoryOptions = useMemo(
     () => Array.from(new Set(skillItems.map((skill) => skill.category))),
@@ -162,12 +213,15 @@ export default function SkillsPage() {
         skill.name.toLowerCase().includes(nameFilter.toLowerCase()) ||
         skill.description.toLowerCase().includes(nameFilter.toLowerCase())
 
-      const byCategory = categoryFilter === "all" || skill.category === categoryFilter
+      const byCategory =
+        categoryFilter === "all" || skill.category === categoryFilter
       const byStatus = statusFilter === "all" || skill.status === statusFilter
+      const bySection =
+        sectionFilter === null || skill.section === sectionFilter
 
-      return byName && byCategory && byStatus
+      return byName && byCategory && byStatus && bySection
     })
-  }, [nameFilter, categoryFilter, statusFilter])
+  }, [nameFilter, categoryFilter, sectionFilter, statusFilter])
 
   const pinnedSkills = useMemo(
     () => filteredSkills.filter((skill) => skill.isUserCreated),
@@ -176,24 +230,25 @@ export default function SkillsPage() {
 
   const sectionedSkills = useMemo(
     () =>
-      SECTION_ORDER
-        .map((section) => ({
-          section,
-          items: filteredSkills.filter((skill) => !skill.isUserCreated && skill.section === section),
-        }))
-        .filter((group) => group.items.length > 0),
+      SECTION_ORDER.map((section) => ({
+        section,
+        items: filteredSkills.filter(
+          (skill) => !skill.isUserCreated && skill.section === section
+        ),
+      })).filter((group) => group.items.length > 0),
     [filteredSkills]
   )
 
-  const categoryFilterLabel = categoryFilter === "all" ? "All categories" : categoryFilter
+  const categoryFilterLabel =
+    categoryFilter === "all" ? "All categories" : categoryFilter
   const statusFilterLabel = statusFilter === "all" ? "All" : statusFilter
 
   return (
     <div className="flex min-h-[calc(100vh-2.5rem)] flex-1 flex-col bg-background">
-      <section className="flex h-10 items-center border-b border-border px-4 sm:px-6">
+      <section className="flex h-10 items-center border-b border-border px-3">
         <div className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto">
           <div className="relative h-7 min-w-64 shrink-0">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={nameFilter}
               onChange={(event) => setNameFilter(event.target.value)}
@@ -217,10 +272,18 @@ export default function SkillsPage() {
               <span>{categoryFilterLabel}</span>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-44 rounded-xl p-1">
-              <DropdownMenuItem onClick={() => setCategoryFilter("all")}>All categories</DropdownMenuItem>
+            <DropdownMenuContent
+              align="start"
+              className="min-w-44 rounded-xl p-1"
+            >
+              <DropdownMenuItem onClick={() => setCategoryFilter("all")}>
+                All categories
+              </DropdownMenuItem>
               {categoryOptions.map((category) => (
-                <DropdownMenuItem key={category} onClick={() => setCategoryFilter(category)}>
+                <DropdownMenuItem
+                  key={category}
+                  onClick={() => setCategoryFilter(category)}
+                >
                   {category}
                 </DropdownMenuItem>
               ))}
@@ -242,7 +305,10 @@ export default function SkillsPage() {
               <span>{statusFilterLabel}</span>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-40 rounded-xl p-1">
+            <DropdownMenuContent
+              align="start"
+              className="min-w-40 rounded-xl p-1"
+            >
               <DropdownMenuItem onClick={() => setStatusFilter("all")}>
                 <Circle className="h-3.5 w-3.5 text-muted-foreground" />
                 All
@@ -257,18 +323,23 @@ export default function SkillsPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
         </div>
       </section>
 
-      <div className="flex-1 px-4 py-4 sm:px-6">
-        <p className="mb-3 text-sm text-muted-foreground">{filteredSkills.length} skills</p>
+      <div className="flex-1 px-3 py-4">
+        <p className="mb-3 text-sm text-muted-foreground">
+          {filteredSkills.length} skills
+        </p>
 
         {pinnedSkills.length > 0 && (
           <section className="mb-6">
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Pinned by you</h2>
-              <span className="text-xs text-muted-foreground">{pinnedSkills.length} skills</span>
+              <h2 className="text-sm font-semibold text-foreground">
+                Pinned by you
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                {pinnedSkills.length} skills
+              </span>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               {pinnedSkills.map((skill) => (
@@ -285,20 +356,32 @@ export default function SkillsPage() {
 
                   <div className="p-4">
                     <div className="flex items-center justify-between gap-2">
-                      <h3 className="truncate text-sm font-semibold text-foreground">{skill.name}</h3>
-                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${statusStyles[skill.status]}`}>
+                      <h3 className="truncate text-sm font-semibold text-foreground">
+                        {skill.name}
+                      </h3>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${statusStyles[skill.status]}`}
+                      >
                         {skill.status}
                       </span>
                     </div>
 
-                    <p className="mt-2 text-sm text-muted-foreground">{skill.description}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {skill.description}
+                    </p>
 
                     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className="rounded-full bg-muted px-2 py-0.5">{skill.category}</span>
+                      <span className="rounded-full bg-muted px-2 py-0.5">
+                        {skill.category}
+                      </span>
                     </div>
 
                     <div className="mt-4">
-                      <Button size="xs" variant="outline" className="px-2 text-xs">
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="px-2 text-xs"
+                      >
                         Know more
                       </Button>
                     </div>
@@ -313,8 +396,12 @@ export default function SkillsPage() {
           {sectionedSkills.map((group) => (
             <div key={group.section}>
               <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-foreground">{group.section}</h2>
-                <span className="text-xs text-muted-foreground">{group.items.length} skills</span>
+                <h2 className="text-sm font-semibold text-foreground">
+                  {group.section}
+                </h2>
+                <span className="text-xs text-muted-foreground">
+                  {group.items.length} skills
+                </span>
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 {group.items.map((skill) => (
@@ -331,20 +418,32 @@ export default function SkillsPage() {
 
                     <div className="p-4">
                       <div className="flex items-center justify-between gap-2">
-                        <h3 className="truncate text-sm font-semibold text-foreground">{skill.name}</h3>
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${statusStyles[skill.status]}`}>
+                        <h3 className="truncate text-sm font-semibold text-foreground">
+                          {skill.name}
+                        </h3>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${statusStyles[skill.status]}`}
+                        >
                           {skill.status}
                         </span>
                       </div>
 
-                      <p className="mt-2 text-sm text-muted-foreground">{skill.description}</p>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {skill.description}
+                      </p>
 
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <span className="rounded-full bg-muted px-2 py-0.5">{skill.category}</span>
+                        <span className="rounded-full bg-muted px-2 py-0.5">
+                          {skill.category}
+                        </span>
                       </div>
 
                       <div className="mt-4">
-                        <Button size="xs" variant="outline" className="px-2 text-xs">
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          className="px-2 text-xs"
+                        >
                           Know more
                         </Button>
                       </div>

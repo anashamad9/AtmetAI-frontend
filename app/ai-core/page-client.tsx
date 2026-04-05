@@ -34,7 +34,8 @@ function AiCorePageContent({ activeChatId }: AiCorePageContentProps) {
     const containerHeight = containerRef.current.clientHeight
     const promptHeight = promptRef.current.clientHeight
     const bottomPadding = 16
-    const centerToBottom = containerHeight / 2 - promptHeight / 2 - bottomPadding
+    const centerToBottom =
+      containerHeight / 2 - promptHeight / 2 - bottomPadding
 
     setBottomShift(Math.max(0, centerToBottom))
   }, [])
@@ -52,11 +53,11 @@ function AiCorePageContent({ activeChatId }: AiCorePageContentProps) {
   return (
     <div
       ref={containerRef}
-      className="relative flex min-h-[calc(100svh-2.5rem)] flex-1 items-center justify-center p-4"
+      className="relative flex min-h-[calc(100svh-2.5rem)] flex-1 items-center justify-center px-3 py-4"
     >
       <div
         ref={promptRef}
-        className="flex w-full justify-center will-change-transform transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+        className="flex w-full justify-center transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"
         style={{
           transform: `translateY(${hasStartedConversation && hasConversationActivity ? bottomShift : 0}px)`,
         }}
