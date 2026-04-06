@@ -479,11 +479,11 @@ const appearanceColorOptions = [
   {
     id: "cobalt",
     label: "Cobalt",
-    primary: "#2563eb",
+    primary: "#1e90ff",
     primaryForeground: "#ffffff",
-    border: "rgb(37 99 235 / 22%)",
-    input: "rgb(37 99 235 / 22%)",
-    ring: "rgb(37 99 235 / 36%)",
+    border: "rgb(30 144 255 / 22%)",
+    input: "rgb(30 144 255 / 22%)",
+    ring: "rgb(30 144 255 / 36%)",
   },
   {
     id: "emerald",
@@ -575,7 +575,12 @@ function applyAppearanceColor(colorId: AppearanceColorId) {
     "--sidebar-primary-foreground",
     targetColor.primaryForeground
   )
-  root.style.setProperty("--ring", targetColor.ring)
+  root.style.setProperty("--sidebar-ring", targetColor.ring)
+  root.style.setProperty("--ring", targetColor.primary)
+  root.style.removeProperty("--accent")
+  root.style.removeProperty("--border")
+  root.style.removeProperty("--input")
+  root.style.removeProperty("--sidebar-border")
 }
 
 function applyGlobalFontScale(fontScale: FontScale) {
@@ -1270,6 +1275,77 @@ function GeneralSettingsContent({
     appearanceSettings.language !== savedAppearanceSettings.language ||
     appearanceSettings.fontScale !== savedAppearanceSettings.fontScale
 
+  const renderThemePagePreview = React.useCallback(
+    (tone: "light" | "dark") => (
+      <div
+        className={cn(
+          "relative h-full overflow-hidden rounded-md border p-1.5",
+          tone === "dark"
+            ? "border-white/12 bg-slate-950 text-slate-300"
+            : "border-foreground/10 bg-[#f8fafc] text-slate-700"
+        )}
+      >
+        <div
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute inset-0",
+            tone === "dark"
+              ? "bg-[radial-gradient(circle_at_20%_0%,rgba(56,189,248,0.18),transparent_48%)]"
+              : "bg-[radial-gradient(circle_at_20%_0%,rgba(14,165,233,0.08),transparent_46%)]"
+          )}
+        />
+        <div className="relative flex h-full flex-col">
+          <div
+            className={cn(
+              "mt-0.5 text-center text-[8px] font-semibold",
+              tone === "dark" ? "text-slate-200/90" : "text-slate-700/90"
+            )}
+          >
+            Good evening, Amir
+          </div>
+          <div
+            className={cn(
+              "mt-auto space-y-1 rounded-md border px-1.5 py-1",
+              tone === "dark"
+                ? "border-white/12 bg-white/[0.04]"
+                : "border-foreground/10 bg-white/85"
+            )}
+          >
+            <div
+              className={cn(
+                "truncate text-[7px]",
+                tone === "dark" ? "text-slate-300/70" : "text-slate-500"
+              )}
+            >
+              Use / to add a skill or @ to connect an app.
+            </div>
+            <div className="flex items-center justify-between">
+              <div
+                className={cn(
+                  "truncate text-[6.5px]",
+                  tone === "dark" ? "text-slate-300/75" : "text-slate-500"
+                )}
+              >
+                AI Claude 4.5 Sonnet | Apps + Skills +
+              </div>
+              <span
+                className={cn(
+                  "rounded-[4px] px-1 py-0.5 text-[6px] font-medium",
+                  tone === "dark"
+                    ? "bg-slate-200/15 text-slate-100"
+                    : "bg-slate-200 text-slate-700"
+                )}
+              >
+                Send
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    ),
+    []
+  )
+
   return (
     <div className="flex min-h-full flex-col">
       <div className="space-y-3">
@@ -1306,54 +1382,15 @@ function GeneralSettingsContent({
                         : "border-input hover:bg-muted/30"
                     )}
                   >
-                    <div
-                      className={cn(
-                        "h-20 rounded-lg border p-2",
-                        themeOption.id === "light" &&
-                          "border-input/70 bg-muted/25",
-                        themeOption.id === "dark" &&
-                          "border-white/10 bg-slate-950",
-                        themeOption.id === "system" &&
-                          "border-input/70 bg-gradient-to-r from-muted/25 from-55% to-slate-950 to-55%"
-                      )}
-                    >
-                      <div className="grid h-full grid-cols-4 gap-1">
-                        <div
-                          className={cn(
-                            "col-span-1 rounded-md",
-                            themeOption.id === "dark"
-                              ? "bg-white/5"
-                              : "bg-foreground/5"
-                          )}
-                        />
-                        <div
-                          className={cn(
-                            "col-span-3 rounded-md border",
-                            themeOption.id === "dark"
-                              ? "border-white/10 bg-white/[0.03]"
-                              : "border-foreground/10 bg-background/70",
-                            themeOption.id === "system" &&
-                              "border-foreground/10 bg-background/75"
-                          )}
-                        >
-                          <div className="grid h-full grid-cols-3 gap-1 p-1">
-                            {Array.from({ length: 9 }).map((_, idx) => (
-                              <span
-                                key={idx}
-                                className={cn(
-                                  "rounded-sm",
-                                  themeOption.id === "dark"
-                                    ? "bg-white/7"
-                                    : "bg-foreground/8",
-                                  themeOption.id === "system" &&
-                                    idx > 5 &&
-                                    "bg-white/12"
-                                )}
-                              />
-                            ))}
-                          </div>
+                    <div className="h-24">
+                      {themeOption.id === "system" ? (
+                        <div className="grid h-full grid-cols-2 gap-1.5 rounded-lg border border-input/70 bg-muted/20 p-1.5">
+                          {renderThemePagePreview("light")}
+                          {renderThemePagePreview("dark")}
                         </div>
-                      </div>
+                      ) : (
+                        renderThemePagePreview(themeOption.id as "light" | "dark")
+                      )}
                     </div>
                     <div className="mt-2 flex items-center justify-center gap-1.5 text-sm font-medium text-foreground">
                       <ThemeIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -2381,7 +2418,7 @@ function MembersSettingsContent({
                 <Label className="text-muted-foreground">
                   Send invite to ...
                 </Label>
-                <div className="flex min-h-24 flex-wrap content-start items-start gap-1.5 rounded-lg border border-input bg-background px-2.5 py-2 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30">
+                <div className="flex min-h-24 flex-wrap content-start items-start gap-1.5 rounded-lg border border-input bg-background px-2.5 py-2 focus-within:border-ring">
                   {inviteEmails.map((email) => (
                     <span
                       key={email}
@@ -3424,7 +3461,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                               }
                             }}
                             onBlur={() => submitRenamingChat(chat.id)}
-                            className="h-6 w-full rounded-sm border border-sidebar-border bg-transparent px-1.5 text-sm outline-hidden focus-visible:ring-1 focus-visible:ring-sidebar-ring"
+                            className="h-6 w-full rounded-sm border border-input bg-transparent px-1.5 text-sm outline-hidden focus-visible:border-ring"
                             aria-label="Rename chat"
                           />
                         </SidebarMenuButton>
@@ -3540,7 +3577,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                               }
                             }}
                             onBlur={() => submitRenamingChat(chat.id)}
-                            className="h-6 w-full rounded-sm border border-sidebar-border bg-transparent px-1.5 text-sm outline-hidden focus-visible:ring-1 focus-visible:ring-sidebar-ring"
+                            className="h-6 w-full rounded-sm border border-input bg-transparent px-1.5 text-sm outline-hidden focus-visible:border-ring"
                             aria-label="Rename chat"
                           />
                         </SidebarMenuButton>
@@ -3750,7 +3787,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       ) : activeSettingsSection === "Data controls" ? (
                         <DataControlsSettingsContent />
                       ) : activeSettingsSection === "Plans (soon)" ? (
-                        <div className="flex min-h-[calc(78vh-9rem)] items-center justify-center rounded-xl bg-blue-600 px-6 py-10">
+                        <div className="flex min-h-[calc(78vh-9rem)] items-center justify-center rounded-xl bg-primary px-6 py-10">
                           <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
                             Soon
                           </h2>

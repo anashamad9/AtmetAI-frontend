@@ -12,6 +12,7 @@ import {
   FolderKanban,
   Globe2,
   KeyRound,
+  Layers,
   Languages,
   LockKeyhole,
   Mail,
@@ -36,12 +37,26 @@ import {
 } from "@/components/ui/command"
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 const OPEN_MANAGE_CHAT_USERS_EVENT = "open-manage-chat-users"
 const OPEN_SETTINGS_PANEL_EVENT = "open-settings-panel"
 
 const sectors = ["Data", "Chats", "Projects", "Users", "Settings"] as const
 type QuickActionSector = (typeof sectors)[number]
+type QuickActionTab = "All" | QuickActionSector
+const quickActionTabs: Array<{
+  id: QuickActionTab
+  label: string
+  icon: React.ComponentType<React.ComponentProps<"svg">>
+}> = [
+  { id: "All", label: "All", icon: Layers },
+  { id: "Data", label: "Data", icon: Database },
+  { id: "Chats", label: "Chats", icon: MessageSquare },
+  { id: "Projects", label: "Projects", icon: FolderKanban },
+  { id: "Users", label: "Users", icon: Users },
+  { id: "Settings", label: "Settings", icon: Settings },
+]
 const settingsSections = [
   "Account",
   "Workspace",
@@ -476,10 +491,20 @@ export function SearchForm({
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
+  const [activeTab, setActiveTab] = React.useState<QuickActionTab>("All")
   const actionMap = React.useMemo(
     () => new Map(quickActions.map((action) => [action.id, action])),
     []
   )
+
+  const getInitials = React.useCallback((name: string) => {
+    return name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("")
+  }, [])
 
   const filteredActions = React.useMemo(() => {
     const term = query.trim().toLowerCase()
@@ -511,6 +536,11 @@ export function SearchForm({
 
     return quickActions.filter((action) => includedIds.has(action.id))
   }, [actionMap, query])
+
+  const visibleActions = React.useMemo(() => {
+    if (activeTab === "All") return filteredActions
+    return filteredActions.filter((action) => action.sector === activeTab)
+  }, [activeTab, filteredActions])
 
   const runAction = React.useCallback(
     (action: QuickAction) => {
@@ -572,7 +602,13 @@ export function SearchForm({
 
       <CommandDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen)
+          if (!nextOpen) {
+            setActiveTab("All")
+            setQuery("")
+          }
+        }}
         showCloseButton={false}
         className="top-1/2 h-[min(74svh,680px)] max-h-[calc(100svh-1.5rem)] w-[min(860px,92vw)] max-w-[92vw] -translate-y-1/2 sm:!max-w-[860px]"
       >
@@ -582,10 +618,32 @@ export function SearchForm({
             value={query}
             onValueChange={(next) => setQuery(next)}
           />
+          <div className="flex flex-wrap gap-1.5 border-b border-border px-3 pb-2 pt-1.5">
+            {quickActionTabs.map((tab) => {
+              const isActive = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md border border-transparent px-2.5 py-1 text-xs font-medium transition-colors",
+                    isActive
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                  aria-pressed={isActive}
+                >
+                  <tab.icon className="size-3.5 shrink-0" />
+                  <span>{tab.label}</span>
+                </button>
+              )
+            })}
+          </div>
           <CommandList className="max-h-none flex-1">
             <CommandEmpty>No actions found.</CommandEmpty>
             {sectors.map((sector) => {
-              const groupActions = filteredActions.filter(
+              const groupActions = visibleActions.filter(
                 (action) => action.sector === sector
               )
               if (groupActions.length === 0) return null
@@ -603,7 +661,15 @@ export function SearchForm({
                         action.level === 2 && "pl-10"
                       )}
                     >
-                      <action.icon className="size-4 shrink-0 text-muted-foreground" />
+                      {action.id.startsWith("users-member-") ? (
+                        <Avatar size="sm" className="size-5">
+                          <AvatarFallback className="text-[10px] font-medium">
+                            {getInitials(action.label)}
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <action.icon className="size-4 shrink-0 text-muted-foreground" />
+                      )}
                       <div className="min-w-0">
                         <span className="block truncate text-sm font-medium">
                           {action.label}

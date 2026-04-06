@@ -2022,6 +2022,17 @@ export default function AI_Prompt({
             </div>
           </div>
         )}
+        {(messages.length > 0 || isResponding) && (
+          <div
+            className="mb-2 flex min-h-11 w-full items-center rounded-xl border border-sidebar-border px-4 py-2 text-sm text-white/95"
+            style={{
+              backgroundImage: "url('/Atemt.avif')",
+              backgroundSize: `${100 / 6}% 100%`,
+              backgroundPosition: "left center",
+              backgroundRepeat: "repeat-x",
+            }}
+          />
+        )}
         <div className="relative">
           <div
             aria-hidden="true"
@@ -2281,28 +2292,8 @@ export default function AI_Prompt({
               ))}
             </div>
           )}
-          {(attachedFiles.length > 0 || messages.length === 0) && (
+          {attachedFiles.length > 0 && (
             <div className="relative z-10 -mt-px p-2 sm:p-2.5">
-              {attachedFiles.length === 0 ? (
-              <div className="flex min-h-9 items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                  <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm border border-sidebar-border bg-background/70 text-[10px]">
-                    +
-                  </span>
-                  <span className="truncate">Connect your tools to Atmet AI</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {APPS.map((app) => (
-                    <span
-                      key={`tool-${app}`}
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-sidebar-border bg-background/80"
-                    >
-                      {renderAppLogo(app)}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              ) : (
               <div className="flex max-h-36 min-h-9 flex-wrap items-start gap-2 overflow-y-auto">
                 {attachedFiles.map((attachment) => (
                   <div
@@ -2343,7 +2334,6 @@ export default function AI_Prompt({
                   </div>
                 ))}
               </div>
-              )}
             </div>
           )}
         </div>
