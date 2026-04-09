@@ -15,7 +15,9 @@ import {
 export function ContextMenu5Wrapper({ children }: { children: React.ReactNode }) {
   return (
     <ContextMenu>
-      <ContextMenuTrigger>{children}</ContextMenuTrigger>
+      <ContextMenuTrigger className="block h-full w-full">
+        {children}
+      </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuGroup>
           <ContextMenuLabel>File</ContextMenuLabel>

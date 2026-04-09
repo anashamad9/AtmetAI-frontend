@@ -36,12 +36,14 @@ type AvatarGroupTooltipTransitionDemoProps = {
   users?: ChatParticipant[]
   className?: string
   onOpenUserPicker?: () => void
+  manageUsersLabel?: string
 }
 
 const AvatarGroupTooltipTransitionDemo = ({
   users = avatars,
   className,
   onOpenUserPicker,
+  manageUsersLabel = 'Manage chat users',
 }: AvatarGroupTooltipTransitionDemoProps) => {
   return (
     <div className={cn('group flex items-center', className)}>
@@ -71,7 +73,7 @@ const AvatarGroupTooltipTransitionDemo = ({
             render={
               <button
                 type="button"
-                aria-label="Manage chat users"
+                aria-label={manageUsersLabel}
                 onClick={onOpenUserPicker}
                 className={cn(
                   'ring-background bg-muted text-muted-foreground hover:bg-accent hover:text-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-full ring-2 transition-[margin] duration-300 ease-out',
@@ -82,7 +84,7 @@ const AvatarGroupTooltipTransitionDemo = ({
           >
             <Plus className="h-3 w-3" />
           </TooltipTrigger>
-          <TooltipContent>Manage chat users</TooltipContent>
+          <TooltipContent>{manageUsersLabel}</TooltipContent>
         </Tooltip>
       )}
     </div>

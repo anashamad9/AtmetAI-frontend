@@ -2,16 +2,16 @@
 
 import Link from "next/link"
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
 } from "react"
 import { useParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -22,10 +22,19 @@ import { ContextMenu5Wrapper } from "@/components/examples/c-context-menu-5"
 import { cn } from "@/lib/utils"
 import { getWorkflowProject, type WorkflowProject } from "@/lib/workflow-projects"
 import {
+  WORKFLOW_OPEN_LOG_EVENT,
+  WORKFLOW_PUBLISH_EVENT,
+  WORKFLOW_RUN_EVENT,
+  WORKFLOW_SET_AUTORUN_EVENT,
+  WORKFLOW_STATE_EVENT,
+  type WorkflowControlEventDetail,
+  type WorkflowRunSchedule,
+  type WorkflowSetAutoRunEventDetail,
+  type WorkflowStateEventDetail,
+} from "@/lib/workflow-events"
+import {
   ArrowLeft,
-  Bot,
   Check,
-  ChevronDown,
   Clock3,
   Files,
   Layers,
@@ -33,7 +42,6 @@ import {
   PenSquare,
   PlayCircle,
   Plus,
-  Search,
   Trash2,
   X,
 } from "lucide-react"
@@ -43,11 +51,9 @@ type WorkflowNode = {
   stepName: string
   status: "Done" | "In review" | "Pending"
   owner: string
-  description: string
   provider: string
   model: string
   prompt: string
-  instructions: string
   tokenCount: number
   lastRan: string
   usedApps: string[]
@@ -75,22 +81,10 @@ type EdgeGeometry = WorkflowEdge & {
 
 const NODE_WIDTH = 320
 const NODE_HANDLE_Y = 146
-
-const APP_LIBRARY = [
-  "Anthropic",
-  "ChatGPT",
-  "Slack",
-  "Airtable",
-  "Asana",
-  "Box",
-  "Calendly",
-  "ClickUp",
-  "GitHub",
-  "Notion",
-] as const
-
-const FAVORITE_APPS = ["Anthropic", "ChatGPT", "Slack"] as const
-const favoriteAppSet = new Set<string>(FAVORITE_APPS)
+const WORKSPACE_WIDTH = 10000
+const WORKSPACE_HEIGHT = 7000
+const WORKSPACE_OFFSET_X = 2200
+const WORKSPACE_OFFSET_Y = 1400
 const appLogoTone: Record<string, string> = {
   Anthropic: "bg-neutral-900 text-white",
   ChatGPT: "bg-emerald-500 text-white",
@@ -124,12 +118,9 @@ function buildNodes(project: WorkflowProject): WorkflowNode[] {
     stepName: step.name,
     status: step.status,
     owner: step.owner,
-    description: "Add a description...",
     provider: index % 2 === 0 ? "Anthropic" : "ChatGPT",
     model: index % 2 === 0 ? "Claude Opus 4.1" : "GPT-5.2",
     prompt: `Execute "${step.name}" for ${project.title}. Return concise, structured output that can be passed to the next workflow node.`,
-    instructions:
-      "Use clear language, preserve key evidence, and flag uncertainty before finalizing.",
     tokenCount: 290 + index * 38,
     lastRan: lastRanSamples[index % lastRanSamples.length],
     usedApps:
@@ -145,16 +136,29 @@ function buildNodes(project: WorkflowProject): WorkflowNode[] {
       `${step.name.replace(/\s+/g, "_")}_notes.txt`,
       `${step.name.replace(/\s+/g, "_")}_output.json`,
     ],
-    x: 110 + index * 380,
-    y: index % 2 === 0 ? 150 : 330,
+    x: WORKSPACE_OFFSET_X + 110 + index * 380,
+    y: WORKSPACE_OFFSET_Y + (index % 2 === 0 ? 150 : 330),
   }))
 }
 
-function providerModelForApp(app: string) {
-  if (app === "Anthropic") return { provider: "Anthropic", model: "Claude Opus 4.1" }
-  if (app === "ChatGPT") return { provider: "ChatGPT", model: "GPT-5.2" }
-  if (app === "Slack") return { provider: "Slack AI", model: "Slack Summarizer" }
-  return { provider: app, model: `${app} Assistant` }
+function getRunScheduleIntervalMs(runSchedule: WorkflowRunSchedule) {
+  if (runSchedule.mode === "off") return null
+  if (runSchedule.mode === "every") {
+    const multiplier =
+      runSchedule.unit === "minutes"
+        ? 1
+        : runSchedule.unit === "hours"
+          ? 60
+          : runSchedule.unit === "days"
+            ? 60 * 24
+            : runSchedule.unit === "weeks"
+              ? 60 * 24 * 7
+              : 60 * 24 * 30
+    return Math.max(1, runSchedule.value) * multiplier * 60 * 1000
+  }
+  if (runSchedule.frequency === "day") return 24 * 60 * 60 * 1000
+  if (runSchedule.frequency === "week") return 7 * 24 * 60 * 60 * 1000
+  return 30 * 24 * 60 * 60 * 1000
 }
 
 export default function WorkflowProjectPage() {
@@ -175,16 +179,33 @@ export default function WorkflowProjectPage() {
   const [wireCursor, setWireCursor] = useState<{ x: number; y: number } | null>(null)
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null)
   const [filesDialogOpen, setFilesDialogOpen] = useState(false)
+  const [executionLogOpen, setExecutionLogOpen] = useState(false)
   const [editingTitleNodeId, setEditingTitleNodeId] = useState<string | null>(null)
-  const [editingDescriptionNodeId, setEditingDescriptionNodeId] =
-    useState<string | null>(null)
   const [titleDraft, setTitleDraft] = useState("")
-  const [descriptionDraft, setDescriptionDraft] = useState("")
-  const [replaceOpen, setReplaceOpen] = useState(false)
-  const [appSearch, setAppSearch] = useState("")
+  const [zoom, setZoom] = useState(1)
+  const [isSpacePressed, setIsSpacePressed] = useState(false)
+  const [isPanning, setIsPanning] = useState(false)
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null)
+  const [isRunningWorkflow, setIsRunningWorkflow] = useState(false)
+  const [isPublishingWorkflow, setIsPublishingWorkflow] = useState(false)
+  const [publishState, setPublishState] = useState<"Draft" | "Published">("Draft")
+  const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false)
+  const [lastExecutionLabel, setLastExecutionLabel] = useState("Not run yet")
+  const [runSchedule, setRunSchedule] = useState<WorkflowRunSchedule>({
+    mode: "off",
+  })
+  const viewportRef = useRef<HTMLElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const edgeHoverTimeoutRef = useRef<number | null>(null)
+  const runTimerRef = useRef<number | null>(null)
+  const publishTimerRef = useRef<number | null>(null)
+  const autoRunIntervalRef = useRef<number | null>(null)
+  const panStateRef = useRef<{
+    startClientX: number
+    startClientY: number
+    startScrollLeft: number
+    startScrollTop: number
+  } | null>(null)
   const dragStateRef = useRef<{
     nodeId: string
     pointerOffsetX: number
@@ -206,40 +227,44 @@ export default function WorkflowProjectPage() {
     setWireCursor(null)
     setHoveredEdgeId(null)
     setFilesDialogOpen(false)
+    setExecutionLogOpen(false)
     setEditingTitleNodeId(null)
-    setEditingDescriptionNodeId(null)
     setTitleDraft("")
-    setDescriptionDraft("")
-    setReplaceOpen(false)
-    setAppSearch("")
+    setZoom(1)
+    setIsSpacePressed(false)
+    setIsPanning(false)
+    setIsRunningWorkflow(false)
+    setIsPublishingWorkflow(false)
+    setPublishState("Draft")
+    setHasUnpublishedChanges(false)
+    setLastExecutionLabel("Not run yet")
+    setRunSchedule({ mode: "off" })
+
+    window.requestAnimationFrame(() => {
+      const viewport = viewportRef.current
+      if (!viewport || initialNodes.length === 0) return
+
+      const minX = Math.min(...initialNodes.map((node) => node.x))
+      const maxX = Math.max(...initialNodes.map((node) => node.x + NODE_WIDTH))
+      const minY = Math.min(...initialNodes.map((node) => node.y))
+      const maxY = Math.max(...initialNodes.map((node) => node.y + 520))
+      const clusterCenterX = (minX + maxX) / 2
+      const clusterCenterY = (minY + maxY) / 2
+
+      viewport.scrollLeft = Math.max(
+        0,
+        clusterCenterX - viewport.clientWidth / 2
+      )
+      viewport.scrollTop = Math.max(
+        0,
+        clusterCenterY - viewport.clientHeight / 2
+      )
+    })
   }, [project])
 
   const selectedNode = useMemo(
     () => nodes.find((node) => node.id === selectedNodeId),
     [nodes, selectedNodeId]
-  )
-
-  const selectedNodeIndex = useMemo(
-    () => nodes.findIndex((node) => node.id === selectedNodeId),
-    [nodes, selectedNodeId]
-  )
-
-  const filteredFavorites = useMemo(
-    () =>
-      FAVORITE_APPS.filter((app) =>
-        app.toLowerCase().includes(appSearch.trim().toLowerCase())
-      ),
-    [appSearch]
-  )
-
-  const filteredApps = useMemo(
-    () =>
-      APP_LIBRARY.filter(
-        (app) =>
-          app.toLowerCase().includes(appSearch.trim().toLowerCase()) &&
-          !favoriteAppSet.has(app)
-      ),
-    [appSearch]
   )
 
   const doneSteps = useMemo(
@@ -303,17 +328,61 @@ export default function WorkflowProjectPage() {
     return `M ${fromX} ${fromY} C ${fromX + curve * curveDirection} ${fromY}, ${toX - curve * curveDirection} ${toY}, ${toX} ${toY}`
   }, [connectingSourceId, nodeMap, wireCursor])
 
-  const updateSelectedNode = (patch: Partial<WorkflowNode>) => {
-    if (!selectedNodeId) return
+  const markProjectChanged = useCallback(() => {
+    setHasUnpublishedChanges(true)
+    setPublishState("Draft")
+  }, [])
+
+  const handleRunWorkflow = useCallback(() => {
+    if (isRunningWorkflow) return
+    if (runTimerRef.current !== null) {
+      window.clearTimeout(runTimerRef.current)
+      runTimerRef.current = null
+    }
+
+    setIsRunningWorkflow(true)
     setNodes((previous) =>
-      previous.map((node) =>
-        node.id === selectedNodeId ? { ...node, ...patch } : node
-      )
+      previous.map((node) => ({
+        ...node,
+        status: "In review",
+        lastRan: "Running...",
+      }))
     )
-  }
+
+    runTimerRef.current = window.setTimeout(() => {
+      setNodes((previous) =>
+        previous.map((node, index) => ({
+          ...node,
+          status: index === previous.length - 1 ? "In review" : "Done",
+          lastRan: index === 0 ? "Just now" : `${index + 1} min ago`,
+        }))
+      )
+      setLastExecutionLabel("Just now")
+      setIsRunningWorkflow(false)
+      runTimerRef.current = null
+    }, 1300)
+  }, [isRunningWorkflow])
+
+  const handlePublishWorkflow = useCallback(() => {
+    if (isPublishingWorkflow) return
+    if (publishTimerRef.current !== null) {
+      window.clearTimeout(publishTimerRef.current)
+      publishTimerRef.current = null
+    }
+
+    setIsPublishingWorkflow(true)
+
+    publishTimerRef.current = window.setTimeout(() => {
+      setPublishState("Published")
+      setHasUnpublishedChanges(false)
+      setIsPublishingWorkflow(false)
+      publishTimerRef.current = null
+    }, 900)
+  }, [isPublishingWorkflow])
 
   const toggleConnection = (sourceId: string, targetId: string) => {
     if (!sourceId || !targetId || sourceId === targetId) return
+    markProjectChanged()
     setEdges((previous) => {
       const existing = previous.find(
         (edge) => edge.sourceId === sourceId && edge.targetId === targetId
@@ -337,8 +406,8 @@ export default function WorkflowProjectPage() {
     if (!canvas) return null
     const canvasRect = canvas.getBoundingClientRect()
     return {
-      x: Math.round(clientX - canvasRect.left),
-      y: Math.round(clientY - canvasRect.top),
+      x: Math.round((clientX - canvasRect.left) / zoom),
+      y: Math.round((clientY - canvasRect.top) / zoom),
     }
   }
 
@@ -360,6 +429,7 @@ export default function WorkflowProjectPage() {
       setTitleDraft("")
       return
     }
+    markProjectChanged()
     setNodes((previous) =>
       previous.map((node) =>
         node.id === nodeId ? { ...node, stepName: nextTitle } : node
@@ -367,23 +437,6 @@ export default function WorkflowProjectPage() {
     )
     setEditingTitleNodeId(null)
     setTitleDraft("")
-  }
-
-  const startDescriptionEdit = (node: WorkflowNode) => {
-    setSelectedNodeId(node.id)
-    setEditingDescriptionNodeId(node.id)
-    setDescriptionDraft(node.description || "Add a description...")
-  }
-
-  const commitDescriptionEdit = (nodeId: string) => {
-    const nextDescription = descriptionDraft.trim() || "Add a description..."
-    setNodes((previous) =>
-      previous.map((node) =>
-        node.id === nodeId ? { ...node, description: nextDescription } : node
-      )
-    )
-    setEditingDescriptionNodeId(null)
-    setDescriptionDraft("")
   }
 
   const addNodeNextTo = (sourceNodeId: string) => {
@@ -398,11 +451,9 @@ export default function WorkflowProjectPage() {
       stepName: "New Step",
       status: "Pending",
       owner: "You",
-      description: "Add a description...",
       provider: source.provider,
       model: source.model,
       prompt: "Define what this node should do.",
-      instructions: "Add clear guardrails and expected output shape.",
       tokenCount: 0,
       lastRan: "Never",
       usedApps: [source.provider],
@@ -412,6 +463,7 @@ export default function WorkflowProjectPage() {
       y: source.y,
     }
 
+    markProjectChanged()
     setNodes((previous) => {
       const sourceIndex = previous.findIndex((node) => node.id === sourceNodeId)
       if (sourceIndex === -1) return [...previous, newNode]
@@ -433,6 +485,7 @@ export default function WorkflowProjectPage() {
 
   const deleteNode = (nodeId: string) => {
     const remainingNodes = nodes.filter((node) => node.id !== nodeId)
+    markProjectChanged()
     setNodes(remainingNodes)
     setEdges((previous) =>
       previous.filter(
@@ -447,9 +500,6 @@ export default function WorkflowProjectPage() {
     setHoveredEdgeId(null)
     setFilesDialogOpen(false)
     setEditingTitleNodeId((previous) => (previous === nodeId ? null : previous))
-    setEditingDescriptionNodeId((previous) =>
-      previous === nodeId ? null : previous
-    )
   }
 
   const showEdgeDelete = (edgeId: string) => {
@@ -472,7 +522,6 @@ export default function WorkflowProjectPage() {
 
   const handleStartConnectionMode = (nodeId: string) => {
     setSelectedNodeId(nodeId)
-    setReplaceOpen(false)
     setConnectingSourceId((previous) => (previous === nodeId ? null : nodeId))
     const sourceNode = nodeMap.get(nodeId)
     if (!sourceNode) {
@@ -493,6 +542,10 @@ export default function WorkflowProjectPage() {
       event.preventDefault()
       return
     }
+    if (isSpacePressed || isPanning) {
+      event.preventDefault()
+      return
+    }
     if (event.button !== 0) return
     const canvas = canvasRef.current
     const targetNode = nodes.find((node) => node.id === nodeId)
@@ -509,11 +562,11 @@ export default function WorkflowProjectPage() {
     }
     setSelectedNodeId(nodeId)
     setDraggingNodeId(nodeId)
-    event.preventDefault()
   }
 
   useEffect(() => {
     if (!draggingNodeId) return
+    let movedNode = false
 
     const onPointerMove = (event: PointerEvent) => {
       const dragState = dragStateRef.current
@@ -529,6 +582,7 @@ export default function WorkflowProjectPage() {
         16,
         Math.round(event.clientY - canvasRect.top - dragState.pointerOffsetY)
       )
+      movedNode = true
 
       setNodes((previous) =>
         previous.map((node) =>
@@ -538,6 +592,9 @@ export default function WorkflowProjectPage() {
     }
 
     const finishDrag = () => {
+      if (movedNode) {
+        markProjectChanged()
+      }
       dragStateRef.current = null
       setDraggingNodeId(null)
     }
@@ -551,7 +608,124 @@ export default function WorkflowProjectPage() {
       window.removeEventListener("pointerup", finishDrag)
       window.removeEventListener("pointercancel", finishDrag)
     }
-  }, [draggingNodeId])
+  }, [draggingNodeId, markProjectChanged])
+
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false
+      const tag = target.tagName
+      return (
+        target.isContentEditable ||
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT"
+      )
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space") return
+      if (isEditableTarget(event.target)) return
+      event.preventDefault()
+      setIsSpacePressed(true)
+    }
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.code !== "Space") return
+      setIsSpacePressed(false)
+      setIsPanning(false)
+      panStateRef.current = null
+    }
+
+    const onWindowBlur = () => {
+      setIsSpacePressed(false)
+      setIsPanning(false)
+      panStateRef.current = null
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    window.addEventListener("keyup", onKeyUp)
+    window.addEventListener("blur", onWindowBlur)
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown)
+      window.removeEventListener("keyup", onKeyUp)
+      window.removeEventListener("blur", onWindowBlur)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isPanning) return
+
+    const onPointerMove = (event: PointerEvent) => {
+      const viewport = viewportRef.current
+      const panState = panStateRef.current
+      if (!viewport || !panState) return
+
+      const deltaX = event.clientX - panState.startClientX
+      const deltaY = event.clientY - panState.startClientY
+      viewport.scrollLeft = panState.startScrollLeft - deltaX
+      viewport.scrollTop = panState.startScrollTop - deltaY
+    }
+
+    const stopPanning = () => {
+      panStateRef.current = null
+      setIsPanning(false)
+    }
+
+    window.addEventListener("pointermove", onPointerMove)
+    window.addEventListener("pointerup", stopPanning)
+    window.addEventListener("pointercancel", stopPanning)
+
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove)
+      window.removeEventListener("pointerup", stopPanning)
+      window.removeEventListener("pointercancel", stopPanning)
+    }
+  }, [isPanning])
+
+  const handleViewportWheel = (event: ReactWheelEvent<HTMLElement>) => {
+    if (!event.ctrlKey && !event.metaKey) return
+
+    const viewport = viewportRef.current
+    if (!viewport) return
+    event.preventDefault()
+
+    const viewportRect = viewport.getBoundingClientRect()
+    const pointerX = event.clientX - viewportRect.left
+    const pointerY = event.clientY - viewportRect.top
+    const worldX = (viewport.scrollLeft + pointerX) / zoom
+    const worldY = (viewport.scrollTop + pointerY) / zoom
+    const directionScale = event.deltaY < 0 ? 1.1 : 0.9
+    const nextZoom = Math.min(2.5, Math.max(0.5, zoom * directionScale))
+    if (Math.abs(nextZoom - zoom) < 0.001) return
+
+    setZoom(nextZoom)
+
+    window.requestAnimationFrame(() => {
+      const activeViewport = viewportRef.current
+      if (!activeViewport) return
+      activeViewport.scrollLeft = worldX * nextZoom - pointerX
+      activeViewport.scrollTop = worldY * nextZoom - pointerY
+    })
+  }
+
+  const handleViewportPointerDownCapture = (
+    event: ReactPointerEvent<HTMLElement>
+  ) => {
+    if (!isSpacePressed || event.button !== 0) return
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    panStateRef.current = {
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startScrollLeft: viewport.scrollLeft,
+      startScrollTop: viewport.scrollTop,
+    }
+    setIsPanning(true)
+    event.preventDefault()
+    event.stopPropagation()
+  }
 
   useEffect(() => {
     if (!connectingSourceId) return
@@ -574,8 +748,129 @@ export default function WorkflowProjectPage() {
       if (edgeHoverTimeoutRef.current !== null) {
         window.clearTimeout(edgeHoverTimeoutRef.current)
       }
+      if (runTimerRef.current !== null) {
+        window.clearTimeout(runTimerRef.current)
+      }
+      if (publishTimerRef.current !== null) {
+        window.clearTimeout(publishTimerRef.current)
+      }
+      if (autoRunIntervalRef.current !== null) {
+        window.clearInterval(autoRunIntervalRef.current)
+      }
     }
   }, [])
+
+  useEffect(() => {
+    if (!projectId) return
+
+    const onRunWorkflow = (event: Event) => {
+      try {
+        const detail = (event as CustomEvent<WorkflowControlEventDetail>).detail
+        if (!detail || detail.projectId !== projectId) return
+        handleRunWorkflow()
+      } catch (error) {
+        console.error("Failed to run workflow action:", error)
+      }
+    }
+
+    const onPublishWorkflow = (event: Event) => {
+      try {
+        const detail = (event as CustomEvent<WorkflowControlEventDetail>).detail
+        if (!detail || detail.projectId !== projectId) return
+        handlePublishWorkflow()
+      } catch (error) {
+        console.error("Failed to publish workflow action:", error)
+      }
+    }
+
+    const onOpenExecutionLog = (event: Event) => {
+      try {
+        const detail = (event as CustomEvent<WorkflowControlEventDetail>).detail
+        if (!detail || detail.projectId !== projectId) return
+        setExecutionLogOpen(true)
+      } catch (error) {
+        console.error("Failed to open workflow execution log:", error)
+      }
+    }
+
+    const onSetAutoRun = (event: Event) => {
+      try {
+        const detail = (event as CustomEvent<WorkflowSetAutoRunEventDetail>).detail
+        if (!detail || detail.projectId !== projectId) return
+        setRunSchedule(detail.schedule)
+      } catch (error) {
+        console.error("Failed to update workflow auto-run schedule:", error)
+      }
+    }
+
+    window.addEventListener(WORKFLOW_RUN_EVENT, onRunWorkflow as EventListener)
+    window.addEventListener(WORKFLOW_PUBLISH_EVENT, onPublishWorkflow as EventListener)
+    window.addEventListener(
+      WORKFLOW_OPEN_LOG_EVENT,
+      onOpenExecutionLog as EventListener
+    )
+    window.addEventListener(WORKFLOW_SET_AUTORUN_EVENT, onSetAutoRun as EventListener)
+
+    return () => {
+      window.removeEventListener(WORKFLOW_RUN_EVENT, onRunWorkflow as EventListener)
+      window.removeEventListener(
+        WORKFLOW_PUBLISH_EVENT,
+        onPublishWorkflow as EventListener
+      )
+      window.removeEventListener(
+        WORKFLOW_OPEN_LOG_EVENT,
+        onOpenExecutionLog as EventListener
+      )
+      window.removeEventListener(
+        WORKFLOW_SET_AUTORUN_EVENT,
+        onSetAutoRun as EventListener
+      )
+    }
+  }, [handlePublishWorkflow, handleRunWorkflow, projectId])
+
+  useEffect(() => {
+    if (autoRunIntervalRef.current !== null) {
+      window.clearInterval(autoRunIntervalRef.current)
+      autoRunIntervalRef.current = null
+    }
+    const intervalMs = getRunScheduleIntervalMs(runSchedule)
+    if (!intervalMs) return
+
+    autoRunIntervalRef.current = window.setInterval(() => {
+      handleRunWorkflow()
+    }, intervalMs)
+
+    return () => {
+      if (autoRunIntervalRef.current !== null) {
+        window.clearInterval(autoRunIntervalRef.current)
+        autoRunIntervalRef.current = null
+      }
+    }
+  }, [handleRunWorkflow, runSchedule])
+
+  useEffect(() => {
+    if (!projectId) return
+    const detail: WorkflowStateEventDetail = {
+      projectId,
+      isRunning: isRunningWorkflow,
+      isPublishing: isPublishingWorkflow,
+      publishState,
+      hasUnpublishedChanges,
+      runSchedule,
+    }
+    try {
+      window.dispatchEvent(new CustomEvent(WORKFLOW_STATE_EVENT, { detail }))
+    } catch (error) {
+      console.error("Failed to broadcast workflow state update:", error)
+    }
+  }, [
+    hasUnpublishedChanges,
+    isPublishingWorkflow,
+    isRunningWorkflow,
+    projectId,
+    publishState,
+    runSchedule,
+  ])
 
   if (!project) {
     return (
@@ -594,36 +889,38 @@ export default function WorkflowProjectPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-2.5rem)] flex-1 flex-col bg-background">
-      <section className="flex h-11 items-center justify-between border-b border-border px-3">
-        <div className="flex items-center gap-2">
+    <div className="flex h-[calc(100dvh-2.5rem)] w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
+      <section className="sticky top-0 z-30 flex h-10 min-h-10 max-h-10 shrink-0 items-center justify-between border-b border-border bg-background px-3">
+        <div className="flex h-full min-w-0 items-center gap-2">
           <Link
             href="/workflow"
-            className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+            className="inline-flex h-6 items-center gap-1 rounded-md border border-border px-2 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back
           </Link>
-          <div>
-            <p className="text-sm font-semibold text-foreground">{project.title}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {project.tags.join(" • ")}
+          <div className="min-w-0">
+            <p className="truncate text-sm leading-none font-semibold text-foreground">
+              {project.title}
+              <span className="ml-2 text-[11px] leading-none font-normal text-muted-foreground">
+                {project.tags.join(" • ")}
+              </span>
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <span className="rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground">
+        <div className="flex h-full items-center gap-1.5">
+          <span className="inline-flex h-6 items-center rounded-md border border-border px-2 text-[11px] text-muted-foreground">
             {doneSteps}/{nodes.length} steps done
           </span>
-          <span className="rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground">
+          <span className="inline-flex h-6 items-center rounded-md border border-border px-2 text-[11px] text-muted-foreground">
             Workspace: Atmet AI
           </span>
           {connectingSourceId && (
             <button
               type="button"
               onClick={clearWireDraft}
-              className="rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-[11px] text-primary"
+              className="inline-flex h-6 items-center rounded-md border border-primary/40 bg-primary/10 px-2 text-[11px] text-primary"
             >
               Connecting from{" "}
               {nodeMap.get(connectingSourceId)?.stepName ?? "node"} · Click target box ·
@@ -633,21 +930,38 @@ export default function WorkflowProjectPage() {
         </div>
       </section>
 
-      <div className="flex min-h-0 flex-1">
-        <section className="relative min-w-0 flex-1 overflow-auto border-r border-border">
+      <div className="min-h-0 min-w-0 flex flex-1 overflow-hidden">
+        <section
+          ref={viewportRef}
+          onWheel={handleViewportWheel}
+          onPointerDownCapture={handleViewportPointerDownCapture}
+          className={cn(
+            "no-scrollbar relative h-full min-w-0 flex-1 overflow-auto overscroll-none",
+            isPanning
+              ? "cursor-grabbing"
+              : isSpacePressed
+                ? "cursor-grab"
+                : "cursor-default"
+          )}
+          style={{
+            backgroundColor: "var(--background)",
+            backgroundImage: "radial-gradient(var(--border) 1px, transparent 1px)",
+            backgroundSize: "20px 20px",
+            backgroundPosition: "0 0",
+            backgroundAttachment: "local",
+          }}
+        >
           <ContextMenu5Wrapper>
             <div
               ref={canvasRef}
-              className="relative min-h-[840px] min-w-[1700px]"
+              className="relative"
               onClick={() => {
                 if (connectingSourceId) clearWireDraft()
               }}
               style={{
-                backgroundColor: "var(--background)",
-                backgroundImage:
-                  "radial-gradient(var(--border) 1px, transparent 1px), linear-gradient(to right, color-mix(in oklab, var(--border) 40%, transparent) 1px, transparent 1px)",
-                backgroundSize: "20px 20px, 106px 100%",
-                backgroundPosition: "0 0, 0 0",
+                width: `${WORKSPACE_WIDTH}px`,
+                height: `${WORKSPACE_HEIGHT}px`,
+                zoom,
               }}
             >
             <svg
@@ -703,6 +1017,7 @@ export default function WorkflowProjectPage() {
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
                     event.stopPropagation()
+                    markProjectChanged()
                     setEdges((previous) =>
                       previous.filter((edge) => edge.id !== hoveredEdge.id)
                     )
@@ -869,57 +1184,13 @@ export default function WorkflowProjectPage() {
                   </div>
 
                   <div className="mt-1">
-                    {editingDescriptionNodeId === node.id ? (
-                      <div className="flex items-start gap-1">
-                        <Textarea
-                          value={descriptionDraft}
-                          onChange={(event) => setDescriptionDraft(event.target.value)}
-                          onPointerDown={(event) => event.stopPropagation()}
-                          onClick={(event) => event.stopPropagation()}
-                          onBlur={() => commitDescriptionEdit(node.id)}
-                          className="min-h-20 resize-none rounded-lg border-input bg-transparent px-2.5 py-2 text-sm leading-relaxed text-muted-foreground focus-visible:border-ring"
-                          autoFocus
-                        />
-                        <button
-                          type="button"
-                          onPointerDown={(event) => event.stopPropagation()}
-                          onMouseDown={(event) => {
-                            event.preventDefault()
-                            event.stopPropagation()
-                          }}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            commitDescriptionEdit(node.id)
-                          }}
-                          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-input bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
-                          aria-label={`Save description for ${node.stepName}`}
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          startDescriptionEdit(node)
-                        }}
-                        className="w-full rounded-md border border-transparent px-1 py-1 text-left text-xs text-muted-foreground hover:border-border/60 hover:bg-muted/30"
-                      >
-                        {node.description || "Add a description..."}
-                      </button>
-                    )}
-                    <p className="mt-1 text-[11px] text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground">
                       {node.provider} • {node.owner}
                     </p>
                   </div>
 
                   <div className="mt-3 rounded-lg border border-border/80 bg-muted/40 p-3">
-                    <span className="inline-flex rounded-md border border-border bg-card px-2 py-0.5 text-xs font-medium text-foreground">
-                      PROMPT
-                    </span>
-                    <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-muted-foreground">
+                    <p className="line-clamp-4 text-sm leading-relaxed text-muted-foreground">
                       {node.prompt}
                     </p>
                   </div>
@@ -1023,187 +1294,10 @@ export default function WorkflowProjectPage() {
                 </button>
               </div>
             )}
-
-            {replaceOpen && selectedNode && (
-              <div
-                className="absolute z-20 w-[350px] rounded-3xl border border-border bg-popover p-3 shadow-xl"
-                style={{
-                  left: Math.min(selectedNode.x + 390, 1320),
-                  top: selectedNode.y + 10,
-                }}
-              >
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-2xl font-medium text-foreground">Replace</p>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 rounded-xl border border-border bg-muted/40 px-2 py-1 text-sm text-foreground"
-                  >
-                    <Bot className="h-4 w-4" />
-                    {selectedNode.provider}
-                  </button>
-                </div>
-
-                <div className="relative mb-3">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={appSearch}
-                    onChange={(event) => setAppSearch(event.target.value)}
-                    placeholder="Search Apps"
-                    className="h-10 rounded-xl border-border bg-muted/30 pl-9"
-                  />
-                </div>
-
-                <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
-                  <div>
-                    <p className="mb-1 text-sm text-muted-foreground">Favorites</p>
-                    <div className="space-y-1">
-                      {filteredFavorites.map((app) => (
-                        <button
-                          key={app}
-                          type="button"
-                          onClick={() => {
-                            const replacement = providerModelForApp(app)
-                            updateSelectedNode(replacement)
-                            setReplaceOpen(false)
-                          }}
-                          className="flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-left text-base text-foreground hover:bg-muted/60"
-                        >
-                          <span>{app}</span>
-                          {selectedNode.provider === app && (
-                            <Check className="h-4 w-4 text-emerald-600" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="mb-1 text-sm text-muted-foreground">All Apps</p>
-                    <div className="space-y-1">
-                      {filteredApps.map((app) => (
-                        <button
-                          key={app}
-                          type="button"
-                          onClick={() => {
-                            const replacement = providerModelForApp(app)
-                            updateSelectedNode(replacement)
-                            setReplaceOpen(false)
-                          }}
-                          className="flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-left text-base text-foreground hover:bg-muted/60"
-                        >
-                          <span>{app}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
             </div>
           </ContextMenu5Wrapper>
         </section>
 
-        <aside className="w-[390px] shrink-0 bg-background">
-          <div className="h-full overflow-auto">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-5 py-4">
-              <p className="text-4xl font-semibold tracking-tight text-foreground">
-                LLM Settings
-              </p>
-              <button
-                type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                onClick={() => setReplaceOpen(false)}
-                aria-label="Close side actions"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {selectedNode ? (
-              <div className="space-y-5 px-5 py-4">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2 text-left text-sm text-muted-foreground"
-                >
-                  <span>General Settings</span>
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-
-                <div className="space-y-2">
-                  <p className="text-2xl font-medium text-foreground">Provider</p>
-                  <button
-                    type="button"
-                    onClick={() => setReplaceOpen(true)}
-                    className="flex h-14 w-full items-center justify-between rounded-2xl border border-border bg-card px-4 text-lg text-foreground hover:bg-muted/40"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <Bot className="h-5 w-5 text-muted-foreground" />
-                      {selectedNode.provider}
-                    </span>
-                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                  </button>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-2xl font-medium text-foreground">Model</p>
-                  <div className="flex h-14 w-full items-center justify-between rounded-2xl border border-border bg-card px-4 text-lg text-foreground">
-                    <span className="inline-flex items-center gap-2">
-                      <Layers className="h-5 w-5 text-muted-foreground" />
-                      {selectedNode.model}
-                    </span>
-                    <span className="rounded-xl bg-primary/15 px-2 py-0.5 text-sm font-medium text-primary">
-                      Large Context
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-2xl font-medium text-foreground">Prompt</p>
-                  <Textarea
-                    value={selectedNode.prompt}
-                    onChange={(event) =>
-                      updateSelectedNode({ prompt: event.target.value })
-                    }
-                    className="min-h-[210px] rounded-2xl border-border bg-card p-4 text-lg leading-relaxed"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-2xl font-medium text-foreground">Instructions</p>
-                  <Textarea
-                    value={selectedNode.instructions}
-                    onChange={(event) =>
-                      updateSelectedNode({ instructions: event.target.value })
-                    }
-                    className="min-h-[120px] rounded-2xl border-border bg-card p-4 text-base"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <Button
-                    variant="outline"
-                    className="h-10 rounded-xl"
-                    onClick={() => {
-                      if (!selectedNode) return
-                      updateSelectedNode({
-                        prompt: buildNodes(project)[selectedNodeIndex]?.prompt ?? "",
-                        instructions:
-                          buildNodes(project)[selectedNodeIndex]?.instructions ?? "",
-                      })
-                    }}
-                  >
-                    Reset
-                  </Button>
-                  <Button className="h-10 rounded-xl">Save Node</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="px-5 py-6 text-sm text-muted-foreground">
-                Select a node to edit settings.
-              </div>
-            )}
-          </div>
-        </aside>
       </div>
 
       <Dialog open={filesDialogOpen} onOpenChange={setFilesDialogOpen}>
@@ -1232,6 +1326,30 @@ export default function WorkflowProjectPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={executionLogOpen} onOpenChange={setExecutionLogOpen}>
+        <DialogContent className="max-w-xl p-0">
+          <DialogHeader className="border-b border-border px-5 py-4">
+            <DialogTitle className="text-lg">Execution Log · {project.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 px-5 py-4">
+            <div className="rounded-lg border border-border bg-card px-3 py-2">
+              <p className="text-sm font-medium text-foreground">Latest run</p>
+              <p className="mt-1 text-xs text-muted-foreground">{lastExecutionLabel}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card px-3 py-2">
+              <p className="text-sm font-medium text-foreground">Project status</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {doneSteps}/{nodes.length} steps done · Publish state: {publishState}
+              </p>
+            </div>
+            <div className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
+              Full execution logs can be connected to your backend runner later.
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }
