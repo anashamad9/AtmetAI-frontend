@@ -46,14 +46,11 @@ import {
 import { cn } from "@/lib/utils"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  AiBrain01Icon,
-  AiIdeaIcon,
-  ApiIcon,
-  Database01Icon,
   WorkflowCircle01Icon,
 } from "@hugeicons/core-free-icons"
 import {
   IconBell,
+  IconBulb,
   IconBuilding,
   IconChartBar,
   IconChevronDown,
@@ -61,10 +58,13 @@ import {
   IconChevronRight,
   IconChevronUp,
   IconCreditCard,
+  IconDatabase,
   IconFileText,
   IconHelpCircle,
   IconLogout2,
+  IconMessageCircle2,
   IconMoon,
+  IconPlugConnected,
   IconSettings,
   IconShield,
   IconSun,
@@ -100,11 +100,36 @@ import {
 } from "lucide-react"
 
 const navItems = [
-  { title: "AI Core", url: "/ai-core", icon: AiBrain01Icon },
-  { title: "Workflow", url: "/workflow", icon: WorkflowCircle01Icon },
-  { title: "Skills", url: "/skills", icon: AiIdeaIcon },
-  { title: "My Data", url: "/my-data", icon: Database01Icon },
-  { title: "Integrations", url: "/integrations", icon: ApiIcon },
+  {
+    title: "AI Core",
+    url: "/ai-core",
+    iconType: "tabler" as const,
+    icon: IconMessageCircle2,
+  },
+  {
+    title: "Workflow",
+    url: "/workflow",
+    iconType: "hugeicons" as const,
+    icon: WorkflowCircle01Icon,
+  },
+  {
+    title: "Skills",
+    url: "/skills",
+    iconType: "tabler" as const,
+    icon: IconBulb,
+  },
+  {
+    title: "My Data",
+    url: "/my-data",
+    iconType: "tabler" as const,
+    icon: IconDatabase,
+  },
+  {
+    title: "Integrations",
+    url: "/integrations",
+    iconType: "tabler" as const,
+    icon: IconPlugConnected,
+  },
 ]
 const workspaces = ["Documentation", "Product", "Operations", "Marketing"]
 const settingsSections = [
@@ -3374,11 +3399,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       )
                     }
                   >
-                    <HugeiconsIcon
-                      icon={item.icon}
-                      strokeWidth={1.35}
-                      className="h-3.5 w-3.5 shrink-0 opacity-80"
-                    />
+                    {item.iconType === "hugeicons" ? (
+                      <HugeiconsIcon
+                        icon={item.icon}
+                        strokeWidth={1.35}
+                        className="h-3.5 w-3.5 shrink-0 opacity-80"
+                      />
+                    ) : (
+                      <item.icon className="h-3.5 w-3.5 shrink-0 opacity-80" stroke={1.5} />
+                    )}
                     <span>{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

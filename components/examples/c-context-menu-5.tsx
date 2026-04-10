@@ -6,13 +6,42 @@ import {
   ContextMenuContent,
   ContextMenuGroup,
   ContextMenuItem,
-  ContextMenuLabel,
   ContextMenuSeparator,
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 
-export function ContextMenu5Wrapper({ children }: { children: React.ReactNode }) {
+type ContextMenu5WrapperProps = {
+  children: React.ReactNode
+  canUndo: boolean
+  canRedo: boolean
+  hasSelectedNode: boolean
+  canPaste: boolean
+  onNewNode: () => void
+  onEditNode: () => void
+  onUndo: () => void
+  onRedo: () => void
+  onCopy: () => void
+  onPaste: () => void
+  onDuplicate: () => void
+  onDelete: () => void
+}
+
+export function ContextMenu5Wrapper({
+  children,
+  canUndo,
+  canRedo,
+  hasSelectedNode,
+  canPaste,
+  onNewNode,
+  onEditNode,
+  onUndo,
+  onRedo,
+  onCopy,
+  onPaste,
+  onDuplicate,
+  onDelete,
+}: ContextMenu5WrapperProps) {
   return (
     <ContextMenu>
       <ContextMenuTrigger className="block h-full w-full">
@@ -20,50 +49,48 @@ export function ContextMenu5Wrapper({ children }: { children: React.ReactNode })
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuGroup>
-          <ContextMenuLabel>File</ContextMenuLabel>
-          <ContextMenuItem>
-            New File
+          <ContextMenuItem onClick={onNewNode}>
+            New Node
             <ContextMenuShortcut>⌘N</ContextMenuShortcut>
           </ContextMenuItem>
-          <ContextMenuItem>
-            Open File
-            <ContextMenuShortcut>⌘O</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuItem>
-            Save
-            <ContextMenuShortcut>⌘S</ContextMenuShortcut>
+          <ContextMenuItem onClick={onEditNode} disabled={!hasSelectedNode}>
+            Edit Node
+            <ContextMenuShortcut>⌘E</ContextMenuShortcut>
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuGroup>
-          <ContextMenuLabel>Edit</ContextMenuLabel>
-          <ContextMenuItem>
+          <ContextMenuItem onClick={onUndo} disabled={!canUndo}>
             Undo
             <ContextMenuShortcut>⌘Z</ContextMenuShortcut>
           </ContextMenuItem>
-          <ContextMenuItem>
+          <ContextMenuItem onClick={onRedo} disabled={!canRedo}>
             Redo
             <ContextMenuShortcut>⇧⌘Z</ContextMenuShortcut>
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuGroup>
-          <ContextMenuItem>
-            Cut
-            <ContextMenuShortcut>⌘X</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuItem>
+          <ContextMenuItem onClick={onCopy} disabled={!hasSelectedNode}>
             Copy
             <ContextMenuShortcut>⌘C</ContextMenuShortcut>
           </ContextMenuItem>
-          <ContextMenuItem>
+          <ContextMenuItem onClick={onPaste} disabled={!canPaste}>
             Paste
             <ContextMenuShortcut>⌘V</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem onClick={onDuplicate} disabled={!hasSelectedNode}>
+            Duplicate
+            <ContextMenuShortcut>⌘D</ContextMenuShortcut>
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuGroup>
-          <ContextMenuItem variant="destructive">
+          <ContextMenuItem
+            variant="destructive"
+            onClick={onDelete}
+            disabled={!hasSelectedNode}
+          >
             Delete
             <ContextMenuShortcut>⌫</ContextMenuShortcut>
           </ContextMenuItem>

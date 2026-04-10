@@ -11,7 +11,14 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from "react"
 import { useParams } from "next/navigation"
+import { Kbd } from "@/components/kbd"
 import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -33,7 +40,6 @@ import {
   type WorkflowStateEventDetail,
 } from "@/lib/workflow-events"
 import {
-  ArrowLeft,
   Check,
   Clock3,
   Files,
@@ -44,10 +50,13 @@ import {
   Plus,
   Trash2,
   X,
+  Zap,
+  ChevronDown,
 } from "lucide-react"
 
 type WorkflowNode = {
   id: string
+  nodeType: "Action" | "Trigger"
   stepName: string
   status: "Done" | "In review" | "Pending"
   owner: string
@@ -77,6 +86,12 @@ type EdgeGeometry = WorkflowEdge & {
   toY: number
   midX: number
   midY: number
+}
+
+type WorkflowSnapshot = {
+  nodes: WorkflowNode[]
+  edges: WorkflowEdge[]
+  selectedNodeId: string
 }
 
 const NODE_WIDTH = 320
@@ -115,6 +130,7 @@ function buildNodes(project: WorkflowProject): WorkflowNode[] {
 
   return project.steps.map((step, index) => ({
     id: `${project.id}-node-${index + 1}`,
+    nodeType: "Action",
     stepName: step.name,
     status: step.status,
     owner: step.owner,
@@ -156,9 +172,7 @@ function getRunScheduleIntervalMs(runSchedule: WorkflowRunSchedule) {
               : 60 * 24 * 30
     return Math.max(1, runSchedule.value) * multiplier * 60 * 1000
   }
-  if (runSchedule.frequency === "day") return 24 * 60 * 60 * 1000
-  if (runSchedule.frequency === "week") return 7 * 24 * 60 * 60 * 1000
-  return 30 * 24 * 60 * 60 * 1000
+  return null
 }
 
 export default function WorkflowProjectPage() {
@@ -182,6 +196,12 @@ export default function WorkflowProjectPage() {
   const [executionLogOpen, setExecutionLogOpen] = useState(false)
   const [editingTitleNodeId, setEditingTitleNodeId] = useState<string | null>(null)
   const [titleDraft, setTitleDraft] = useState("")
+  const [copiedNode, setCopiedNode] = useState<WorkflowNode | null>(null)
+  const [historyPast, setHistoryPast] = useState<WorkflowSnapshot[]>([])
+  const [historyFuture, setHistoryFuture] = useState<WorkflowSnapshot[]>([])
+  const [contextMenuPoint, setContextMenuPoint] = useState<{ x: number; y: number } | null>(
+    null
+  )
   const [zoom, setZoom] = useState(1)
   const [isSpacePressed, setIsSpacePressed] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
@@ -200,6 +220,11 @@ export default function WorkflowProjectPage() {
   const runTimerRef = useRef<number | null>(null)
   const publishTimerRef = useRef<number | null>(null)
   const autoRunIntervalRef = useRef<number | null>(null)
+  const autoRunTimeoutRef = useRef<number | null>(null)
+  const focusAnimationFrameRef = useRef<number | null>(null)
+  const nodesRef = useRef<WorkflowNode[]>([])
+  const edgesRef = useRef<WorkflowEdge[]>([])
+  const selectedNodeIdRef = useRef("")
   const panStateRef = useRef<{
     startClientX: number
     startClientY: number
@@ -211,6 +236,7 @@ export default function WorkflowProjectPage() {
     pointerOffsetX: number
     pointerOffsetY: number
   } | null>(null)
+  const pointerCanvasPointRef = useRef<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
     if (!project) return
@@ -230,6 +256,10 @@ export default function WorkflowProjectPage() {
     setExecutionLogOpen(false)
     setEditingTitleNodeId(null)
     setTitleDraft("")
+    setCopiedNode(null)
+    setHistoryPast([])
+    setHistoryFuture([])
+    setContextMenuPoint(null)
     setZoom(1)
     setIsSpacePressed(false)
     setIsPanning(false)
@@ -266,6 +296,10 @@ export default function WorkflowProjectPage() {
     () => nodes.find((node) => node.id === selectedNodeId),
     [nodes, selectedNodeId]
   )
+  const hasSelectedNode = Boolean(selectedNode)
+  const canPaste = Boolean(copiedNode)
+  const canUndo = historyPast.length > 0
+  const canRedo = historyFuture.length > 0
 
   const doneSteps = useMemo(
     () => nodes.filter((node) => node.status === "Done").length,
@@ -276,6 +310,81 @@ export default function WorkflowProjectPage() {
     () => new Map(nodes.map((node) => [node.id, node])),
     [nodes]
   )
+
+  useEffect(() => {
+    nodesRef.current = nodes
+  }, [nodes])
+
+  useEffect(() => {
+    edgesRef.current = edges
+  }, [edges])
+
+  useEffect(() => {
+    selectedNodeIdRef.current = selectedNodeId
+  }, [selectedNodeId])
+
+  const cloneSnapshot = useCallback(
+    (snapshot: WorkflowSnapshot): WorkflowSnapshot => ({
+      nodes: snapshot.nodes.map((node) => ({ ...node })),
+      edges: snapshot.edges.map((edge) => ({ ...edge })),
+      selectedNodeId: snapshot.selectedNodeId,
+    }),
+    []
+  )
+
+  const getCurrentSnapshot = useCallback(
+    (): WorkflowSnapshot => ({
+      nodes: nodesRef.current.map((node) => ({ ...node })),
+      edges: edgesRef.current.map((edge) => ({ ...edge })),
+      selectedNodeId: selectedNodeIdRef.current,
+    }),
+    []
+  )
+
+  const pushHistorySnapshot = useCallback(() => {
+    const snapshot = getCurrentSnapshot()
+    setHistoryPast((previous) => [...previous, snapshot])
+    setHistoryFuture([])
+  }, [getCurrentSnapshot])
+
+  const applySnapshot = useCallback((snapshot: WorkflowSnapshot) => {
+    const next = cloneSnapshot(snapshot)
+    setNodes(next.nodes)
+    setEdges(next.edges)
+    setSelectedNodeId(next.selectedNodeId)
+    setConnectingSourceId(null)
+    setWireCursor(null)
+    setHoveredEdgeId(null)
+    setEditingTitleNodeId(null)
+    setTitleDraft("")
+  }, [cloneSnapshot])
+
+  const markProjectChanged = useCallback(() => {
+    setHasUnpublishedChanges(true)
+    setPublishState("Draft")
+  }, [])
+
+  const handleUndo = useCallback(() => {
+    setHistoryPast((previous) => {
+      if (previous.length === 0) return previous
+      const previousSnapshot = previous[previous.length - 1]
+      setHistoryFuture((future) => [getCurrentSnapshot(), ...future])
+      applySnapshot(previousSnapshot)
+      markProjectChanged()
+      return previous.slice(0, -1)
+    })
+  }, [applySnapshot, getCurrentSnapshot, markProjectChanged])
+
+  const handleRedo = useCallback(() => {
+    setHistoryFuture((future) => {
+      if (future.length === 0) return future
+      const [nextSnapshot, ...rest] = future
+      setHistoryPast((previous) => [...previous, getCurrentSnapshot()])
+      applySnapshot(nextSnapshot)
+      markProjectChanged()
+      return rest
+    })
+  }, [applySnapshot, getCurrentSnapshot, markProjectChanged])
 
   const edgeGeometries = useMemo<EdgeGeometry[]>(() => {
     return edges
@@ -328,11 +437,6 @@ export default function WorkflowProjectPage() {
     return `M ${fromX} ${fromY} C ${fromX + curve * curveDirection} ${fromY}, ${toX - curve * curveDirection} ${toY}, ${toX} ${toY}`
   }, [connectingSourceId, nodeMap, wireCursor])
 
-  const markProjectChanged = useCallback(() => {
-    setHasUnpublishedChanges(true)
-    setPublishState("Draft")
-  }, [])
-
   const handleRunWorkflow = useCallback(() => {
     if (isRunningWorkflow) return
     if (runTimerRef.current !== null) {
@@ -382,6 +486,7 @@ export default function WorkflowProjectPage() {
 
   const toggleConnection = (sourceId: string, targetId: string) => {
     if (!sourceId || !targetId || sourceId === targetId) return
+    pushHistorySnapshot()
     markProjectChanged()
     setEdges((previous) => {
       const existing = previous.find(
@@ -429,6 +534,7 @@ export default function WorkflowProjectPage() {
       setTitleDraft("")
       return
     }
+    pushHistorySnapshot()
     markProjectChanged()
     setNodes((previous) =>
       previous.map((node) =>
@@ -448,6 +554,7 @@ export default function WorkflowProjectPage() {
       .slice(2, 6)}`
     const newNode: WorkflowNode = {
       id: newId,
+      nodeType: source.nodeType,
       stepName: "New Step",
       status: "Pending",
       owner: "You",
@@ -463,6 +570,7 @@ export default function WorkflowProjectPage() {
       y: source.y,
     }
 
+    pushHistorySnapshot()
     markProjectChanged()
     setNodes((previous) => {
       const sourceIndex = previous.findIndex((node) => node.id === sourceNodeId)
@@ -484,6 +592,7 @@ export default function WorkflowProjectPage() {
   }
 
   const deleteNode = (nodeId: string) => {
+    pushHistorySnapshot()
     const remainingNodes = nodes.filter((node) => node.id !== nodeId)
     markProjectChanged()
     setNodes(remainingNodes)
@@ -500,6 +609,190 @@ export default function WorkflowProjectPage() {
     setHoveredEdgeId(null)
     setFilesDialogOpen(false)
     setEditingTitleNodeId((previous) => (previous === nodeId ? null : previous))
+  }
+
+  const addNodeAtPosition = (
+    x: number,
+    y: number,
+    options?: { template?: WorkflowNode; preserveStepName?: boolean }
+  ) => {
+    const projectKey = project?.id ?? "workflow"
+    const newId = `${projectKey}-node-${Date.now().toString(36)}-${Math.random()
+      .toString(36)
+      .slice(2, 6)}`
+    const template = options?.template ?? copiedNode
+    const preserveStepName = options?.preserveStepName ?? false
+    const newNode: WorkflowNode = template
+      ? {
+          ...template,
+          id: newId,
+          stepName: preserveStepName ? template.stepName : `${template.stepName} Copy`,
+          x,
+          y,
+        }
+      : {
+          id: newId,
+          nodeType: "Action",
+          stepName: "New Step",
+          status: "Pending",
+          owner: "You",
+          provider: "ChatGPT",
+          model: "GPT-5.2",
+          prompt: "Define what this node should do.",
+          tokenCount: 0,
+          lastRan: "Never",
+          usedApps: ["ChatGPT"],
+          usedSkills: ["Action Planner"],
+          files: [],
+          x,
+          y,
+        }
+
+    pushHistorySnapshot()
+    markProjectChanged()
+    setNodes((previous) => [...previous, newNode])
+    setSelectedNodeId(newId)
+    setEditingTitleNodeId(newId)
+    setTitleDraft(newNode.stepName)
+    clearWireDraft()
+  }
+
+  const addNodeFromContextMenu = () => {
+    if (selectedNodeId && nodeMap.has(selectedNodeId)) {
+      addNodeNextTo(selectedNodeId)
+      return
+    }
+
+    if (contextMenuPoint) {
+      addNodeAtPosition(
+        Math.max(16, Math.round(contextMenuPoint.x - NODE_WIDTH / 2)),
+        Math.max(16, Math.round(contextMenuPoint.y - 120))
+      )
+      return
+    }
+
+    const viewport = viewportRef.current
+    if (!viewport) {
+      addNodeAtPosition(WORKSPACE_OFFSET_X, WORKSPACE_OFFSET_Y)
+      return
+    }
+
+    addNodeAtPosition(
+      Math.max(16, Math.round((viewport.scrollLeft + viewport.clientWidth / 2) / zoom - NODE_WIDTH / 2)),
+      Math.max(16, Math.round((viewport.scrollTop + viewport.clientHeight / 2) / zoom - 120))
+    )
+  }
+
+  const editSelectedNode = () => {
+    const selected = nodeMap.get(selectedNodeId)
+    if (!selected) return
+    startTitleEdit(selected)
+  }
+
+  const copySelectedNode = () => {
+    const selected = nodeMap.get(selectedNodeId)
+    if (!selected) return
+    setCopiedNode({ ...selected })
+  }
+
+  const duplicateSelectedNode = () => {
+    const selected = nodeMap.get(selectedNodeId)
+    if (!selected) return
+    setCopiedNode({ ...selected })
+    addNodeAtPosition(selected.x + 48, selected.y + 48, {
+      template: selected,
+      preserveStepName: true,
+    })
+  }
+
+  const pasteCopiedNode = useCallback(() => {
+    if (!copiedNode) return
+
+    const pointerPoint = pointerCanvasPointRef.current
+    if (pointerPoint) {
+      addNodeAtPosition(
+        Math.max(16, Math.round(pointerPoint.x - NODE_WIDTH / 2)),
+        Math.max(16, Math.round(pointerPoint.y - 120)),
+        { template: copiedNode, preserveStepName: true }
+      )
+      return
+    }
+
+    if (contextMenuPoint) {
+      addNodeAtPosition(
+        Math.max(16, Math.round(contextMenuPoint.x - NODE_WIDTH / 2)),
+        Math.max(16, Math.round(contextMenuPoint.y - 120)),
+        { template: copiedNode, preserveStepName: true }
+      )
+      return
+    }
+
+    const viewport = viewportRef.current
+    if (!viewport) return
+    addNodeAtPosition(
+      Math.max(16, Math.round((viewport.scrollLeft + viewport.clientWidth / 2) / zoom - NODE_WIDTH / 2)),
+      Math.max(16, Math.round((viewport.scrollTop + viewport.clientHeight / 2) / zoom - 120)),
+      { template: copiedNode, preserveStepName: true }
+    )
+  }, [addNodeAtPosition, contextMenuPoint, copiedNode, zoom])
+
+  const focusFirstNodeWithAnimation = useCallback(() => {
+    const firstNode = nodesRef.current[0]
+    const viewport = viewportRef.current
+    if (!firstNode || !viewport) return
+
+    if (focusAnimationFrameRef.current !== null) {
+      window.cancelAnimationFrame(focusAnimationFrameRef.current)
+      focusAnimationFrameRef.current = null
+    }
+
+    const startZoom = zoom
+    const targetZoom = 1
+    const startLeft = viewport.scrollLeft
+    const startTop = viewport.scrollTop
+    const targetLeft = Math.max(0, firstNode.x + NODE_WIDTH / 2 - viewport.clientWidth / 2)
+    const targetTop = Math.max(0, firstNode.y + 220 - viewport.clientHeight / 2)
+    const startTime = performance.now()
+    const durationMs = 260
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+
+    const animate = (now: number) => {
+      const progress = Math.min(1, (now - startTime) / durationMs)
+      const eased = easeOutCubic(progress)
+
+      setZoom(startZoom + (targetZoom - startZoom) * eased)
+      viewport.scrollLeft = startLeft + (targetLeft - startLeft) * eased
+      viewport.scrollTop = startTop + (targetTop - startTop) * eased
+
+      if (progress < 1) {
+        focusAnimationFrameRef.current = window.requestAnimationFrame(animate)
+        return
+      }
+
+      setZoom(targetZoom)
+      viewport.scrollLeft = targetLeft
+      viewport.scrollTop = targetTop
+      focusAnimationFrameRef.current = null
+    }
+
+    focusAnimationFrameRef.current = window.requestAnimationFrame(animate)
+  }, [zoom])
+
+  const deleteSelectedNode = () => {
+    if (!selectedNodeId || !nodeMap.has(selectedNodeId)) return
+    deleteNode(selectedNodeId)
+  }
+
+  const setNodeType = (nodeId: string, nodeType: "Action" | "Trigger") => {
+    const existingNode = nodeMap.get(nodeId)
+    if (!existingNode || existingNode.nodeType === nodeType) return
+    pushHistorySnapshot()
+    markProjectChanged()
+    setNodes((previous) =>
+      previous.map((node) =>
+        node.id === nodeId ? { ...node, nodeType } : node
+      )
+    )
   }
 
   const showEdgeDelete = (edgeId: string) => {
@@ -582,6 +875,9 @@ export default function WorkflowProjectPage() {
         16,
         Math.round(event.clientY - canvasRect.top - dragState.pointerOffsetY)
       )
+      if (!movedNode) {
+        pushHistorySnapshot()
+      }
       movedNode = true
 
       setNodes((previous) =>
@@ -608,7 +904,7 @@ export default function WorkflowProjectPage() {
       window.removeEventListener("pointerup", finishDrag)
       window.removeEventListener("pointercancel", finishDrag)
     }
-  }, [draggingNodeId, markProjectChanged])
+  }, [draggingNodeId, markProjectChanged, pushHistorySnapshot])
 
   useEffect(() => {
     const isEditableTarget = (target: EventTarget | null) => {
@@ -652,6 +948,108 @@ export default function WorkflowProjectPage() {
       window.removeEventListener("blur", onWindowBlur)
     }
   }, [])
+
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false
+      const tag = target.tagName
+      return (
+        target.isContentEditable ||
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT"
+      )
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return
+
+      const hasPrimaryModifier = event.metaKey || event.ctrlKey
+      const key = event.key.toLowerCase()
+
+      if (hasPrimaryModifier && key === "z" && event.shiftKey) {
+        if (!canRedo) return
+        event.preventDefault()
+        handleRedo()
+        return
+      }
+
+      if ((event.ctrlKey && key === "y") || (hasPrimaryModifier && key === "y")) {
+        if (!canRedo) return
+        event.preventDefault()
+        handleRedo()
+        return
+      }
+
+      if (hasPrimaryModifier && key === "z") {
+        if (!canUndo) return
+        event.preventDefault()
+        handleUndo()
+        return
+      }
+
+      if (hasPrimaryModifier && key === "n") {
+        event.preventDefault()
+        addNodeFromContextMenu()
+        return
+      }
+
+      if (hasPrimaryModifier && key === "0") {
+        event.preventDefault()
+        focusFirstNodeWithAnimation()
+        return
+      }
+
+      if (hasPrimaryModifier && key === "v") {
+        if (!canPaste) return
+        event.preventDefault()
+        pasteCopiedNode()
+        return
+      }
+
+      if (!hasSelectedNode) return
+
+      if (hasPrimaryModifier && key === "e") {
+        event.preventDefault()
+        editSelectedNode()
+        return
+      }
+
+      if (hasPrimaryModifier && key === "c") {
+        event.preventDefault()
+        copySelectedNode()
+        return
+      }
+
+      if (hasPrimaryModifier && key === "d") {
+        event.preventDefault()
+        duplicateSelectedNode()
+        return
+      }
+
+      if (key === "backspace" || key === "delete") {
+        event.preventDefault()
+        deleteSelectedNode()
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [
+    addNodeFromContextMenu,
+    canPaste,
+    canRedo,
+    canUndo,
+    copySelectedNode,
+    deleteSelectedNode,
+    duplicateSelectedNode,
+    editSelectedNode,
+    focusFirstNodeWithAnimation,
+    handleRedo,
+    handleUndo,
+    hasSelectedNode,
+    pasteCopiedNode,
+  ])
 
   useEffect(() => {
     if (!isPanning) return
@@ -757,6 +1155,12 @@ export default function WorkflowProjectPage() {
       if (autoRunIntervalRef.current !== null) {
         window.clearInterval(autoRunIntervalRef.current)
       }
+      if (autoRunTimeoutRef.current !== null) {
+        window.clearTimeout(autoRunTimeoutRef.current)
+      }
+      if (focusAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(focusAnimationFrameRef.current)
+      }
     }
   }, [])
 
@@ -833,6 +1237,35 @@ export default function WorkflowProjectPage() {
       window.clearInterval(autoRunIntervalRef.current)
       autoRunIntervalRef.current = null
     }
+    if (autoRunTimeoutRef.current !== null) {
+      window.clearTimeout(autoRunTimeoutRef.current)
+      autoRunTimeoutRef.current = null
+    }
+
+    if (runSchedule.mode === "at") {
+      const runAtMs = new Date(runSchedule.atISO).getTime()
+      if (!Number.isFinite(runAtMs)) return
+      const delayMs = runAtMs - Date.now()
+
+      if (delayMs <= 0) {
+        handleRunWorkflow()
+        setRunSchedule({ mode: "off" })
+        return
+      }
+
+      autoRunTimeoutRef.current = window.setTimeout(() => {
+        handleRunWorkflow()
+        setRunSchedule({ mode: "off" })
+      }, delayMs)
+
+      return () => {
+        if (autoRunTimeoutRef.current !== null) {
+          window.clearTimeout(autoRunTimeoutRef.current)
+          autoRunTimeoutRef.current = null
+        }
+      }
+    }
+
     const intervalMs = getRunScheduleIntervalMs(runSchedule)
     if (!intervalMs) return
 
@@ -890,46 +1323,6 @@ export default function WorkflowProjectPage() {
 
   return (
     <div className="flex h-[calc(100dvh-2.5rem)] w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
-      <section className="sticky top-0 z-30 flex h-10 min-h-10 max-h-10 shrink-0 items-center justify-between border-b border-border bg-background px-3">
-        <div className="flex h-full min-w-0 items-center gap-2">
-          <Link
-            href="/workflow"
-            className="inline-flex h-6 items-center gap-1 rounded-md border border-border px-2 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back
-          </Link>
-          <div className="min-w-0">
-            <p className="truncate text-sm leading-none font-semibold text-foreground">
-              {project.title}
-              <span className="ml-2 text-[11px] leading-none font-normal text-muted-foreground">
-                {project.tags.join(" • ")}
-              </span>
-            </p>
-          </div>
-        </div>
-
-        <div className="flex h-full items-center gap-1.5">
-          <span className="inline-flex h-6 items-center rounded-md border border-border px-2 text-[11px] text-muted-foreground">
-            {doneSteps}/{nodes.length} steps done
-          </span>
-          <span className="inline-flex h-6 items-center rounded-md border border-border px-2 text-[11px] text-muted-foreground">
-            Workspace: Atmet AI
-          </span>
-          {connectingSourceId && (
-            <button
-              type="button"
-              onClick={clearWireDraft}
-              className="inline-flex h-6 items-center rounded-md border border-primary/40 bg-primary/10 px-2 text-[11px] text-primary"
-            >
-              Connecting from{" "}
-              {nodeMap.get(connectingSourceId)?.stepName ?? "node"} · Click target box ·
-              Cancel
-            </button>
-          )}
-        </div>
-      </section>
-
       <div className="min-h-0 min-w-0 flex flex-1 overflow-hidden">
         <section
           ref={viewportRef}
@@ -951,12 +1344,43 @@ export default function WorkflowProjectPage() {
             backgroundAttachment: "local",
           }}
         >
-          <ContextMenu5Wrapper>
+          <ContextMenu5Wrapper
+            canUndo={canUndo}
+            canRedo={canRedo}
+            hasSelectedNode={hasSelectedNode}
+            canPaste={canPaste}
+            onNewNode={addNodeFromContextMenu}
+            onEditNode={editSelectedNode}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onCopy={copySelectedNode}
+            onPaste={pasteCopiedNode}
+            onDuplicate={duplicateSelectedNode}
+            onDelete={deleteSelectedNode}
+          >
             <div
               ref={canvasRef}
               className="relative"
+              onContextMenu={(event) => {
+                const point = getCanvasPoint(event.clientX, event.clientY)
+                if (point) setContextMenuPoint(point)
+                const target = event.target as HTMLElement | null
+                const clickedInsideNode = Boolean(
+                  target?.closest("[data-workflow-node-card='true']")
+                )
+                if (!clickedInsideNode) {
+                  setSelectedNodeId("")
+                }
+              }}
               onClick={() => {
                 if (connectingSourceId) clearWireDraft()
+                setSelectedNodeId("")
+              }}
+              onPointerMove={(event) => {
+                const point = getCanvasPoint(event.clientX, event.clientY)
+                if (point) {
+                  pointerCanvasPointRef.current = point
+                }
               }}
               style={{
                 width: `${WORKSPACE_WIDTH}px`,
@@ -1017,6 +1441,7 @@ export default function WorkflowProjectPage() {
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
                     event.stopPropagation()
+                    pushHistorySnapshot()
                     markProjectChanged()
                     setEdges((previous) =>
                       previous.filter((edge) => edge.id !== hoveredEdge.id)
@@ -1043,6 +1468,12 @@ export default function WorkflowProjectPage() {
                   key={node.id}
                   role="button"
                   tabIndex={0}
+                  data-workflow-node-card="true"
+                  onContextMenu={(event) => {
+                    const point = getCanvasPoint(event.clientX, event.clientY)
+                    if (point) setContextMenuPoint(point)
+                    setSelectedNodeId(node.id)
+                  }}
                   onPointerDown={(event) => handleNodePointerDown(node.id, event)}
                   onClick={(event) => {
                     event.stopPropagation()
@@ -1114,10 +1545,54 @@ export default function WorkflowProjectPage() {
                     <span className="h-2 w-2 rounded-full bg-current" />
                   </button>
 
-                  <span className="absolute -top-7 left-0 inline-flex items-center gap-1 rounded-full bg-primary/12 px-2.5 py-1 text-xs font-medium text-primary">
-                    <PlayCircle className="h-3.5 w-3.5 fill-primary/30" />
-                    Action
-                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <button
+                          type="button"
+                          onPointerDown={(event) => event.stopPropagation()}
+                          onClick={(event) => event.stopPropagation()}
+                          className={cn(
+                            "absolute -top-7 left-0 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors",
+                            node.nodeType === "Action"
+                              ? "bg-blue-500/15 text-blue-700 hover:bg-blue-500/25 dark:text-blue-300"
+                              : "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 dark:text-emerald-300"
+                          )}
+                          aria-label={`Node type for ${node.stepName}`}
+                        />
+                      }
+                    >
+                      {node.nodeType === "Action" ? (
+                        <PlayCircle className="h-3.5 w-3.5 fill-current/25" />
+                      ) : (
+                        <Zap className="h-3.5 w-3.5" />
+                      )}
+                      {node.nodeType}
+                      <ChevronDown className="h-3 w-3" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-36">
+                      <DropdownMenuItem
+                        onClick={() => setNodeType(node.id, "Action")}
+                        className="justify-between"
+                      >
+                        <span className="inline-flex items-center gap-1.5 text-blue-700 dark:text-blue-300">
+                          <PlayCircle className="h-3.5 w-3.5 fill-current/25" />
+                          Action
+                        </span>
+                        {node.nodeType === "Action" && <Check className="h-3.5 w-3.5" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setNodeType(node.id, "Trigger")}
+                        className="justify-between"
+                      >
+                        <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
+                          <Zap className="h-3.5 w-3.5" />
+                          Trigger
+                        </span>
+                        {node.nodeType === "Trigger" && <Check className="h-3.5 w-3.5" />}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -1183,71 +1658,75 @@ export default function WorkflowProjectPage() {
                     <MoreVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </div>
 
-                  <div className="mt-1">
-                    <p className="text-[11px] text-muted-foreground">
-                      {node.provider} • {node.owner}
-                    </p>
-                  </div>
-
                   <div className="mt-3 rounded-lg border border-border/80 bg-muted/40 p-3">
                     <p className="line-clamp-4 text-sm leading-relaxed text-muted-foreground">
                       {node.prompt}
                     </p>
                   </div>
 
-                  <div className="mt-3 flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 rounded-xl border border-border bg-card px-2 py-1 text-xs text-foreground">
-                      <Layers className="h-3.5 w-3.5 text-muted-foreground" />
-                      {node.model}
-                    </span>
-                    <span className="inline-flex rounded-lg border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">
-                      {node.tokenCount} Tokens
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">
-                      <Clock3 className="h-3.5 w-3.5" />
-                      {node.lastRan}
-                    </span>
-                  </div>
+                  {node.nodeType === "Action" && (
+                    <>
+                      <div className="mt-1">
+                        <p className="text-[11px] text-muted-foreground">
+                          {node.provider} • {node.owner}
+                        </p>
+                      </div>
 
-                  <div className="mt-3">
-                    <p className="mb-1 text-[11px] font-medium text-muted-foreground">
-                      Used Apps
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {node.usedApps.map((app) => (
-                        <span
-                          key={app}
-                          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] text-foreground"
-                        >
-                          <span
-                            className={cn(
-                              "inline-flex h-4 w-4 items-center justify-center rounded-[4px] text-[9px] font-semibold",
-                              appLogoTone[app] ?? "bg-primary text-primary-foreground"
-                            )}
-                          >
-                            {getAppGlyph(app)}
-                          </span>
-                          {app}
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-xl border border-border bg-card px-2 py-1 text-xs text-foreground">
+                          <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                          {node.model}
                         </span>
-                      ))}
-                    </div>
-                  </div>
+                        <span className="inline-flex rounded-lg border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">
+                          {node.tokenCount} Tokens
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">
+                          <Clock3 className="h-3.5 w-3.5" />
+                          {node.lastRan}
+                        </span>
+                      </div>
 
-                  <div className="mt-2">
-                    <p className="mb-1 text-[11px] font-medium text-muted-foreground">
-                      Used Skills
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {node.usedSkills.map((skill) => (
-                        <span
-                          key={skill}
-                          className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] text-muted-foreground"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                      <div className="mt-3">
+                        <p className="mb-1 text-[11px] font-medium text-muted-foreground">
+                          Used Apps
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {node.usedApps.map((app) => (
+                            <span
+                              key={app}
+                              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] text-foreground"
+                            >
+                              <span
+                                className={cn(
+                                  "inline-flex h-4 w-4 items-center justify-center rounded-[4px] text-[9px] font-semibold",
+                                  appLogoTone[app] ?? "bg-primary text-primary-foreground"
+                                )}
+                              >
+                                {getAppGlyph(app)}
+                              </span>
+                              {app}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mt-2">
+                        <p className="mb-1 text-[11px] font-medium text-muted-foreground">
+                          Used Skills
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {node.usedSkills.map((skill) => (
+                            <span
+                              key={skill}
+                              className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )
             })}
@@ -1296,6 +1775,24 @@ export default function WorkflowProjectPage() {
             )}
             </div>
           </ContextMenu5Wrapper>
+          <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[70] flex justify-center px-4">
+            <div className="inline-flex items-center gap-4 rounded-xl border border-border bg-card/95 px-4 py-2 text-xs text-foreground shadow-lg backdrop-blur">
+              <div className="inline-flex items-center gap-1.5">
+                <span>Zoom</span>
+                <Kbd keys={["cmd"]} />
+                <span>/</span>
+                <Kbd keys={["ctrl"]} />
+                <span>+</span>
+                <span>Scroll</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5">
+                <span>Pan</span>
+                <Kbd keys={["space"]} listenToKeyboard />
+                <span>+</span>
+                <span>Drag</span>
+              </div>
+            </div>
+          </div>
         </section>
 
       </div>

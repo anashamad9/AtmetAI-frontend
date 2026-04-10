@@ -12,7 +12,7 @@ export type WorkflowRunSchedule =
       value: number
       unit: "minutes" | "hours" | "days" | "weeks" | "months"
     }
-  | { mode: "at"; frequency: "day" | "week" | "month" }
+  | { mode: "at"; atISO: string }
 
 export type WorkflowControlEventDetail = {
   projectId: string

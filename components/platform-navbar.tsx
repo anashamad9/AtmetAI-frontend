@@ -10,10 +10,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Breadcrumb,
   BreadcrumbItem,
+  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
+  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +47,7 @@ import {
   type WorkflowStateEventDetail,
 } from "@/lib/workflow-events"
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   Clock3,
@@ -58,20 +62,10 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { SidebarLeftIcon } from "@hugeicons/core-free-icons"
 
 const OPEN_MANAGE_CHAT_USERS_EVENT = "open-manage-chat-users"
-const AI_CORE_CHATS_STORAGE_KEY = "ai-core-chats"
-const AI_CORE_CHATS_UPDATED_EVENT = "ai-core-chats-updated"
 const WORKFLOW_PROJECT_PARTICIPANTS_STORAGE_KEY = "workflow-project-participants"
 
 type WorkspaceUser = ChatParticipant & {
   email: string
-}
-
-type StoredChatItem = {
-  id: string
-  title: string
-  updatedAt: number
-  pinned?: boolean
-  path?: string
 }
 
 type WorkflowControlState = Omit<WorkflowStateEventDetail, "projectId">
@@ -143,9 +137,14 @@ function getAutoRunLabel(runSchedule: WorkflowRunSchedule) {
               : "months"
     return `Every ${runSchedule.value} ${unitLabel}`
   }
-  if (runSchedule.frequency === "day") return "At every day"
-  if (runSchedule.frequency === "week") return "At every week"
-  return "At every month"
+  const runAtDate = new Date(runSchedule.atISO)
+  if (!Number.isFinite(runAtDate.getTime())) return "At (invalid date)"
+  return `At ${runAtDate.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })}`
 }
 
 export function PlatformNavbar() {
@@ -239,8 +238,7 @@ export function PlatformNavbar() {
     () => new Set(activeParticipants.map((participant) => participant.name)),
     [activeParticipants]
   )
-  const shouldShowParticipantsTrigger =
-    isWorkflowProject || (isAiCore && aiCoreParticipants.length > 1)
+  const shouldShowParticipantsTrigger = isWorkflowProject || isAiCore
   const [workflowControlStateByProject, setWorkflowControlStateByProject] = useState<
     Record<string, WorkflowControlState>
   >({})
@@ -254,6 +252,50 @@ export function PlatformNavbar() {
         activeWorkflowControlState.publishState === "Draft"
       ? "Publish"
       : "Published"
+  const [everyIntervalValue, setEveryIntervalValue] = useState("1")
+  const [atDateValue, setAtDateValue] = useState<Date>(new Date())
+  const [atTimeValue, setAtTimeValue] = useState("09:00")
+
+  useEffect(() => {
+    if (activeWorkflowControlState.runSchedule.mode !== "every") return
+    setEveryIntervalValue(String(activeWorkflowControlState.runSchedule.value))
+  }, [activeWorkflowControlState.runSchedule])
+
+  useEffect(() => {
+    if (activeWorkflowControlState.runSchedule.mode !== "at") return
+    const parsedDate = new Date(activeWorkflowControlState.runSchedule.atISO)
+    if (!Number.isFinite(parsedDate.getTime())) return
+    setAtDateValue(parsedDate)
+    setAtTimeValue(
+      `${String(parsedDate.getHours()).padStart(2, "0")}:${String(
+        parsedDate.getMinutes()
+      ).padStart(2, "0")}`
+    )
+  }, [
+    activeWorkflowControlState.runSchedule.mode === "at"
+      ? activeWorkflowControlState.runSchedule.atISO
+      : null,
+  ])
+
+  const parsedEveryIntervalValue = useMemo(() => {
+    const parsed = Number.parseInt(everyIntervalValue, 10)
+    if (!Number.isFinite(parsed)) return 1
+    return Math.max(1, Math.min(9999, parsed))
+  }, [everyIntervalValue])
+
+  const atScheduleISO = useMemo(() => {
+    const [hoursRaw, minutesRaw] = atTimeValue.split(":")
+    const parsedHours = Number.parseInt(hoursRaw ?? "", 10)
+    const parsedMinutes = Number.parseInt(minutesRaw ?? "", 10)
+    const hours = Number.isFinite(parsedHours) ? Math.max(0, Math.min(23, parsedHours)) : 0
+    const minutes = Number.isFinite(parsedMinutes)
+      ? Math.max(0, Math.min(59, parsedMinutes))
+      : 0
+
+    const nextRun = new Date(atDateValue)
+    nextRun.setHours(hours, minutes, 0, 0)
+    return nextRun.toISOString()
+  }, [atDateValue, atTimeValue])
 
   useEffect(() => {
     try {
@@ -454,43 +496,6 @@ export function PlatformNavbar() {
     })
   }, [isAiCore, isWorkflowProject, workflowProjectId, activeWorkflowProject])
 
-  const createNewChat = useCallback(() => {
-    const now = Date.now()
-    const id = `chat-${now}-${Math.random().toString(36).slice(2, 8)}`
-    const nextChat: StoredChatItem = {
-      id,
-      title: "New chat",
-      updatedAt: now,
-      pinned: false,
-      path: `/ai-core?chat=${id}`,
-    }
-
-    let currentChats: StoredChatItem[] = []
-    try {
-      const raw = window.localStorage.getItem(AI_CORE_CHATS_STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed)) {
-          currentChats = parsed.filter(
-            (item): item is StoredChatItem =>
-              item &&
-              typeof item === "object" &&
-              typeof item.id === "string" &&
-              typeof item.title === "string" &&
-              typeof item.updatedAt === "number"
-          )
-        }
-      }
-    } catch {
-      currentChats = []
-    }
-
-    const nextChats = [nextChat, ...currentChats]
-    window.localStorage.setItem(AI_CORE_CHATS_STORAGE_KEY, JSON.stringify(nextChats))
-    window.dispatchEvent(new CustomEvent(AI_CORE_CHATS_UPDATED_EVENT))
-    router.push(nextChat.path ?? "/ai-core")
-  }, [router])
-
   useEffect(() => {
     const handleOpenEvent = () => {
       if (!canManageUsersFromNavbar) return
@@ -545,9 +550,26 @@ export function PlatformNavbar() {
           )}
           <Breadcrumb>
             <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbPage>{getPageTitle(pathname)}</BreadcrumbPage>
-              </BreadcrumbItem>
+              {isWorkflowProject ? (
+                <>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink
+                      render={<button type="button" />}
+                      onClick={() => router.push("/workflow")}
+                    >
+                      Workflow
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{activeWorkflowProject?.title ?? "Project"}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </>
+              ) : (
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{getPageTitle(pathname)}</BreadcrumbPage>
+                </BreadcrumbItem>
+              )}
             </BreadcrumbList>
           </Breadcrumb>
         </div>
@@ -642,140 +664,148 @@ export function PlatformNavbar() {
                       <DropdownMenuSub>
                         <DropdownMenuSubTrigger>Every</DropdownMenuSubTrigger>
                         <DropdownMenuSubContent align="end" className="min-w-56">
-                          <DropdownMenuItem
-                            onClick={() =>
-                              requestWorkflowSetAutoRun({
-                                mode: "every",
-                                value: 5,
-                                unit: "minutes",
-                              })
+                          {(["minutes", "hours", "days", "weeks", "months"] as const).map(
+                            (unit) => {
+                              const isActive =
+                                activeWorkflowControlState.runSchedule.mode === "every" &&
+                                activeWorkflowControlState.runSchedule.unit === unit
+
+                              return (
+                                <DropdownMenuSub key={unit}>
+                                  <DropdownMenuSubTrigger
+                                    className="justify-between"
+                                  >
+                                    <span>{unit.charAt(0).toUpperCase() + unit.slice(1)}</span>
+                                    <span className="ms-auto text-xs text-muted-foreground">
+                                      {isActive ? "Active" : ""}
+                                    </span>
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent align="end" className="min-w-52">
+                                    <div
+                                      className="px-2 py-2"
+                                      onClick={(event) => event.stopPropagation()}
+                                      onPointerDown={(event) => event.stopPropagation()}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted-foreground">Every</span>
+                                        <Input
+                                          type="number"
+                                          min={1}
+                                          step={1}
+                                          value={everyIntervalValue}
+                                          onChange={(event) => {
+                                            const rawValue = event.target.value
+                                            if (rawValue === "") {
+                                              setEveryIntervalValue("")
+                                              return
+                                            }
+                                            const nextValue = Number.parseInt(rawValue, 10)
+                                            if (!Number.isFinite(nextValue)) return
+                                            setEveryIntervalValue(
+                                              String(Math.max(1, Math.min(9999, nextValue)))
+                                            )
+                                          }}
+                                          onKeyDown={(event) => {
+                                            event.stopPropagation()
+                                            if (event.key !== "Enter") return
+                                            event.preventDefault()
+                                            const nextValue =
+                                              everyIntervalValue.trim() === ""
+                                                ? 1
+                                                : parsedEveryIntervalValue
+                                            setEveryIntervalValue(String(nextValue))
+                                            requestWorkflowSetAutoRun({
+                                              mode: "every",
+                                              value: nextValue,
+                                              unit,
+                                            })
+                                          }}
+                                          className="h-8 w-20 text-xs"
+                                        />
+                                        <span className="text-xs text-muted-foreground">
+                                          {unit}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          aria-label={`Save ${unit} auto-run interval`}
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                                          onClick={() => {
+                                            const nextValue =
+                                              everyIntervalValue.trim() === ""
+                                                ? 1
+                                                : parsedEveryIntervalValue
+                                            setEveryIntervalValue(String(nextValue))
+                                            requestWorkflowSetAutoRun({
+                                              mode: "every",
+                                              value: nextValue,
+                                              unit,
+                                            })
+                                          }}
+                                        >
+                                          <Check className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              )
                             }
-                          >
-                            5 minutes
-                            <span className="ms-auto text-xs text-muted-foreground">
-                              {activeWorkflowControlState.runSchedule.mode === "every" &&
-                              activeWorkflowControlState.runSchedule.value === 5 &&
-                              activeWorkflowControlState.runSchedule.unit === "minutes"
-                                ? "Active"
-                                : ""}
-                            </span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              requestWorkflowSetAutoRun({
-                                mode: "every",
-                                value: 1,
-                                unit: "hours",
-                              })
-                            }
-                          >
-                            1 hour
-                            <span className="ms-auto text-xs text-muted-foreground">
-                              {activeWorkflowControlState.runSchedule.mode === "every" &&
-                              activeWorkflowControlState.runSchedule.value === 1 &&
-                              activeWorkflowControlState.runSchedule.unit === "hours"
-                                ? "Active"
-                                : ""}
-                            </span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              requestWorkflowSetAutoRun({
-                                mode: "every",
-                                value: 1,
-                                unit: "days",
-                              })
-                            }
-                          >
-                            1 day
-                            <span className="ms-auto text-xs text-muted-foreground">
-                              {activeWorkflowControlState.runSchedule.mode === "every" &&
-                              activeWorkflowControlState.runSchedule.value === 1 &&
-                              activeWorkflowControlState.runSchedule.unit === "days"
-                                ? "Active"
-                                : ""}
-                            </span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              requestWorkflowSetAutoRun({
-                                mode: "every",
-                                value: 1,
-                                unit: "weeks",
-                              })
-                            }
-                          >
-                            1 week
-                            <span className="ms-auto text-xs text-muted-foreground">
-                              {activeWorkflowControlState.runSchedule.mode === "every" &&
-                              activeWorkflowControlState.runSchedule.value === 1 &&
-                              activeWorkflowControlState.runSchedule.unit === "weeks"
-                                ? "Active"
-                                : ""}
-                            </span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              requestWorkflowSetAutoRun({
-                                mode: "every",
-                                value: 1,
-                                unit: "months",
-                              })
-                            }
-                          >
-                            1 month
-                            <span className="ms-auto text-xs text-muted-foreground">
-                              {activeWorkflowControlState.runSchedule.mode === "every" &&
-                              activeWorkflowControlState.runSchedule.value === 1 &&
-                              activeWorkflowControlState.runSchedule.unit === "months"
-                                ? "Active"
-                                : ""}
-                            </span>
-                          </DropdownMenuItem>
+                          )}
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
                       <DropdownMenuSub>
                         <DropdownMenuSubTrigger>At</DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent align="end" className="min-w-56">
-                          <DropdownMenuItem
-                            onClick={() =>
-                              requestWorkflowSetAutoRun({ mode: "at", frequency: "day" })
-                            }
+                        <DropdownMenuSubContent align="end" className="w-fit min-w-0 p-0">
+                          <div
+                            className="space-y-3 p-3"
+                            onClick={(event) => event.stopPropagation()}
+                            onPointerDown={(event) => event.stopPropagation()}
                           >
-                            Every day
-                            <span className="ms-auto text-xs text-muted-foreground">
-                              {activeWorkflowControlState.runSchedule.mode === "at" &&
-                              activeWorkflowControlState.runSchedule.frequency === "day"
+                            <div className="rounded-lg border border-border">
+                              <Calendar
+                                mode="single"
+                                selected={atDateValue}
+                                onSelect={(nextDate) => {
+                                  if (!nextDate) return
+                                  setAtDateValue(nextDate)
+                                }}
+                                disabled={(date) => {
+                                  const today = new Date()
+                                  today.setHours(0, 0, 0, 0)
+                                  return date < today
+                                }}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="time"
+                                step={60}
+                                value={atTimeValue}
+                                onChange={(event) => setAtTimeValue(event.target.value)}
+                                onPointerDown={(event) => event.stopPropagation()}
+                                onKeyDown={(event) => event.stopPropagation()}
+                                className="h-8 text-xs"
+                              />
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="h-8 px-2"
+                                onClick={() =>
+                                  requestWorkflowSetAutoRun({
+                                    mode: "at",
+                                    atISO: atScheduleISO,
+                                  })
+                                }
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                              {activeWorkflowControlState.runSchedule.mode === "at"
                                 ? "Active"
-                                : ""}
-                            </span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              requestWorkflowSetAutoRun({ mode: "at", frequency: "week" })
-                            }
-                          >
-                            Every week
-                            <span className="ms-auto text-xs text-muted-foreground">
-                              {activeWorkflowControlState.runSchedule.mode === "at" &&
-                              activeWorkflowControlState.runSchedule.frequency === "week"
-                                ? "Active"
-                                : ""}
-                            </span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              requestWorkflowSetAutoRun({ mode: "at", frequency: "month" })
-                            }
-                          >
-                            Every month
-                            <span className="ms-auto text-xs text-muted-foreground">
-                              {activeWorkflowControlState.runSchedule.mode === "at" &&
-                              activeWorkflowControlState.runSchedule.frequency === "month"
-                                ? "Active"
-                                : ""}
-                            </span>
-                          </DropdownMenuItem>
+                                : "Select date and time, then save"}
+                            </p>
+                          </div>
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
                     </DropdownMenuSubContent>
@@ -803,16 +833,6 @@ export function PlatformNavbar() {
               onOpenUserPicker={openUserPicker}
               manageUsersLabel={manageUsersLabel}
             />
-          )}
-          {isAiCore && (
-            <button
-              type="button"
-              onClick={createNewChat}
-              aria-label="Create new chat"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </button>
           )}
         </div>
       </header>
