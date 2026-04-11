@@ -43,7 +43,6 @@ import {
   Check,
   Clock3,
   Files,
-  Layers,
   MoreVertical,
   PenSquare,
   PlayCircle,
@@ -305,6 +304,100 @@ export default function WorkflowProjectPage() {
     () => nodes.filter((node) => node.status === "Done").length,
     [nodes]
   )
+  const inReviewSteps = useMemo(
+    () => nodes.filter((node) => node.status === "In review").length,
+    [nodes]
+  )
+  const pendingSteps = useMemo(
+    () => nodes.filter((node) => node.status === "Pending").length,
+    [nodes]
+  )
+  const completionPercent = useMemo(() => {
+    if (nodes.length === 0) return 0
+    return Math.round((doneSteps / nodes.length) * 100)
+  }, [doneSteps, nodes.length])
+  const totalTokenCount = useMemo(
+    () => nodes.reduce((sum, node) => sum + node.tokenCount, 0),
+    [nodes]
+  )
+  const uniqueAppsCount = useMemo(
+    () => new Set(nodes.flatMap((node) => node.usedApps)).size,
+    [nodes]
+  )
+  const uniqueSkillsCount = useMemo(
+    () => new Set(nodes.flatMap((node) => node.usedSkills)).size,
+    [nodes]
+  )
+  const totalFileCount = useMemo(
+    () => nodes.reduce((sum, node) => sum + node.files.length, 0),
+    [nodes]
+  )
+  const actionNodeCount = useMemo(
+    () => nodes.filter((node) => node.nodeType === "Action").length,
+    [nodes]
+  )
+  const triggerNodeCount = useMemo(
+    () => nodes.filter((node) => node.nodeType === "Trigger").length,
+    [nodes]
+  )
+  const orderedNodes = useMemo(
+    () => [...nodes].sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x)),
+    [nodes]
+  )
+  const runScheduleLabel = useMemo(() => {
+    if (runSchedule.mode === "off") return "Manual only"
+    if (runSchedule.mode === "every") {
+      return `Every ${runSchedule.value} ${runSchedule.unit}`
+    }
+    const runAt = new Date(runSchedule.atISO)
+    if (Number.isNaN(runAt.getTime())) return "One-time schedule set"
+    return `At ${runAt.toLocaleString()}`
+  }, [runSchedule])
+  const executionTimeline = useMemo(() => {
+    if (lastExecutionLabel === "Not run yet") {
+      return [
+        {
+          title: "No execution yet",
+          detail: "Run the workflow to generate a full event timeline.",
+        },
+        {
+          title: "Publish state",
+          detail: publishState === "Published" ? "Published and active" : "Draft",
+        },
+        {
+          title: "Scheduler",
+          detail: runScheduleLabel,
+        },
+      ]
+    }
+    return [
+      {
+        title: "Workflow started",
+        detail: `Latest run ${lastExecutionLabel}`,
+      },
+      {
+        title: "Node processing",
+        detail: `${doneSteps} done • ${inReviewSteps} in review • ${pendingSteps} pending`,
+      },
+      {
+        title: "Execution snapshot",
+        detail: `${totalTokenCount.toLocaleString()} tokens across ${nodes.length} nodes`,
+      },
+      {
+        title: "Publish state",
+        detail: publishState === "Published" ? "Published and active" : "Draft",
+      },
+    ]
+  }, [
+    doneSteps,
+    inReviewSteps,
+    lastExecutionLabel,
+    nodes.length,
+    pendingSteps,
+    publishState,
+    runScheduleLabel,
+    totalTokenCount,
+  ])
 
   const nodeMap = useMemo(
     () => new Map(nodes.map((node) => [node.id, node])),
@@ -1421,8 +1514,8 @@ export default function WorkflowProjectPage() {
                 <path
                   d={draftWirePath}
                   fill="none"
-                  style={{ stroke: "var(--primary)" }}
-                  strokeOpacity={0.7}
+                  style={{ stroke: "var(--muted-foreground)" }}
+                  strokeOpacity={0.55}
                   strokeLinecap="round"
                   strokeWidth={2}
                   strokeDasharray="6 6"
@@ -1495,11 +1588,11 @@ export default function WorkflowProjectPage() {
                   className={cn(
                     "absolute w-80 select-none rounded-xl border bg-card p-4 text-left shadow-sm transition-colors touch-none",
                     isSelected
-                      ? "border-primary ring-1 ring-primary/35 shadow-md"
-                      : "border-border/80 hover:border-primary/35",
+                      ? "border-foreground/35 ring-1 ring-foreground/20 shadow-md"
+                      : "border-border/80 hover:border-border",
                     connectingSourceId &&
                       connectingSourceId !== node.id &&
-                      "ring-1 ring-primary/20",
+                      "ring-1 ring-border/70",
                     draggingNodeId === node.id ? "cursor-grabbing" : "cursor-grab"
                   )}
                   style={{ left: node.x, top: node.y }}
@@ -1513,10 +1606,10 @@ export default function WorkflowProjectPage() {
                       "absolute -left-2.5 inline-flex h-5 w-5 items-center justify-center rounded-full border shadow-sm",
                       "border-border bg-background text-muted-foreground",
                       edges.some((edge) => edge.targetId === node.id) &&
-                        "border-primary/40 text-primary",
+                        "border-border text-foreground/75",
                       connectingSourceId &&
                         connectingSourceId !== node.id &&
-                        "border-primary bg-primary/10 text-primary"
+                        "border-border bg-muted text-foreground"
                     )}
                     style={{ top: NODE_HANDLE_Y }}
                     aria-label={`Connect into ${node.stepName}`}
@@ -1535,9 +1628,9 @@ export default function WorkflowProjectPage() {
                       "absolute -right-2.5 inline-flex h-5 w-5 items-center justify-center rounded-full border shadow-sm",
                       "border-border bg-background text-muted-foreground",
                       edges.some((edge) => edge.sourceId === node.id) &&
-                        "border-primary/40 text-primary",
+                        "border-border text-foreground/75",
                       connectingSourceId === node.id &&
-                        "border-primary bg-primary text-primary-foreground"
+                        "border-border bg-muted text-foreground"
                     )}
                     style={{ top: NODE_HANDLE_Y }}
                     aria-label={`Connect out from ${node.stepName}`}
@@ -1555,8 +1648,8 @@ export default function WorkflowProjectPage() {
                           className={cn(
                             "absolute -top-7 left-0 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors",
                             node.nodeType === "Action"
-                              ? "bg-blue-500/15 text-blue-700 hover:bg-blue-500/25 dark:text-blue-300"
-                              : "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 dark:text-emerald-300"
+                              ? "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
+                              : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:hover:bg-emerald-900"
                           )}
                           aria-label={`Node type for ${node.stepName}`}
                         />
@@ -1673,14 +1766,10 @@ export default function WorkflowProjectPage() {
                       </div>
 
                       <div className="mt-3 flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 rounded-xl border border-border bg-card px-2 py-1 text-xs text-foreground">
-                          <Layers className="h-3.5 w-3.5 text-muted-foreground" />
-                          {node.model}
-                        </span>
-                        <span className="inline-flex rounded-lg border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">
+                        <span className="inline-flex rounded-md border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">
                           {node.tokenCount} Tokens
                         </span>
-                        <span className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">
                           <Clock3 className="h-3.5 w-3.5" />
                           {node.lastRan}
                         </span>
@@ -1825,23 +1914,126 @@ export default function WorkflowProjectPage() {
       </Dialog>
 
       <Dialog open={executionLogOpen} onOpenChange={setExecutionLogOpen}>
-        <DialogContent className="max-w-xl p-0">
+        <DialogContent className="max-h-[85vh] w-[min(980px,calc(100vw-2rem))] overflow-hidden p-0 sm:max-w-[980px]">
           <DialogHeader className="border-b border-border px-5 py-4">
             <DialogTitle className="text-lg">Execution Log · {project.title}</DialogTitle>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Runtime visibility for the current workflow graph and latest node activity.
+            </p>
           </DialogHeader>
-          <div className="space-y-2 px-5 py-4">
-            <div className="rounded-lg border border-border bg-card px-3 py-2">
-              <p className="text-sm font-medium text-foreground">Latest run</p>
-              <p className="mt-1 text-xs text-muted-foreground">{lastExecutionLabel}</p>
+          <div className="max-h-[calc(85vh-72px)] space-y-5 overflow-y-auto px-5 py-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-lg border border-border bg-card px-3 py-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Latest run
+                </p>
+                <p className="mt-1 text-sm font-medium text-foreground">{lastExecutionLabel}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card px-3 py-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Completion
+                </p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {doneSteps}/{nodes.length} steps ({completionPercent}%)
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-card px-3 py-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Tokens processed
+                </p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {totalTokenCount.toLocaleString()}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-card px-3 py-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Connections
+                </p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {edges.length} wire{edges.length === 1 ? "" : "s"}
+                </p>
+              </div>
             </div>
-            <div className="rounded-lg border border-border bg-card px-3 py-2">
-              <p className="text-sm font-medium text-foreground">Project status</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {doneSteps}/{nodes.length} steps done · Publish state: {publishState}
-              </p>
+
+            <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+              <div className="rounded-lg border border-border bg-card p-4">
+                <p className="text-sm font-semibold text-foreground">Execution timeline</p>
+                <div className="mt-3 space-y-3">
+                  {executionTimeline.map((event) => (
+                    <div key={event.title} className="flex gap-2">
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/60" />
+                      <div>
+                        <p className="text-xs font-medium text-foreground">{event.title}</p>
+                        <p className="text-xs text-muted-foreground">{event.detail}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border bg-card p-4">
+                <p className="text-sm font-semibold text-foreground">Run metadata</p>
+                <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                  <p>
+                    Status mix: {doneSteps} done · {inReviewSteps} in review · {pendingSteps}{" "}
+                    pending
+                  </p>
+                  <p>Publish state: {publishState}</p>
+                  <p>Auto-run: {runScheduleLabel}</p>
+                  <p>
+                    Node types: {actionNodeCount} action · {triggerNodeCount} trigger
+                  </p>
+                  <p>
+                    Coverage: {uniqueAppsCount} apps · {uniqueSkillsCount} skills ·{" "}
+                    {totalFileCount} files
+                  </p>
+                </div>
+              </div>
             </div>
+
+            <div className="rounded-lg border border-border bg-card p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-foreground">Node run details</p>
+                <p className="text-xs text-muted-foreground">{orderedNodes.length} nodes</p>
+              </div>
+              <div className="mt-3 space-y-2">
+                {orderedNodes.map((node, index) => (
+                  <div
+                    key={node.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border/80 bg-background px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {index + 1}. {node.stepName}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {node.provider} · {node.owner} · {node.tokenCount} tokens
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span
+                        className={cn(
+                          "inline-flex rounded-md border px-2 py-0.5 text-[11px] font-medium",
+                          node.status === "Done" &&
+                            "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+                          node.status === "In review" &&
+                            "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+                          node.status === "Pending" &&
+                            "border-border bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {node.status}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">{node.lastRan}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
-              Full execution logs can be connected to your backend runner later.
+              For production, connect this panel to backend execution IDs, structured logs,
+              latencies, and failure traces for each node run.
             </div>
           </div>
         </DialogContent>
