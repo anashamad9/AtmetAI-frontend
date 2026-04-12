@@ -11,6 +11,7 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from "react"
 import { useParams } from "next/navigation"
+import AIPrompt from "@/components/kokonutui/ai-prompt"
 import { Kbd } from "@/components/kbd"
 import { Input } from "@/components/ui/input"
 import {
@@ -99,6 +100,7 @@ const WORKSPACE_WIDTH = 10000
 const WORKSPACE_HEIGHT = 7000
 const WORKSPACE_OFFSET_X = 2200
 const WORKSPACE_OFFSET_Y = 1400
+const OPEN_MANAGE_CHAT_USERS_EVENT = "open-manage-chat-users"
 const appLogoTone: Record<string, string> = {
   Anthropic: "bg-neutral-900 text-white",
   ChatGPT: "bg-emerald-500 text-white",
@@ -210,6 +212,8 @@ export default function WorkflowProjectPage() {
   const [publishState, setPublishState] = useState<"Draft" | "Published">("Draft")
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false)
   const [lastExecutionLabel, setLastExecutionLabel] = useState("Not run yet")
+  const [chatPanelNodeId, setChatPanelNodeId] = useState<string | null>(null)
+  const [isNodeChatPanelOpen, setIsNodeChatPanelOpen] = useState(false)
   const [runSchedule, setRunSchedule] = useState<WorkflowRunSchedule>({
     mode: "off",
   })
@@ -267,6 +271,8 @@ export default function WorkflowProjectPage() {
     setPublishState("Draft")
     setHasUnpublishedChanges(false)
     setLastExecutionLabel("Not run yet")
+    setChatPanelNodeId(null)
+    setIsNodeChatPanelOpen(false)
     setRunSchedule({ mode: "off" })
 
     window.requestAnimationFrame(() => {
@@ -295,10 +301,34 @@ export default function WorkflowProjectPage() {
     () => nodes.find((node) => node.id === selectedNodeId),
     [nodes, selectedNodeId]
   )
+  const panelNode = useMemo(
+    () => nodes.find((node) => node.id === chatPanelNodeId) ?? null,
+    [chatPanelNodeId, nodes]
+  )
   const hasSelectedNode = Boolean(selectedNode)
   const canPaste = Boolean(copiedNode)
   const canUndo = historyPast.length > 0
   const canRedo = historyFuture.length > 0
+
+  useEffect(() => {
+    if (selectedNode) {
+      setChatPanelNodeId(selectedNode.id)
+      setIsNodeChatPanelOpen(true)
+      return
+    }
+
+    setIsNodeChatPanelOpen(false)
+  }, [selectedNode])
+
+  useEffect(() => {
+    if (isNodeChatPanelOpen || selectedNode) return
+
+    const timeoutId = window.setTimeout(() => {
+      setChatPanelNodeId(null)
+    }, 300)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [isNodeChatPanelOpen, selectedNode])
 
   const doneSteps = useMemo(
     () => nodes.filter((node) => node.status === "Done").length,
@@ -1416,7 +1446,15 @@ export default function WorkflowProjectPage() {
 
   return (
     <div className="flex h-[calc(100dvh-2.5rem)] w-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
-      <div className="min-h-0 min-w-0 flex flex-1 overflow-hidden">
+      <div
+        className="min-h-0 min-w-0 flex flex-1 overflow-hidden"
+        style={{
+          backgroundColor: "var(--background)",
+          backgroundImage: "radial-gradient(var(--border) 1px, transparent 1px)",
+          backgroundSize: "20px 20px",
+          backgroundPosition: "0 0",
+        }}
+      >
         <section
           ref={viewportRef}
           onWheel={handleViewportWheel}
@@ -1429,13 +1467,6 @@ export default function WorkflowProjectPage() {
                 ? "cursor-grab"
                 : "cursor-default"
           )}
-          style={{
-            backgroundColor: "var(--background)",
-            backgroundImage: "radial-gradient(var(--border) 1px, transparent 1px)",
-            backgroundSize: "20px 20px",
-            backgroundPosition: "0 0",
-            backgroundAttachment: "local",
-          }}
         >
           <ContextMenu5Wrapper
             canUndo={canUndo}
@@ -1883,6 +1914,63 @@ export default function WorkflowProjectPage() {
             </div>
           </div>
         </section>
+        <aside
+          className={cn(
+            "hidden h-full min-w-0 shrink-0 overflow-hidden bg-transparent transition-[width,padding] duration-300 ease-out lg:flex lg:flex-col",
+            isNodeChatPanelOpen && panelNode
+              ? "w-[min(42vw,620px)] p-3 pl-2"
+              : "w-0 p-0"
+          )}
+        >
+          <div
+            className={cn(
+              "flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/95 backdrop-blur-sm transition-all duration-300 ease-out",
+              isNodeChatPanelOpen && panelNode
+                ? "translate-x-0 opacity-100"
+                : "pointer-events-none translate-x-8 opacity-0"
+            )}
+          >
+            <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                  Node Chat
+                </p>
+                <p className="truncate text-sm font-medium text-foreground">
+                  {panelNode?.stepName ?? ""}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedNodeId("")}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Close node chat"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-2">
+              {panelNode && (
+                <div className="relative flex h-full min-h-0 w-full items-stretch justify-center">
+                  <AIPrompt
+                    key={`workflow-node-chat-${panelNode.id}`}
+                    chatId={
+                      projectId
+                        ? `workflow-node-chat-${projectId}-${panelNode.id}`
+                        : `workflow-node-chat-${panelNode.id}`
+                    }
+                    persistChatListEntry={false}
+                    hideGreeting
+                    dockComposerToBottom
+                    userFullName={panelNode.owner}
+                    onAddUserToChat={() => {
+                      window.dispatchEvent(new CustomEvent(OPEN_MANAGE_CHAT_USERS_EVENT))
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </aside>
 
       </div>
 

@@ -46,6 +46,7 @@ import {
   type WorkflowSetAutoRunEventDetail,
   type WorkflowStateEventDetail,
 } from "@/lib/workflow-events"
+import { OPEN_NEW_SKILL_DIALOG_EVENT } from "@/lib/skills-events"
 import {
   Check,
   ChevronDown,
@@ -575,7 +576,13 @@ export function PlatformNavbar() {
         </div>
         <div className="flex items-center gap-1.5">
           {isSkills && (
-            <Button size="sm" className="h-7 gap-1.5 px-2.5 text-xs">
+            <Button
+              size="sm"
+              className="h-7 gap-1.5 px-2.5 text-xs"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent(OPEN_NEW_SKILL_DIALOG_EVENT))
+              }}
+            >
               <Plus className="h-3.5 w-3.5" />
               New skill
             </Button>

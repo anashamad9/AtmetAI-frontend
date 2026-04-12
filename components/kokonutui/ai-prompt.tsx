@@ -152,6 +152,9 @@ const AI_CORE_CHATS_UPDATED_EVENT = "ai-core-chats-updated";
 
 type AIPromptProps = {
   chatId?: string | null;
+  persistChatListEntry?: boolean;
+  hideGreeting?: boolean;
+  dockComposerToBottom?: boolean;
   onConversationStart?: () => void;
   onAutomationConversationStart?: () => void;
   onConversationActivityChange?: (isActive: boolean) => void;
@@ -179,6 +182,9 @@ const APPS = ["Slack", "Notion", "Google Drive", "Gmail"] as const;
 
 export default function AI_Prompt({
   chatId = null,
+  persistChatListEntry = true,
+  hideGreeting = false,
+  dockComposerToBottom = false,
   onConversationStart,
   onAutomationConversationStart,
   onConversationActivityChange,
@@ -1008,7 +1014,9 @@ export default function AI_Prompt({
     }));
 
     onConversationStart?.();
-    persistActiveChat(content);
+    if (persistChatListEntry) {
+      persistActiveChat(content);
+    }
     if (activeTab === "automation") {
       onAutomationConversationStart?.();
     }
@@ -1702,8 +1710,16 @@ export default function AI_Prompt({
     }
   };
 
+  const hasConversation = messages.length > 0 || isResponding;
+  const showGreeting = !hideGreeting && messages.length === 0 && !isResponding;
+
   return (
-    <div className="mx-auto w-full max-w-4xl py-4">
+    <div
+      className={cn(
+        "mx-auto w-full max-w-4xl py-4",
+        dockComposerToBottom && "flex h-full flex-col"
+      )}
+    >
       <input
         id={fileInputId}
         ref={fileInputRef}
@@ -1712,21 +1728,25 @@ export default function AI_Prompt({
         multiple
         onChange={handleFileInputChange}
       />
-      {messages.length === 0 && !isResponding && (
-        <div className="mb-5 flex flex-col items-center text-center">
-          <h2 className="text-2xl font-semibold tracking-tight text-muted-foreground">
-            {heroLine1}
-            {heroTypingLine === 1 && (
-              <span className="ml-0.5 inline-block h-[0.95em] w-[1.5px] translate-y-[1px] animate-pulse bg-muted-foreground align-middle" />
+      <div className={cn(dockComposerToBottom && "min-h-0 flex flex-1 flex-col")}>
+        {showGreeting && (
+          <div className="mb-5 flex flex-col items-center text-center">
+            <h2 className="text-2xl font-semibold tracking-tight text-muted-foreground">
+              {heroLine1}
+              {heroTypingLine === 1 && (
+                <span className="ml-0.5 inline-block h-[0.95em] w-[1.5px] translate-y-[1px] animate-pulse bg-muted-foreground align-middle" />
+              )}
+            </h2>
+          </div>
+        )}
+        {hasConversation ? (
+          <div
+            ref={messagesViewportRef}
+            className={cn(
+              "mb-4 space-y-3",
+              dockComposerToBottom && "min-h-0 flex-1 overflow-y-auto pr-1"
             )}
-          </h2>
-        </div>
-      )}
-      {(messages.length > 0 || isResponding) && (
-        <div
-          ref={messagesViewportRef}
-          className="mb-4 space-y-3"
-        >
+          >
           {messages.map((message) => (
             <div
               key={message.id}
@@ -1990,13 +2010,16 @@ export default function AI_Prompt({
             </div>
           )}
           <div ref={messagesEndRef} />
-        </div>
-      )}
+          </div>
+        ) : (
+          dockComposerToBottom && <div className="flex-1" />
+        )}
+      </div>
 
       <div
         className={cn(
           "p-0",
-          (messages.length > 0 || isResponding) && "sticky bottom-4 z-20"
+          hasConversation && !dockComposerToBottom && "sticky bottom-4 z-20"
         )}
       >
         {connectedApps.length > 0 && (
@@ -2022,7 +2045,7 @@ export default function AI_Prompt({
             </div>
           </div>
         )}
-        {(messages.length > 0 || isResponding) && (
+        {hasConversation && (
           <div
             className="mb-2 flex min-h-11 w-full items-center rounded-xl border border-sidebar-border px-4 py-2 text-sm text-white/95"
             style={{

@@ -3,21 +3,35 @@
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { OPEN_NEW_SKILL_DIALOG_EVENT } from "@/lib/skills-events"
 import { IconPhoto } from "@tabler/icons-react"
 import {
+  Check,
   CheckCircle2,
   ChevronDown,
   Circle,
+  Plus,
   Search,
   SlidersHorizontal,
+  X,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 
 type SkillCategory = "Reasoning" | "Data" | "Automation" | "Support"
 type SkillStatus = "Active" | "Draft"
@@ -40,6 +54,7 @@ type SkillItem = {
   updatedAt: string
   owner: string
   isUserCreated: boolean
+  connectedApps?: string[]
 }
 
 const SECTION_ORDER: SkillSection[] = [
@@ -52,7 +67,18 @@ const SECTION_ORDER: SkillSection[] = [
   "Product",
 ]
 
-const skillItems: SkillItem[] = [
+const COMMON_APPS = [
+  "Slack",
+  "Notion",
+  "Google Drive",
+  "Gmail",
+  "Jira",
+  "GitHub",
+  "Airtable",
+  "Asana",
+] as const
+
+const INITIAL_SKILL_ITEMS: SkillItem[] = [
   {
     id: "skill-contract-risk",
     name: "Contract Risk Detector",
@@ -185,13 +211,19 @@ const statusStyles: Record<SkillStatus, string> = {
   Draft: "text-amber-700 bg-amber-50",
 }
 
-export default function SkillsPage() {
+function SkillsPageContent() {
   const searchParams = useSearchParams()
+  const [skills, setSkills] = useState<SkillItem[]>(INITIAL_SKILL_ITEMS)
   const [nameFilter, setNameFilter] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [createSkillOpen, setCreateSkillOpen] = useState(false)
+  const [newSkillTitle, setNewSkillTitle] = useState("")
+  const [newSkillPrompt, setNewSkillPrompt] = useState("")
+  const [selectedApps, setSelectedApps] = useState<string[]>([])
+  const [customAppDraft, setCustomAppDraft] = useState("")
+  const [createSkillError, setCreateSkillError] = useState<string | null>(null)
   const sectionFilterParam = searchParams.get("section")
-
   const sectionFilter = useMemo<SkillSection | null>(() => {
     if (!sectionFilterParam) return null
     return (
@@ -201,13 +233,103 @@ export default function SkillsPage() {
     )
   }, [sectionFilterParam])
 
+  const resetCreateSkillForm = useCallback(() => {
+    setNewSkillTitle("")
+    setNewSkillPrompt("")
+    setSelectedApps([])
+    setCustomAppDraft("")
+    setCreateSkillError(null)
+  }, [])
+
+  useEffect(() => {
+    const openCreateSkillDialog = () => {
+      setCreateSkillOpen(true)
+    }
+
+    window.addEventListener(OPEN_NEW_SKILL_DIALOG_EVENT, openCreateSkillDialog)
+    return () => {
+      window.removeEventListener(OPEN_NEW_SKILL_DIALOG_EVENT, openCreateSkillDialog)
+    }
+  }, [])
+
+  const closeCreateSkillDialog = useCallback(() => {
+    setCreateSkillOpen(false)
+    resetCreateSkillForm()
+  }, [resetCreateSkillForm])
+
+  const toggleAppConnection = useCallback((app: string) => {
+    setSelectedApps((previous) => {
+      if (previous.includes(app)) {
+        return previous.filter((item) => item !== app)
+      }
+      return [...previous, app]
+    })
+  }, [])
+
+  const addCustomApp = useCallback(() => {
+    const normalized = customAppDraft.trim()
+    if (!normalized) return
+
+    setSelectedApps((previous) => {
+      if (
+        previous.some((app) => app.toLowerCase() === normalized.toLowerCase())
+      ) {
+        return previous
+      }
+      return [...previous, normalized]
+    })
+    setCustomAppDraft("")
+  }, [customAppDraft])
+
+  const removeConnectedApp = useCallback((app: string) => {
+    setSelectedApps((previous) => previous.filter((item) => item !== app))
+  }, [])
+
+  const createSkill = useCallback(() => {
+    const title = newSkillTitle.trim()
+    const prompt = newSkillPrompt.trim()
+
+    if (!title || !prompt) {
+      setCreateSkillError("Title and prompt are required.")
+      return
+    }
+
+    const connectedApps = selectedApps
+      .map((app) => app.trim())
+      .filter((app) => app.length > 0)
+
+    const createdSkill: SkillItem = {
+      id: `skill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: title,
+      description:
+        prompt.length > 120 ? `${prompt.slice(0, 117).trimEnd()}...` : prompt,
+      category: "Automation",
+      section: sectionFilter ?? "Operations",
+      status: "Draft",
+      updatedAt: new Date().toISOString().slice(0, 10),
+      owner: "You",
+      isUserCreated: true,
+      connectedApps,
+    }
+
+    setSkills((previous) => [createdSkill, ...previous])
+    setCreateSkillOpen(false)
+    resetCreateSkillForm()
+  }, [
+    newSkillPrompt,
+    newSkillTitle,
+    resetCreateSkillForm,
+    sectionFilter,
+    selectedApps,
+  ])
+
   const categoryOptions = useMemo(
-    () => Array.from(new Set(skillItems.map((skill) => skill.category))),
-    []
+    () => Array.from(new Set(skills.map((skill) => skill.category))),
+    [skills]
   )
 
   const filteredSkills = useMemo(() => {
-    return skillItems.filter((skill) => {
+    return skills.filter((skill) => {
       const byName =
         nameFilter.trim().length === 0 ||
         skill.name.toLowerCase().includes(nameFilter.toLowerCase()) ||
@@ -221,7 +343,7 @@ export default function SkillsPage() {
 
       return byName && byCategory && byStatus && bySection
     })
-  }, [nameFilter, categoryFilter, sectionFilter, statusFilter])
+  }, [skills, nameFilter, categoryFilter, sectionFilter, statusFilter])
 
   const pinnedSkills = useMemo(
     () => filteredSkills.filter((skill) => skill.isUserCreated),
@@ -374,6 +496,14 @@ export default function SkillsPage() {
                       <span className="rounded-full bg-muted px-2 py-0.5">
                         {skill.category}
                       </span>
+                      {skill.connectedApps?.map((app) => (
+                        <span
+                          key={`${skill.id}-${app}`}
+                          className="rounded-full border border-border bg-background px-2 py-0.5"
+                        >
+                          {app}
+                        </span>
+                      ))}
                     </div>
 
                     <div className="mt-4">
@@ -436,6 +566,14 @@ export default function SkillsPage() {
                         <span className="rounded-full bg-muted px-2 py-0.5">
                           {skill.category}
                         </span>
+                        {skill.connectedApps?.map((app) => (
+                          <span
+                            key={`${skill.id}-${app}`}
+                            className="rounded-full border border-border bg-background px-2 py-0.5"
+                          >
+                            {app}
+                          </span>
+                        ))}
                       </div>
 
                       <div className="mt-4">
@@ -455,6 +593,150 @@ export default function SkillsPage() {
           ))}
         </section>
       </div>
+
+      <Dialog
+        open={createSkillOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeCreateSkillDialog()
+            return
+          }
+          setCreateSkillOpen(true)
+        }}
+      >
+        <DialogContent className="max-h-[85vh] w-[min(680px,calc(100vw-2rem))] overflow-hidden p-0 sm:max-w-[680px]">
+          <DialogHeader className="border-b border-border px-5 py-4">
+            <DialogTitle>Create Skill</DialogTitle>
+            <DialogDescription>
+              Add a title, define the prompt, connect apps, then create your
+              skill.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[calc(85vh-138px)] space-y-4 overflow-y-auto px-5 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-skill-title">Title</Label>
+              <Input
+                id="new-skill-title"
+                value={newSkillTitle}
+                onChange={(event) => {
+                  setNewSkillTitle(event.target.value)
+                  setCreateSkillError(null)
+                }}
+                placeholder="e.g. Contract Redline Assistant"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-skill-prompt">Prompt</Label>
+              <Textarea
+                id="new-skill-prompt"
+                value={newSkillPrompt}
+                onChange={(event) => {
+                  setNewSkillPrompt(event.target.value)
+                  setCreateSkillError(null)
+                }}
+                placeholder="Describe how this skill should behave, what inputs it gets, and what output it should return."
+                className="min-h-32"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Connect Apps</Label>
+              <div className="flex flex-wrap gap-2">
+                {COMMON_APPS.map((app) => {
+                  const isSelected = selectedApps.includes(app)
+                  return (
+                    <button
+                      key={app}
+                      type="button"
+                      onClick={() => toggleAppConnection(app)}
+                      className={
+                        isSelected
+                          ? "inline-flex items-center gap-1.5 rounded-full border border-foreground/20 bg-foreground/5 px-2.5 py-1 text-xs text-foreground"
+                          : "inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                      }
+                    >
+                      {isSelected && <Check className="h-3 w-3" />}
+                      {app}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Input
+                  value={customAppDraft}
+                  onChange={(event) => setCustomAppDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault()
+                      addCustomApp()
+                    }
+                  }}
+                  placeholder="Add custom app"
+                  className="h-8 text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  className="shrink-0"
+                  onClick={addCustomApp}
+                  disabled={customAppDraft.trim().length === 0}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add
+                </Button>
+              </div>
+
+              {selectedApps.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {selectedApps.map((app) => (
+                    <span
+                      key={`selected-app-${app}`}
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs text-foreground"
+                    >
+                      {app}
+                      <button
+                        type="button"
+                        aria-label={`Remove ${app}`}
+                        onClick={() => removeConnectedApp(app)}
+                        className="rounded text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {createSkillError && (
+              <p className="text-xs text-destructive">{createSkillError}</p>
+            )}
+          </div>
+
+          <DialogFooter className="border-t border-border bg-background/70">
+            <Button type="button" variant="outline" onClick={closeCreateSkillDialog}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={createSkill}>
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  )
+}
+
+export default function SkillsPage() {
+  return (
+    <Suspense
+      fallback={<div className="flex min-h-[calc(100vh-2.5rem)] flex-1 bg-background" />}
+    >
+      <SkillsPageContent />
+    </Suspense>
   )
 }
