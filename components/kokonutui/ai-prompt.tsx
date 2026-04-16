@@ -1715,8 +1715,9 @@ export default function AI_Prompt({
 
   return (
     <div
+      data-chatbot-scope="true"
       className={cn(
-        "mx-auto w-full max-w-4xl py-4",
+        "mx-auto w-full max-w-4xl py-4 [&_[data-slot=button]]:rounded-lg",
         dockComposerToBottom && "flex h-full flex-col"
       )}
     >
@@ -2061,7 +2062,7 @@ export default function AI_Prompt({
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 rounded-xl border border-sidebar-border bg-sidebar"
           />
-          <div className="relative z-10 flex flex-col overflow-hidden rounded-xl border border-sidebar-border bg-background/70">
+          <div className="relative z-10 flex flex-col overflow-hidden rounded-xl border border-sidebar-border bg-sidebar/95">
             <div className="relative overflow-y-auto" style={{ maxHeight: "400px" }}>
               <div
                 aria-hidden="true"

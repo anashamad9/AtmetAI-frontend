@@ -1,10 +1,14 @@
 "use client"
 
 import * as React from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
+  ArrowLeft,
   Building2,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Circle,
   CircleSlash2,
   Search,
@@ -66,6 +70,12 @@ type IntegrationApp = {
     | "CRM"
     | "Storage"
     | "Support"
+}
+
+type IntegrationPreviewFrame = {
+  id: string
+  title: string
+  subtitle: string
 }
 
 const integrationApps: IntegrationApp[] = [
@@ -282,6 +292,114 @@ const integrationApps: IntegrationApp[] = [
     company: "Vercel",
     category: "Infrastructure",
   },
+  {
+    id: "monday",
+    name: "Monday.com",
+    description: "Track boards, owners, deadlines, and status updates.",
+    logo: "M",
+    connected: false,
+    company: "Asana",
+    category: "Productivity",
+  },
+  {
+    id: "todoist",
+    name: "Todoist",
+    description: "Manage personal and team task lists with priorities.",
+    logo: "TD",
+    connected: false,
+    company: "Notion",
+    category: "Productivity",
+  },
+  {
+    id: "trello",
+    name: "Trello",
+    description: "Organize cards, lists, and project progress in boards.",
+    logo: "TR",
+    connected: false,
+    company: "Atlassian",
+    category: "Productivity",
+  },
+  {
+    id: "wrike",
+    name: "Wrike",
+    description: "Coordinate team projects, proofing, and approvals.",
+    logo: "W",
+    connected: false,
+    company: "ClickUp",
+    category: "Productivity",
+  },
+  {
+    id: "airtable",
+    name: "Airtable",
+    description: "Query bases, tables, records, and linked data views.",
+    logo: "AT",
+    connected: false,
+    company: "Notion",
+    category: "Productivity",
+  },
+  {
+    id: "miro",
+    name: "Miro",
+    description: "Sync collaborative whiteboards and workshop spaces.",
+    logo: "MR",
+    connected: false,
+    company: "Slack",
+    category: "Productivity",
+  },
+  {
+    id: "bitbucket",
+    name: "Bitbucket",
+    description: "Review pull requests, branches, and repository activity.",
+    logo: "BB",
+    connected: false,
+    company: "Atlassian",
+    category: "Development",
+  },
+  {
+    id: "sentry",
+    name: "Sentry",
+    description: "Monitor application errors, traces, and issue ownership.",
+    logo: "SE",
+    connected: false,
+    company: "GitHub",
+    category: "Development",
+  },
+  {
+    id: "postman",
+    name: "Postman",
+    description: "Reference API collections, environments, and test results.",
+    logo: "PM",
+    connected: false,
+    company: "GitLab",
+    category: "Development",
+  },
+  {
+    id: "datadog",
+    name: "Datadog",
+    description: "Inspect logs, metrics, and monitors for active services.",
+    logo: "DD",
+    connected: false,
+    company: "AWS",
+    category: "Development",
+  },
+  {
+    id: "new-relic",
+    name: "New Relic",
+    description: "Track performance telemetry and alert health checks.",
+    logo: "NR",
+    connected: false,
+    company: "Cloudflare",
+    category: "Development",
+  },
+  {
+    id: "circleci",
+    name: "CircleCI",
+    description: "Follow builds, workflow runs, and CI pipeline status.",
+    logo: "CI",
+    connected: false,
+    company: "GitHub",
+    category: "Development",
+  },
 ]
 
 const integrationCategories: Array<IntegrationApp["category"]> = [
@@ -318,7 +436,50 @@ const companyLogoPlaceholders: Record<IntegrationApp["company"], string> = {
   Pipedrive: "PD",
 }
 
+const INITIAL_VISIBLE_APPS = 5
+const LOAD_MORE_STEP = 10
+const SHOW_MORE_LOGO_COUNT = 9
+
+function getSeededScore(seed: string, value: string) {
+  const input = `${seed}:${value}`
+  let hash = 0
+
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(index)
+    hash |= 0
+  }
+
+  return Math.abs(hash)
+}
+
+function getShowMorePreviewApps(
+  category: IntegrationApp["category"],
+  hiddenApps: IntegrationApp[],
+  categoryApps: IntegrationApp[]
+) {
+  const sourceApps = hiddenApps.length > 0 ? hiddenApps : categoryApps
+
+  return [...sourceApps]
+    .sort(
+      (firstApp, secondApp) =>
+        getSeededScore(category, firstApp.id) -
+        getSeededScore(category, secondApp.id)
+    )
+    .slice(0, SHOW_MORE_LOGO_COUNT)
+}
+
+function getAppPreviewFrames(app: IntegrationApp): IntegrationPreviewFrame[] {
+  return Array.from({ length: 8 }, (_, index) => ({
+    id: `${app.id}-preview-${index + 1}`,
+    title: `${app.name} Preview ${index + 1}`,
+    subtitle: `Workflow view ${index + 1}`,
+  }))
+}
+
 export default function IntegrationsPage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [apps, setApps] = React.useState<IntegrationApp[]>(integrationApps)
   const [nameQuery, setNameQuery] = React.useState("")
   const [connectionFilter, setConnectionFilter] = React.useState<
@@ -333,6 +494,22 @@ export default function IntegrationsPage() {
     React.useState<IntegrationApp | null>(null)
   const [isMemoryReferenceEnabled, setIsMemoryReferenceEnabled] =
     React.useState(false)
+  const [selectedAppId, setSelectedAppId] = React.useState<string>(
+    integrationApps[0]?.id ?? ""
+  )
+  const [isAppDetailsOpen, setIsAppDetailsOpen] = React.useState(false)
+  const [activePreviewIndex, setActivePreviewIndex] = React.useState(0)
+  const [visibleAppsByCategory, setVisibleAppsByCategory] = React.useState<
+    Record<IntegrationApp["category"], number>
+  >(() =>
+    integrationCategories.reduce(
+      (accumulator, category) => ({
+        ...accumulator,
+        [category]: INITIAL_VISIBLE_APPS,
+      }),
+      {} as Record<IntegrationApp["category"], number>
+    )
+  )
 
   const companyOptions = React.useMemo(
     () =>
@@ -369,6 +546,11 @@ export default function IntegrationsPage() {
     })
   }, [apps, connectionFilter, nameQuery, selectedCompanies])
 
+  const selectedApp = React.useMemo(
+    () => apps.find((app) => app.id === selectedAppId) ?? apps[0] ?? null,
+    [apps, selectedAppId]
+  )
+
   const toggleCompanySelection = React.useCallback(
     (company: IntegrationApp["company"]) => {
       setSelectedCompanies((prev) => {
@@ -387,6 +569,12 @@ export default function IntegrationsPage() {
     )
   }, [])
 
+  const handleUnconnectApp = React.useCallback((appId: string) => {
+    setApps((prev) =>
+      prev.map((app) => (app.id === appId ? { ...app, connected: false } : app))
+    )
+  }, [])
+
   const openInstallDialog = React.useCallback((app: IntegrationApp) => {
     setPendingInstallApp(app)
     setIsMemoryReferenceEnabled(false)
@@ -402,6 +590,60 @@ export default function IntegrationsPage() {
     handleConnectApp(pendingInstallApp.id)
     closeInstallDialog()
   }, [closeInstallDialog, handleConnectApp, pendingInstallApp])
+
+  const handleShowMoreApps = React.useCallback(
+    (category: IntegrationApp["category"]) => {
+      setVisibleAppsByCategory((prev) => ({
+        ...prev,
+        [category]: (prev[category] ?? INITIAL_VISIBLE_APPS) + LOAD_MORE_STEP,
+      }))
+    },
+    []
+  )
+
+  const openAppDetails = React.useCallback((appId: string) => {
+    setSelectedAppId(appId)
+    setIsAppDetailsOpen(true)
+  }, [])
+
+  const setIntegrationAppInQuery = React.useCallback(
+    (appId: string | null) => {
+      const nextParams = new URLSearchParams(searchParams.toString())
+
+      if (appId) {
+        nextParams.set("app", appId)
+      } else {
+        nextParams.delete("app")
+      }
+
+      const nextQuery = nextParams.toString()
+      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {
+        scroll: false,
+      })
+    },
+    [pathname, router, searchParams]
+  )
+
+  React.useEffect(() => {
+    setActivePreviewIndex(0)
+  }, [selectedAppId])
+
+  React.useEffect(() => {
+    const appIdFromQuery = searchParams.get("app")
+    if (!appIdFromQuery) {
+      setIsAppDetailsOpen(false)
+      return
+    }
+
+    const matchedApp = apps.find((app) => app.id === appIdFromQuery)
+    if (!matchedApp) {
+      setIsAppDetailsOpen(false)
+      return
+    }
+
+    setSelectedAppId(matchedApp.id)
+    setIsAppDetailsOpen(true)
+  }, [apps, searchParams])
 
   const connectionFilterLabel =
     connectionFilter === "all"
@@ -423,131 +665,266 @@ export default function IntegrationsPage() {
           className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto"
           data-slot="integrations-secondary-navbar"
         >
-          <div className="relative h-7 min-w-64 shrink-0">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={nameQuery}
-              onChange={(event) => setNameQuery(event.target.value)}
-              placeholder="Search by app name..."
-              className="h-7 rounded-lg border-border/60 bg-transparent pl-7 text-xs"
-            />
-          </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
-                />
-              }
+          {isAppDetailsOpen ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
+              onClick={() => {
+                setIsAppDetailsOpen(false)
+                setIntegrationAppInQuery(null)
+              }}
             >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground">Status:</span>
-              <span>{connectionFilterLabel}</span>
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="min-w-40 rounded-xl p-1"
-            >
-              <DropdownMenuItem onClick={() => setConnectionFilter("all")}>
-                <Circle className="h-3.5 w-3.5 text-muted-foreground" />
-                All
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setConnectionFilter("connected")}
-              >
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                Connected
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setConnectionFilter("not-connected")}
-              >
-                <CircleSlash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                Not connected
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu
-            open={isCompanyMenuOpen}
-            onOpenChange={(open) => {
-              setIsCompanyMenuOpen(open)
-              if (!open) setCompanyQuery("")
-            }}
-          >
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
-                />
-              }
-            >
-              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground">Apps:</span>
-              <span>{selectedCompaniesLabel}</span>
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="min-w-56 rounded-xl p-1"
-            >
-              <div className="relative px-1 pb-1">
-                <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to integrations
+            </Button>
+          ) : (
+            <>
+              <div className="relative h-7 min-w-64 shrink-0">
+                <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  value={companyQuery}
-                  onChange={(event) => setCompanyQuery(event.target.value)}
-                  onKeyDown={(event) => event.stopPropagation()}
-                  placeholder="Search apps..."
-                  className="h-8 rounded-lg border-border/60 bg-transparent pl-8 text-xs"
+                  value={nameQuery}
+                  onChange={(event) => setNameQuery(event.target.value)}
+                  placeholder="Search by app name..."
+                  className="h-7 rounded-lg border-border/60 bg-transparent pl-7 text-xs"
                 />
               </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={(event) => {
-                  event.preventDefault()
-                  setSelectedCompanies([])
+
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
+                    />
+                  }
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">Status:</span>
+                  <span>{connectionFilterLabel}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className="min-w-40 rounded-xl p-1"
+                >
+                  <DropdownMenuItem onClick={() => setConnectionFilter("all")}>
+                    <Circle className="h-3.5 w-3.5 text-muted-foreground" />
+                    All
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setConnectionFilter("connected")}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                    Connected
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setConnectionFilter("not-connected")}
+                  >
+                    <CircleSlash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    Not connected
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu
+                open={isCompanyMenuOpen}
+                onOpenChange={(open) => {
+                  setIsCompanyMenuOpen(open)
+                  if (!open) setCompanyQuery("")
                 }}
               >
-                <Circle className="h-3.5 w-3.5 text-muted-foreground" />
-                All apps
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {filteredCompanyOptions.length === 0 && (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                  No apps found.
-                </div>
-              )}
-              {filteredCompanyOptions.map((company) => (
-                <DropdownMenuCheckboxItem
-                  key={company}
-                  checked={selectedCompanies.includes(company)}
-                  onSelect={(event) => event.preventDefault()}
-                  onCheckedChange={() => toggleCompanySelection(company)}
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
+                    />
+                  }
                 >
-                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-sm bg-muted text-[9px] font-semibold text-muted-foreground">
-                    {companyLogoPlaceholders[company]}
-                  </span>
-                  <span>{company}</span>
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">Apps:</span>
+                  <span>{selectedCompaniesLabel}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className="min-w-56 rounded-xl p-1"
+                >
+                  <div className="relative px-1 pb-1">
+                    <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={companyQuery}
+                      onChange={(event) => setCompanyQuery(event.target.value)}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      placeholder="Search apps..."
+                      className="h-8 rounded-lg border-border/60 bg-transparent pl-8 text-xs"
+                    />
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={(event) => {
+                      event.preventDefault()
+                      setSelectedCompanies([])
+                    }}
+                  >
+                    <Circle className="h-3.5 w-3.5 text-muted-foreground" />
+                    All apps
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {filteredCompanyOptions.length === 0 && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                      No apps found.
+                    </div>
+                  )}
+                  {filteredCompanyOptions.map((company) => (
+                    <DropdownMenuCheckboxItem
+                      key={company}
+                      checked={selectedCompanies.includes(company)}
+                      onSelect={(event) => event.preventDefault()}
+                      onCheckedChange={() => toggleCompanySelection(company)}
+                    >
+                      <span className="inline-flex h-4 w-4 items-center justify-center rounded-sm bg-muted text-[9px] font-semibold text-muted-foreground">
+                        {companyLogoPlaceholders[company]}
+                      </span>
+                      <span>{company}</span>
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="flex-1 px-3 py-4">
-        <section>
-          <div className="space-y-5">
-            {integrationCategories.map((category) => {
+      <div className="mx-auto flex w-full max-w-5xl flex-1 px-0 py-4 sm:px-1 lg:px-2">
+        <section className="mx-auto w-full max-w-4xl">
+          <div className="space-y-6">
+            {isAppDetailsOpen && selectedApp ? (
+              <div className="space-y-4">
+                {(() => {
+                  const previewFrames = getAppPreviewFrames(selectedApp)
+                  const maxPreviewIndex = previewFrames.length - 1
+                  const boundedPreviewIndex = Math.min(
+                    activePreviewIndex,
+                    maxPreviewIndex
+                  )
+                  const activePreviewFrame =
+                    previewFrames[boundedPreviewIndex] ?? previewFrames[0]
+
+                  return (
+                    <>
+                <div className="space-y-4">
+                  <div className="flex min-h-[72px] items-center gap-3">
+                    <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-sm font-semibold text-foreground">
+                      {selectedApp.logo}
+                    </span>
+                    <div className="min-w-0 space-y-1">
+                      <h2 className="text-[2rem] font-semibold leading-tight tracking-tight text-foreground">
+                        {selectedApp.name}
+                      </h2>
+                      <p className="text-base leading-6 text-muted-foreground">
+                        Unlock smarter answers and faster team workflows.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="h-36 w-full rounded-lg border border-border bg-gradient-to-br from-muted to-background p-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        {activePreviewFrame?.title}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {activePreviewFrame?.subtitle}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        className="inline-flex h-8 items-center justify-center rounded-lg border border-border px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                        onClick={() =>
+                          setActivePreviewIndex((prev) =>
+                            prev <= 0 ? maxPreviewIndex : prev - 1
+                          )
+                        }
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                        Left
+                      </button>
+                      <p className="text-xs text-muted-foreground">
+                        {boundedPreviewIndex + 1} / {previewFrames.length}
+                      </p>
+                      <button
+                        type="button"
+                        className="inline-flex h-8 items-center justify-center rounded-lg border border-border px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                        onClick={() =>
+                          setActivePreviewIndex((prev) =>
+                            prev >= maxPreviewIndex ? 0 : prev + 1
+                          )
+                        }
+                      >
+                        Right
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-sm leading-7 text-muted-foreground">
+                    {selectedApp.description} Use this integration to keep your AI
+                    context aligned with the latest updates from{" "}
+                    {selectedApp.name}.
+                  </p>
+
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        selectedApp.connected
+                          ? handleUnconnectApp(selectedApp.id)
+                          : openInstallDialog(selectedApp)
+                      }
+                      className={
+                        selectedApp.connected
+                          ? "inline-flex h-9 items-center justify-center rounded-lg border border-border bg-background px-3.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                          : "inline-flex h-9 items-center justify-center rounded-lg bg-black px-3.5 text-sm font-medium text-white transition-colors hover:bg-black/90"
+                      }
+                    >
+                      {selectedApp.connected
+                        ? "Unconnect"
+                        : `Connect ${selectedApp.name}`}
+                    </button>
+                  </div>
+                </div>
+                    </>
+                  )
+                })()}
+              </div>
+            ) : (
+              <>
+                <div className="flex aspect-[16/9] w-full items-center rounded-xl border border-border bg-muted/50 px-4 py-5 sm:px-5">
+                  <p className="text-sm text-muted-foreground">
+                    Banner content will be added here.
+                  </p>
+                </div>
+
+                {integrationCategories.map((category) => {
               const categoryApps = filteredApps.filter(
                 (app) => app.category === category
               )
               if (categoryApps.length === 0) return null
+              const visibleCount =
+                visibleAppsByCategory[category] ?? INITIAL_VISIBLE_APPS
+              const visibleApps = categoryApps.slice(0, visibleCount)
+              const hiddenApps = categoryApps.slice(visibleCount)
+              const showMorePreviewApps = getShowMorePreviewApps(
+                category,
+                hiddenApps,
+                categoryApps
+              )
+              const remainingAppsCount = hiddenApps.length
 
               return (
                 <div key={category}>
@@ -560,49 +937,61 @@ export default function IntegrationsPage() {
                     </span>
                   </div>
 
-                  <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                    {categoryApps.map((app) => (
+                  <div className="space-y-1.5">
+                    {visibleApps.map((app) => (
                       <article
                         key={app.id}
-                        className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/20 p-2.5 transition-colors hover:bg-muted/35"
+                        className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1.5 transition-colors hover:bg-muted/25"
+                        onClick={() => {
+                          openAppDetails(app.id)
+                          setIntegrationAppInQuery(app.id)
+                        }}
                       >
-                        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-xs font-semibold text-muted-foreground">
+                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground">
                           {app.logo}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <h3 className="text-base font-semibold tracking-tight text-foreground">
+                          <h3 className="text-sm font-semibold tracking-tight text-foreground">
                             {app.name}
                           </h3>
-                          <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground">
+                          <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-muted-foreground">
                             {app.description}
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={
-                            !app.connected
-                              ? () => openInstallDialog(app)
-                              : undefined
-                          }
-                          className={
-                            app.connected
-                              ? "inline-flex h-8 shrink-0 cursor-not-allowed items-center justify-center rounded-lg border border-border bg-muted px-3 text-xs font-medium text-foreground opacity-80"
-                              : "inline-flex h-8 shrink-0 items-center justify-center rounded-lg bg-black px-3 text-xs font-medium text-white transition-colors hover:bg-black/90"
-                          }
-                          disabled={app.connected}
-                        >
-                          {app.connected ? "Connected" : "Connect"}
-                        </button>
                       </article>
                     ))}
+
+                    {remainingAppsCount > 0 && (
+                      <div className="flex items-center gap-2 py-1">
+                        <div className="flex items-center gap-1">
+                          {showMorePreviewApps.map((previewApp) => (
+                            <span
+                              key={previewApp.id}
+                              className="inline-flex h-5 w-5 items-center justify-center text-[9px] font-semibold text-muted-foreground"
+                            >
+                              {previewApp.logo}
+                            </span>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleShowMoreApps(category)}
+                          className="text-xs font-medium text-foreground underline underline-offset-4 hover:text-foreground/80"
+                        >
+                          Show more
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )
-            })}
-            {filteredApps.length === 0 && (
-              <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-                No integrations match your current filters.
-              </div>
+                })}
+                {filteredApps.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+                    No integrations match your current filters.
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>
@@ -614,7 +1003,7 @@ export default function IntegrationsPage() {
           if (!open) closeInstallDialog()
         }}
       >
-        <DialogContent className="flex max-h-[85vh] max-w-[calc(100%-1rem)] flex-col overflow-hidden rounded-2xl p-0 sm:max-w-[42rem]">
+        <DialogContent className="flex max-h-[85vh] max-w-[calc(100%-1rem)] flex-col overflow-hidden rounded-2xl p-0 sm:max-w-[38rem]">
           <DialogHeader className="sr-only">
             <DialogTitle>
               {pendingInstallApp
@@ -626,8 +1015,8 @@ export default function IntegrationsPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 space-y-4 overflow-y-auto px-4 pt-6 pb-4 sm:px-6">
-            <div className="space-y-3 text-center">
+          <div className="flex-1 space-y-3 overflow-y-auto px-4 pt-5 pb-3 sm:px-5">
+            <div className="space-y-2.5 text-center">
               <div className="flex items-center justify-center gap-3">
                 <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-black text-sm font-semibold text-white">
                   AI
@@ -643,24 +1032,24 @@ export default function IntegrationsPage() {
               </div>
 
               <div>
-                <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">
                   {pendingInstallApp
                     ? `Install ${pendingInstallApp.name}`
                     : "Install app"}
                 </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Developed by {pendingInstallApp?.company}
                 </p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-muted/20 p-4">
+            <div className="rounded-xl border border-border bg-muted/20 p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1 pr-2">
-                  <h3 className="text-base font-semibold tracking-tight text-foreground">
+                  <h3 className="text-sm font-semibold tracking-tight text-foreground">
                     Reference memories and chats
                   </h3>
-                  <p className="text-sm leading-6 text-muted-foreground">
+                  <p className="text-xs leading-5 text-muted-foreground">
                     Allow Atmet AI to reference relevant chats when sharing data
                     with {pendingInstallApp?.name} for more helpful responses.
                   </p>
@@ -686,14 +1075,14 @@ export default function IntegrationsPage() {
                 </button>
               </div>
 
-              <Separator className="my-4 bg-border/80" />
+              <Separator className="my-3 bg-border/80" />
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <h4 className="text-base font-semibold tracking-tight text-foreground">
+                  <h4 className="text-sm font-semibold tracking-tight text-foreground">
                     You&apos;re in control
                   </h4>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     Atmet AI respects your data and only accesses information
                     you explicitly permit.
                   </p>
@@ -702,10 +1091,10 @@ export default function IntegrationsPage() {
                 <Separator className="bg-border/80" />
 
                 <div>
-                  <h4 className="text-base font-semibold tracking-tight text-foreground">
+                  <h4 className="text-sm font-semibold tracking-tight text-foreground">
                     Apps may introduce elevated risk
                   </h4>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     We secure your workspace, but connected apps can still be
                     targeted by attackers. Connect only trusted providers.
                   </p>
@@ -714,10 +1103,10 @@ export default function IntegrationsPage() {
                 <Separator className="bg-border/80" />
 
                 <div>
-                  <h4 className="text-base font-semibold tracking-tight text-foreground">
+                  <h4 className="text-sm font-semibold tracking-tight text-foreground">
                     Data shared with this app
                   </h4>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     Installing this app allows access to basic request metadata
                     and relevant context required to answer your prompts. Use of
                     this data follows the app{" "}

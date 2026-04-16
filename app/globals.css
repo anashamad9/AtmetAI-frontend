@@ -146,6 +146,24 @@
   * {
     @apply border-border outline-ring/50;
     }
+  :root {
+    --control-radius: min(var(--radius-md), 12px);
+  }
+  :where(
+    button,
+    [data-slot="button"],
+    [data-slot="tabs-trigger"],
+    [data-slot="input"],
+    [data-slot="textarea"],
+    [data-slot="select-trigger"],
+    [data-slot="combobox-trigger"],
+    [data-slot="input-group"],
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    textarea,
+    select
+  ):not(:where([data-chatbot-scope="true"] *)) {
+    border-radius: var(--control-radius) !important;
+  }
   body {
     @apply bg-background text-foreground;
     }

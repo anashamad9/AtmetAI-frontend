@@ -8,7 +8,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { IconDownload, IconPencil, IconTrash } from "@tabler/icons-react"
 import {
   DocumentCsvIllustration,
   DocumentDocxIllustration,
@@ -25,8 +24,11 @@ import { useMemo, useState, type ComponentType } from "react"
 import {
   CalendarDays,
   ChevronDown,
+  Download,
+  MoreHorizontal,
   Search,
   SlidersHorizontal,
+  Trash2,
   User,
 } from "lucide-react"
 
@@ -338,7 +340,7 @@ export default function MyDataPage() {
         </div>
       </section>
 
-      <div className="flex-1 px-3 py-4">
+      <div className="flex-1 px-3 pt-1 pb-4">
         <div className="-mx-3 overflow-x-auto">
           <table className="w-full min-w-[980px] border-collapse">
             <thead className="border-y border-border bg-muted/30">
@@ -407,28 +409,38 @@ export default function MyDataPage() {
                         <Button
                           size="xs"
                           variant="ghost"
-                          className="px-1.5 text-xs"
+                          className="bg-sidebar px-1.5 text-xs text-foreground hover:bg-sidebar-accent hover:text-foreground"
                         >
-                          <IconPencil className="h-3 w-3" strokeWidth={1.8} />
                           Update
                         </Button>
-                        <Button
-                          size="icon-xs"
-                          variant="ghost"
-                          aria-label="Download file"
-                          title="Download"
-                        >
-                          <IconDownload className="h-3 w-3" strokeWidth={1.8} />
-                        </Button>
-                        <Button
-                          size="icon-xs"
-                          variant="ghost"
-                          aria-label="Delete file"
-                          title="Delete"
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <IconTrash className="h-3 w-3" strokeWidth={1.8} />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                size="icon-xs"
+                                variant="ghost"
+                                className="bg-sidebar text-foreground hover:bg-sidebar-accent hover:text-foreground"
+                                aria-label="More actions"
+                                title="More actions"
+                              />
+                            }
+                          >
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="min-w-32 rounded-xl p-1"
+                          >
+                            <DropdownMenuItem>
+                              <Download className="h-3.5 w-3.5" />
+                              Download
+                            </DropdownMenuItem>
+                            <DropdownMenuItem variant="destructive">
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </td>
                   </tr>

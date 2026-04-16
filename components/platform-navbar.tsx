@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import AvatarGroupTooltipTransitionDemo, {
   type ChatParticipant,
@@ -98,6 +98,31 @@ function getPageTitle(pathname: string) {
   return routeTitles[pathname] ?? "Platform"
 }
 
+const integrationAppNameOverrides: Record<string, string> = {
+  aws: "AWS",
+  github: "GitHub",
+  gitlab: "GitLab",
+  "google-drive": "Google Drive",
+  "google-calendar": "Google Calendar",
+  onedrive: "OneDrive",
+  "monday.com": "Monday.com",
+  monday: "Monday.com",
+  clickup: "ClickUp",
+  cloudflare: "Cloudflare",
+}
+
+function formatIntegrationAppName(appId: string) {
+  const normalized = appId.trim().toLowerCase()
+  if (integrationAppNameOverrides[normalized]) {
+    return integrationAppNameOverrides[normalized]
+  }
+
+  return normalized
+    .split("-")
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ")
+}
+
 function buildFallbackFromName(name: string) {
   const letters = name
     .split(/\s+/)
@@ -150,6 +175,7 @@ function getAutoRunLabel(runSchedule: WorkflowRunSchedule) {
 
 export function PlatformNavbar() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const { state: sidebarState, toggleSidebar } = useSidebar()
   const userPickerCardRef = useRef<HTMLDivElement>(null)
@@ -165,6 +191,13 @@ export function PlatformNavbar() {
   )
   const isWorkflowProject = Boolean(activeWorkflowProject && workflowProjectId)
   const isSkills = pathname.startsWith("/skills")
+  const integrationAppId = pathname.startsWith("/integrations")
+    ? searchParams.get("app")
+    : null
+  const activeIntegrationAppName = useMemo(
+    () => (integrationAppId ? formatIntegrationAppName(integrationAppId) : null),
+    [integrationAppId]
+  )
   const canManageUsersFromNavbar = isAiCore || isWorkflowProject
   const manageUsersLabel = isWorkflowProject ? "Invite users" : "Manage chat users"
   const isChatOwner = true
@@ -564,6 +597,21 @@ export function PlatformNavbar() {
                   <BreadcrumbSeparator />
                   <BreadcrumbItem>
                     <BreadcrumbPage>{activeWorkflowProject?.title ?? "Project"}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </>
+              ) : activeIntegrationAppName ? (
+                <>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink
+                      render={<button type="button" />}
+                      onClick={() => router.push("/integrations")}
+                    >
+                      Integrations
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{activeIntegrationAppName}</BreadcrumbPage>
                   </BreadcrumbItem>
                 </>
               ) : (

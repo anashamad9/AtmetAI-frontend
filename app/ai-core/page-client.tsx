@@ -37,8 +37,10 @@ function AiCorePageContent({ activeChatId }: AiCorePageContentProps) {
     const centerToBottom =
       containerHeight / 2 - promptHeight / 2 - bottomPadding
 
-    setBottomShift(Math.max(0, centerToBottom))
+    setBottomShift(Math.min(320, Math.max(0, centerToBottom)))
   }, [])
+
+  const shouldDockToBottom = hasStartedConversation && hasConversationActivity
 
   useEffect(() => {
     recalculateBottomShift()
@@ -59,7 +61,9 @@ function AiCorePageContent({ activeChatId }: AiCorePageContentProps) {
         ref={promptRef}
         className="flex w-full justify-center transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"
         style={{
-          transform: `translateY(${hasStartedConversation && hasConversationActivity ? bottomShift : 0}px)`,
+          transform: `translateY(${
+            shouldDockToBottom && Number.isFinite(bottomShift) ? bottomShift : 0
+          }px)`,
         }}
       >
         <AIPrompt
@@ -70,6 +74,7 @@ function AiCorePageContent({ activeChatId }: AiCorePageContentProps) {
           onConversationActivityChange={setHasConversationActivity}
           onAddUserToChat={openUserPicker}
           userFullName={currentUserFullName}
+          dockComposerToBottom={shouldDockToBottom}
         />
       </div>
     </div>

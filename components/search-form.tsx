@@ -38,6 +38,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const OPEN_MANAGE_CHAT_USERS_EVENT = "open-manage-chat-users"
 const OPEN_SETTINGS_PANEL_EVENT = "open-settings-panel"
@@ -492,8 +493,18 @@ export function SearchForm({
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
   const [activeTab, setActiveTab] = React.useState<QuickActionTab>("All")
+  const [tabTransitionDirection, setTabTransitionDirection] = React.useState<
+    "forward" | "backward"
+  >("forward")
   const actionMap = React.useMemo(
     () => new Map(quickActions.map((action) => [action.id, action])),
+    []
+  )
+  const tabIndexMap = React.useMemo(
+    () =>
+      new Map(
+        quickActionTabs.map((tab, index) => [tab.id, index] as const)
+      ),
     []
   )
 
@@ -567,6 +578,23 @@ export function SearchForm({
     [router]
   )
 
+  const handleTabChange = React.useCallback(
+    (nextTab: QuickActionTab) => {
+      setActiveTab((previousTab) => {
+        if (previousTab === nextTab) return previousTab
+
+        const previousIndex = tabIndexMap.get(previousTab) ?? 0
+        const nextIndex = tabIndexMap.get(nextTab) ?? 0
+        setTabTransitionDirection(
+          nextIndex >= previousIndex ? "forward" : "backward"
+        )
+
+        return nextTab
+      })
+    },
+    [tabIndexMap]
+  )
+
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -606,6 +634,7 @@ export function SearchForm({
           setOpen(nextOpen)
           if (!nextOpen) {
             setActiveTab("All")
+            setTabTransitionDirection("forward")
             setQuery("")
           }
         }}
@@ -618,29 +647,35 @@ export function SearchForm({
             value={query}
             onValueChange={(next) => setQuery(next)}
           />
-          <div className="flex flex-wrap gap-1.5 border-b border-border px-3 pb-2 pt-1.5">
-            {quickActionTabs.map((tab) => {
-              const isActive = activeTab === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md border border-transparent px-2.5 py-1 text-xs font-medium transition-colors",
-                    isActive
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                  aria-pressed={isActive}
-                >
-                  <tab.icon className="size-3.5 shrink-0" />
-                  <span>{tab.label}</span>
-                </button>
-              )
-            })}
+          <div className="border-b border-border px-1 pb-1.5 pt-1">
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => handleTabChange(value as QuickActionTab)}
+              className="inline-flex w-fit gap-0"
+            >
+              <TabsList className="h-8 w-fit max-w-full justify-start gap-1 p-1">
+                {quickActionTabs.map((tab) => (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    className="h-6 !flex-none gap-1.5 rounded-md border border-transparent px-2 text-xs duration-200"
+                  >
+                    <tab.icon className="size-3.5 shrink-0" />
+                    <span>{tab.label}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </div>
-          <CommandList className="max-h-none flex-1">
+          <CommandList
+            key={`${activeTab}-${tabTransitionDirection}`}
+            className={cn(
+              "max-h-none flex-1 animate-in fade-in-0 duration-200",
+              tabTransitionDirection === "forward"
+                ? "slide-in-from-right-2"
+                : "slide-in-from-left-2"
+            )}
+          >
             <CommandEmpty>No actions found.</CommandEmpty>
             {sectors.map((sector) => {
               const groupActions = visibleActions.filter(

@@ -1450,8 +1450,9 @@ export default function WorkflowProjectPage() {
         className="min-h-0 min-w-0 flex flex-1 overflow-hidden"
         style={{
           backgroundColor: "var(--background)",
-          backgroundImage: "radial-gradient(var(--border) 1px, transparent 1px)",
-          backgroundSize: "20px 20px",
+          backgroundImage:
+            "radial-gradient(color-mix(in srgb, var(--border) 70%, transparent) 0.75px, transparent 0.75px)",
+          backgroundSize: "14px 14px",
           backgroundPosition: "0 0",
         }}
       >
