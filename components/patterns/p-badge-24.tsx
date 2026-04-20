@@ -1,4 +1,4 @@
-import { Badge } from "@/components/reui/badge"
+import { Badge } from "@/registry/spell-ui/badge"
 
 import {
   Avatar,
@@ -11,7 +11,7 @@ import { MultiplicationSignIcon } from "@hugeicons/core-free-icons"
 
 export function Pattern() {
   return (
-    <Badge variant="outline">
+    <Badge variant="neutral">
       <Avatar className="size-3.5">
         <AvatarImage src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=96&h=96&dpr=2&q=80" />
         <AvatarFallback>AL</AvatarFallback>

@@ -1,9 +1,11 @@
 "use client"
 
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
+import { Pattern as EmptyProjectsPattern } from "@/components/examples/c-empty-13"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Badge, type BadgeVariant } from "@/registry/spell-ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,16 +13,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { workflowProjects } from "@/lib/workflow-projects"
+import { workflowProjects, type WorkflowProject } from "@/lib/workflow-projects"
 import {
   CheckCircle2,
   ChevronDown,
   Clock3,
+  FolderOpen,
   Lock,
+  MoreHorizontal,
   Scale,
   Search,
   Sparkles,
   Target,
+  Trash2,
   Workflow,
 } from "lucide-react"
 
@@ -33,30 +38,34 @@ const iconMap = {
   scale: Scale,
 } as const
 
-function getProjectStatus(projectId: string): ProjectStatus {
-  const project = workflowProjects.find((item) => item.id === projectId)
-  if (!project) return "Active"
+function getProjectStatus(project: WorkflowProject): ProjectStatus {
   if (project.steps.every((step) => step.status === "Done")) return "Completed"
   if (project.steps.some((step) => step.status === "In review")) return "In review"
   return "Active"
 }
 
-function getStepProgress(projectId: string) {
-  const project = workflowProjects.find((item) => item.id === projectId)
-  if (!project) return { done: 0, total: 0, percent: 0 }
+function getStepProgress(project: WorkflowProject) {
   const done = project.steps.filter((step) => step.status === "Done").length
   const total = project.steps.length
   const percent = total === 0 ? 0 : Math.round((done / total) * 100)
   return { done, total, percent }
 }
 
+const projectStatusBadgeStyles: Record<ProjectStatus, BadgeVariant> = {
+  Active: "blue",
+  "In review": "amber",
+  Completed: "green",
+}
+
 export default function WorkflowPage() {
+  const router = useRouter()
+  const [projects, setProjects] = useState<WorkflowProject[]>(workflowProjects)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | ProjectStatus>("all")
 
   const filteredProjects = useMemo(() => {
-    return workflowProjects.filter((project) => {
-      const status = getProjectStatus(project.id)
+    return projects.filter((project) => {
+      const status = getProjectStatus(project)
       const matchesStatus = statusFilter === "all" || statusFilter === status
       const lowerSearch = search.trim().toLowerCase()
       const matchesSearch =
@@ -69,28 +78,28 @@ export default function WorkflowPage() {
         )
       return matchesStatus && matchesSearch
     })
-  }, [search, statusFilter])
+  }, [projects, search, statusFilter])
 
   const metrics = useMemo(() => {
-    const total = workflowProjects.length
-    const inReview = workflowProjects.filter(
-      (project) => getProjectStatus(project.id) === "In review"
+    const total = projects.length
+    const inReview = projects.filter(
+      (project) => getProjectStatus(project) === "In review"
     ).length
-    const completed = workflowProjects.filter(
-      (project) => getProjectStatus(project.id) === "Completed"
+    const completed = projects.filter(
+      (project) => getProjectStatus(project) === "Completed"
     ).length
-    const pendingSteps = workflowProjects.reduce((sum, project) => {
+    const pendingSteps = projects.reduce((sum, project) => {
       return sum + project.steps.filter((step) => step.status === "Pending").length
     }, 0)
     return { total, inReview, completed, pendingSteps }
-  }, [])
+  }, [projects])
 
   const statusFilterLabel =
     statusFilter === "all" ? "All statuses" : statusFilter
 
   return (
     <div className="flex min-h-[calc(100vh-2.5rem)] flex-1 flex-col bg-background">
-      <section className="flex h-10 items-center border-b border-border px-3">
+      <section className="sticky top-10 z-30 flex h-10 items-center border-b border-border bg-background px-3">
         <div className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto">
           <div className="relative h-7 min-w-72 shrink-0">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -159,7 +168,13 @@ export default function WorkflowPage() {
       </section>
 
       <section className="flex-1 px-4 py-4">
-        {filteredProjects.length === 0 ? (
+        {projects.length === 0 ? (
+          <div className="flex h-full min-h-[50vh] items-center justify-center">
+            <EmptyProjectsPattern
+              onCreateAutomation={() => router.push("/ai-core")}
+            />
+          </div>
+        ) : filteredProjects.length === 0 ? (
           <div className="flex h-44 items-center justify-center rounded-xl border border-dashed border-border">
             <p className="text-sm text-muted-foreground">
               No projects match this filter yet.
@@ -169,32 +184,79 @@ export default function WorkflowPage() {
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {filteredProjects.map((project) => {
               const ProjectIcon = iconMap[project.icon]
-              const status = getProjectStatus(project.id)
-              const progress = getStepProgress(project.id)
+              const status = getProjectStatus(project)
+              const progress = getStepProgress(project)
 
               return (
-                <Link
+                <article
                   key={project.id}
-                  href={`/workflow/${project.id}`}
-                  className="group rounded-xl border border-border/70 bg-card p-3 transition-all hover:border-primary/35 hover:shadow-sm"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(`/workflow/${project.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault()
+                      router.push(`/workflow/${project.id}`)
+                    }
+                  }}
+                  className="group rounded-xl border border-border/70 bg-card p-3 text-left transition-all hover:border-primary/35 hover:shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/70 bg-muted/40">
                       <ProjectIcon className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                        status === "Completed" &&
-                          "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-                        status === "In review" &&
-                          "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-                        status === "Active" &&
-                          "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300"
-                      )}
-                    >
-                      {status}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <Badge
+                        variant={projectStatusBadgeStyles[status]}
+                        size="default"
+                      >
+                        {status}
+                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button
+                              type="button"
+                              size="icon-xs"
+                              variant="ghost"
+                              className="text-muted-foreground hover:text-foreground"
+                              aria-label={`Project actions for ${project.title}`}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                              }}
+                              onPointerDown={(event) => {
+                                event.stopPropagation()
+                              }}
+                            />
+                          }
+                        >
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-40 p-1">
+                          <DropdownMenuItem
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              router.push(`/workflow/${project.id}`)
+                            }}
+                          >
+                            <FolderOpen className="h-3.5 w-3.5" />
+                            Open project
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setProjects((previous) =>
+                                previous.filter((item) => item.id !== project.id)
+                              )
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete project
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
 
                   <h2 className="mt-2 line-clamp-1 text-sm font-semibold text-foreground group-hover:text-primary">
@@ -206,12 +268,14 @@ export default function WorkflowPage() {
 
                   <div className="mt-2 flex flex-wrap gap-1">
                     {project.tags.map((tag) => (
-                      <span
+                      <Badge
                         key={tag}
-                        className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                        variant="neutral"
+                        size="sm"
+                        className="px-1.5"
                       >
                         {tag}
-                      </span>
+                      </Badge>
                     ))}
                   </div>
 
@@ -253,7 +317,7 @@ export default function WorkflowPage() {
                       {project.steps.length} steps
                     </span>
                   </div>
-                </Link>
+                </article>
               )
             })}
           </div>

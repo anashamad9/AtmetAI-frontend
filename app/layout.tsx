@@ -37,7 +37,7 @@ export default function RootLayout({
               <Suspense fallback={null}>
                 <AppSidebar />
               </Suspense>
-              <SidebarInset>
+              <SidebarInset className="h-screen overflow-y-auto">
                 <Suspense fallback={<div className="h-10 border-b border-border" />}>
                   <PlatformNavbar />
                 </Suspense>

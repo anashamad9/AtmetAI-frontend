@@ -51,37 +51,37 @@ export function ContextMenu5Wrapper({
         <ContextMenuGroup>
           <ContextMenuItem onClick={onNewNode}>
             New Node
-            <ContextMenuShortcut>⌘N</ContextMenuShortcut>
+            <ContextMenuShortcut>⌘ N</ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuItem onClick={onEditNode} disabled={!hasSelectedNode}>
             Edit Node
-            <ContextMenuShortcut>⌘E</ContextMenuShortcut>
+            <ContextMenuShortcut>⌘ E</ContextMenuShortcut>
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuGroup>
           <ContextMenuItem onClick={onUndo} disabled={!canUndo}>
             Undo
-            <ContextMenuShortcut>⌘Z</ContextMenuShortcut>
+            <ContextMenuShortcut>⌘ Z</ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuItem onClick={onRedo} disabled={!canRedo}>
             Redo
-            <ContextMenuShortcut>⇧⌘Z</ContextMenuShortcut>
+            <ContextMenuShortcut>⇧ ⌘ Z</ContextMenuShortcut>
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuGroup>
           <ContextMenuItem onClick={onCopy} disabled={!hasSelectedNode}>
             Copy
-            <ContextMenuShortcut>⌘C</ContextMenuShortcut>
+            <ContextMenuShortcut>⌘ C</ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuItem onClick={onPaste} disabled={!canPaste}>
             Paste
-            <ContextMenuShortcut>⌘V</ContextMenuShortcut>
+            <ContextMenuShortcut>⌘ V</ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuItem onClick={onDuplicate} disabled={!hasSelectedNode}>
             Duplicate
-            <ContextMenuShortcut>⌘D</ContextMenuShortcut>
+            <ContextMenuShortcut>⌘ D</ContextMenuShortcut>
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
@@ -92,7 +92,7 @@ export function ContextMenu5Wrapper({
             disabled={!hasSelectedNode}
           >
             Delete
-            <ContextMenuShortcut>⌫</ContextMenuShortcut>
+            <ContextMenuShortcut>Delete</ContextMenuShortcut>
           </ContextMenuItem>
         </ContextMenuGroup>
       </ContextMenuContent>

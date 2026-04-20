@@ -33,12 +33,15 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandShortcut,
   CommandSeparator,
 } from "@/components/ui/command"
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useTheme } from "next-themes"
+import { OPEN_NEW_SKILL_DIALOG_EVENT } from "@/lib/skills-events"
 
 const OPEN_MANAGE_CHAT_USERS_EVENT = "open-manage-chat-users"
 const OPEN_SETTINGS_PANEL_EVENT = "open-settings-panel"
@@ -64,6 +67,7 @@ const settingsSections = [
   "General",
   "Notifications",
   "Members",
+  "Integrations",
   "Usage and limits",
   "Data controls",
   "Plans (soon)",
@@ -80,6 +84,16 @@ type OpenSettingsPanelDetail = {
   membersAction?: "invite"
 }
 
+type QuickActionIntent = "toggle-theme"
+
+type QuickActionShortcut = {
+  key: string
+  primary?: boolean
+  shift?: boolean
+  alt?: boolean
+  display: string
+}
+
 type QuickAction = {
   id: string
   parentId?: string
@@ -92,6 +106,8 @@ type QuickAction = {
   eventName?: string
   eventDetail?: OpenSettingsPanelDetail
   keywords?: string[]
+  intent?: QuickActionIntent
+  shortcut?: QuickActionShortcut
 }
 
 const dataQuickActions: QuickAction[] = [
@@ -103,6 +119,12 @@ const dataQuickActions: QuickAction[] = [
     description: "Open data workspace and sources.",
     path: "/my-data",
     icon: Database,
+    shortcut: {
+      key: "g",
+      primary: true,
+      alt: true,
+      display: "⌥⌘G",
+    },
   },
   {
     id: "data-search",
@@ -119,10 +141,16 @@ const dataQuickActions: QuickAction[] = [
     parentId: "data-manage",
     level: 1,
     sector: "Data",
-    label: "Integrations",
+    label: "Apps",
     description: "Manage connected tools and synced sources.",
     path: "/integrations",
     icon: Puzzle,
+    shortcut: {
+      key: "i",
+      primary: true,
+      alt: true,
+      display: "⌥⌘I",
+    },
   },
 ]
 
@@ -135,6 +163,12 @@ const chatQuickActions: QuickAction[] = [
     description: "Open AI Core conversations.",
     path: "/ai-core",
     icon: MessageSquare,
+    shortcut: {
+      key: "a",
+      primary: true,
+      alt: true,
+      display: "⌥⌘A",
+    },
   },
   {
     id: "chats-open",
@@ -161,6 +195,38 @@ const chatQuickActions: QuickAction[] = [
 
 const projectQuickActions: QuickAction[] = [
   {
+    id: "projects-new",
+    level: 0,
+    sector: "Projects",
+    label: "New Project",
+    description: "Start a new workflow project.",
+    path: "/workflow",
+    icon: FolderKanban,
+    shortcut: {
+      key: "p",
+      primary: true,
+      alt: true,
+      display: "⌥⌘P",
+    },
+  },
+  {
+    id: "projects-new-skill",
+    level: 0,
+    sector: "Projects",
+    label: "New Skill",
+    description: "Open create skill panel.",
+    path: "/skills",
+    icon: Bot,
+    eventName: OPEN_NEW_SKILL_DIALOG_EVENT,
+    shortcut: {
+      key: "s",
+      primary: true,
+      alt: true,
+      shift: true,
+      display: "⇧⌥⌘S",
+    },
+  },
+  {
     id: "projects-manage",
     level: 0,
     sector: "Projects",
@@ -168,6 +234,12 @@ const projectQuickActions: QuickAction[] = [
     description: "Open workflow projects and builders.",
     path: "/workflow",
     icon: FolderKanban,
+    shortcut: {
+      key: "w",
+      primary: true,
+      alt: true,
+      display: "⌥⌘W",
+    },
   },
   {
     id: "projects-workflow",
@@ -188,6 +260,12 @@ const projectQuickActions: QuickAction[] = [
     description: "Browse and manage workflow skills.",
     path: "/skills",
     icon: Bot,
+    shortcut: {
+      key: "s",
+      primary: true,
+      alt: true,
+      display: "⌥⌘S",
+    },
   },
 ]
 
@@ -201,17 +279,30 @@ const userQuickActionRoots: QuickAction[] = [
     icon: Users,
     eventName: OPEN_SETTINGS_PANEL_EVENT,
     eventDetail: { section: "Members" },
+    shortcut: {
+      key: "m",
+      primary: true,
+      alt: true,
+      display: "⌥⌘M",
+    },
   },
   {
     id: "users-add",
     level: 0,
     sector: "Users",
-    label: "Add New User",
+    label: "Invite Member",
     description: "Open invite flow in members settings.",
     icon: Users,
     eventName: OPEN_SETTINGS_PANEL_EVENT,
     eventDetail: { section: "Members", membersAction: "invite" },
     keywords: ["invite", "add member", "new user", "create user"],
+    shortcut: {
+      key: "m",
+      primary: true,
+      alt: true,
+      shift: true,
+      display: "⇧⌥⌘M",
+    },
   },
 ]
 
@@ -225,6 +316,39 @@ const settingsRootAction: QuickAction = {
   eventName: OPEN_SETTINGS_PANEL_EVENT,
   eventDetail: { section: "General" },
 }
+
+const settingsSystemQuickActions: QuickAction[] = [
+  {
+    id: "settings-notification-center",
+    level: 0,
+    sector: "Settings",
+    label: "Notification Center",
+    description: "Open the notifications page.",
+    path: "/notifications",
+    icon: Bell,
+    shortcut: {
+      key: "n",
+      primary: true,
+      alt: true,
+      display: "⌥⌘N",
+    },
+  },
+  {
+    id: "settings-theme-toggle",
+    level: 0,
+    sector: "Settings",
+    label: "Toggle Dark Mode",
+    description: "Switch between light and dark mode.",
+    icon: Palette,
+    intent: "toggle-theme",
+    shortcut: {
+      key: "t",
+      primary: true,
+      alt: true,
+      display: "⌥⌘T",
+    },
+  },
+]
 
 const settingsSectionQuickActions: QuickAction[] = settingsSections.map(
   (section) => ({
@@ -482,14 +606,28 @@ const quickActions = [
   ...userQuickActions,
   userQuickActionRoots[1],
   settingsRootAction,
+  ...settingsSystemQuickActions,
   ...orderedSettingsTreeActions,
 ]
+
+function matchesShortcut(event: KeyboardEvent, shortcut: QuickActionShortcut) {
+  const key = event.key.toLowerCase()
+  const hasPrimaryModifier = event.metaKey || event.ctrlKey
+
+  if (key !== shortcut.key.toLowerCase()) return false
+  if ((shortcut.primary ?? false) !== hasPrimaryModifier) return false
+  if ((shortcut.alt ?? false) !== event.altKey) return false
+  if ((shortcut.shift ?? false) !== event.shiftKey) return false
+
+  return true
+}
 
 export function SearchForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter()
+  const { resolvedTheme, setTheme } = useTheme()
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
   const [activeTab, setActiveTab] = React.useState<QuickActionTab>("All")
@@ -498,6 +636,10 @@ export function SearchForm({
   >("forward")
   const actionMap = React.useMemo(
     () => new Map(quickActions.map((action) => [action.id, action])),
+    []
+  )
+  const shortcutActions = React.useMemo(
+    () => quickActions.filter((action) => Boolean(action.shortcut)),
     []
   )
   const tabIndexMap = React.useMemo(
@@ -565,6 +707,11 @@ export function SearchForm({
       setOpen(false)
       setQuery("")
 
+      if (action.intent === "toggle-theme") {
+        setTheme(resolvedTheme === "dark" ? "light" : "dark")
+        return
+      }
+
       if (action.path) {
         router.push(action.path)
         if (action.eventName) {
@@ -575,7 +722,7 @@ export function SearchForm({
 
       emitEvent()
     },
-    [router]
+    [resolvedTheme, router, setTheme]
   )
 
   const handleTabChange = React.useCallback(
@@ -607,6 +754,35 @@ export function SearchForm({
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [])
 
+  React.useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false
+      const tag = target.tagName
+      return (
+        target.isContentEditable ||
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT"
+      )
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (open) return
+      if (isEditableTarget(event.target)) return
+
+      for (const action of shortcutActions) {
+        if (!action.shortcut) continue
+        if (!matchesShortcut(event, action.shortcut)) continue
+        event.preventDefault()
+        runAction(action)
+        break
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [open, runAction, shortcutActions])
+
   return (
     <div className={cn("relative", className)} {...props}>
       <Button
@@ -614,7 +790,7 @@ export function SearchForm({
         variant="outline"
         size="sm"
         onClick={() => setOpen(true)}
-        className="w-full justify-start"
+        className="w-full justify-start border-border bg-background hover:bg-muted"
         aria-label="Open quick actions"
       >
         <HugeiconsIcon
@@ -688,7 +864,7 @@ export function SearchForm({
                   {groupActions.map((action) => (
                     <CommandItem
                       key={action.id}
-                      value={`${action.label} ${action.description} ${action.sector}`}
+                      value={`${action.label} ${action.description} ${action.sector} ${(action.keywords ?? []).join(" ")}`}
                       onSelect={() => runAction(action)}
                       className={cn(
                         "gap-2.5",
@@ -705,14 +881,12 @@ export function SearchForm({
                       ) : (
                         <action.icon className="size-4 shrink-0 text-muted-foreground" />
                       )}
-                      <div className="min-w-0">
-                        <span className="block truncate text-sm font-medium">
-                          {action.label}
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {action.description}
-                        </span>
-                      </div>
+                      <span className="min-w-0 truncate text-sm font-medium">
+                        {action.label}
+                      </span>
+                      {action.shortcut ? (
+                        <CommandShortcut>{action.shortcut.display}</CommandShortcut>
+                      ) : null}
                     </CommandItem>
                   ))}
                 </CommandGroup>

@@ -1,15 +1,9 @@
 "use client"
 
 import { useSearchParams } from "next/navigation"
+import AIPrompt from "@/components/kokonutui/ai-prompt"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Badge, type BadgeVariant } from "@/registry/spell-ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,16 +11,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { OPEN_NEW_SKILL_DIALOG_EVENT } from "@/lib/skills-events"
+import { cn } from "@/lib/utils"
 import { IconPhoto } from "@tabler/icons-react"
 import {
-  Check,
   CheckCircle2,
   ChevronDown,
   Circle,
-  Plus,
   Search,
   SlidersHorizontal,
   X,
@@ -66,17 +57,6 @@ const SECTION_ORDER: SkillSection[] = [
   "Support",
   "Product",
 ]
-
-const COMMON_APPS = [
-  "Slack",
-  "Notion",
-  "Google Drive",
-  "Gmail",
-  "Jira",
-  "GitHub",
-  "Airtable",
-  "Asana",
-] as const
 
 const INITIAL_SKILL_ITEMS: SkillItem[] = [
   {
@@ -206,9 +186,9 @@ const INITIAL_SKILL_ITEMS: SkillItem[] = [
   },
 ]
 
-const statusStyles: Record<SkillStatus, string> = {
-  Active: "text-emerald-700 bg-emerald-50",
-  Draft: "text-amber-700 bg-amber-50",
+const statusStyles: Record<SkillStatus, BadgeVariant> = {
+  Active: "green",
+  Draft: "amber",
 }
 
 function SkillsPageContent() {
@@ -218,11 +198,6 @@ function SkillsPageContent() {
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [createSkillOpen, setCreateSkillOpen] = useState(false)
-  const [newSkillTitle, setNewSkillTitle] = useState("")
-  const [newSkillPrompt, setNewSkillPrompt] = useState("")
-  const [selectedApps, setSelectedApps] = useState<string[]>([])
-  const [customAppDraft, setCustomAppDraft] = useState("")
-  const [createSkillError, setCreateSkillError] = useState<string | null>(null)
   const sectionFilterParam = searchParams.get("section")
   const sectionFilter = useMemo<SkillSection | null>(() => {
     if (!sectionFilterParam) return null
@@ -232,14 +207,6 @@ function SkillsPageContent() {
       ) ?? null
     )
   }, [sectionFilterParam])
-
-  const resetCreateSkillForm = useCallback(() => {
-    setNewSkillTitle("")
-    setNewSkillPrompt("")
-    setSelectedApps([])
-    setCustomAppDraft("")
-    setCreateSkillError(null)
-  }, [])
 
   useEffect(() => {
     const openCreateSkillDialog = () => {
@@ -254,74 +221,7 @@ function SkillsPageContent() {
 
   const closeCreateSkillDialog = useCallback(() => {
     setCreateSkillOpen(false)
-    resetCreateSkillForm()
-  }, [resetCreateSkillForm])
-
-  const toggleAppConnection = useCallback((app: string) => {
-    setSelectedApps((previous) => {
-      if (previous.includes(app)) {
-        return previous.filter((item) => item !== app)
-      }
-      return [...previous, app]
-    })
   }, [])
-
-  const addCustomApp = useCallback(() => {
-    const normalized = customAppDraft.trim()
-    if (!normalized) return
-
-    setSelectedApps((previous) => {
-      if (
-        previous.some((app) => app.toLowerCase() === normalized.toLowerCase())
-      ) {
-        return previous
-      }
-      return [...previous, normalized]
-    })
-    setCustomAppDraft("")
-  }, [customAppDraft])
-
-  const removeConnectedApp = useCallback((app: string) => {
-    setSelectedApps((previous) => previous.filter((item) => item !== app))
-  }, [])
-
-  const createSkill = useCallback(() => {
-    const title = newSkillTitle.trim()
-    const prompt = newSkillPrompt.trim()
-
-    if (!title || !prompt) {
-      setCreateSkillError("Title and prompt are required.")
-      return
-    }
-
-    const connectedApps = selectedApps
-      .map((app) => app.trim())
-      .filter((app) => app.length > 0)
-
-    const createdSkill: SkillItem = {
-      id: `skill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      name: title,
-      description:
-        prompt.length > 120 ? `${prompt.slice(0, 117).trimEnd()}...` : prompt,
-      category: "Automation",
-      section: sectionFilter ?? "Operations",
-      status: "Draft",
-      updatedAt: new Date().toISOString().slice(0, 10),
-      owner: "You",
-      isUserCreated: true,
-      connectedApps,
-    }
-
-    setSkills((previous) => [createdSkill, ...previous])
-    setCreateSkillOpen(false)
-    resetCreateSkillForm()
-  }, [
-    newSkillPrompt,
-    newSkillTitle,
-    resetCreateSkillForm,
-    sectionFilter,
-    selectedApps,
-  ])
 
   const categoryOptions = useMemo(
     () => Array.from(new Set(skills.map((skill) => skill.category))),
@@ -366,88 +266,89 @@ function SkillsPageContent() {
   const statusFilterLabel = statusFilter === "all" ? "All" : statusFilter
 
   return (
-    <div className="flex min-h-[calc(100vh-2.5rem)] flex-1 flex-col bg-background">
-      <section className="flex h-10 items-center border-b border-border px-3">
-        <div className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto">
-          <div className="relative h-7 min-w-64 shrink-0">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={nameFilter}
-              onChange={(event) => setNameFilter(event.target.value)}
-              placeholder="Search by skill name..."
-              className="h-7 rounded-lg border-border/60 bg-transparent pl-7 text-xs"
-            />
-          </div>
+    <div className="flex min-h-0 flex-1 flex-col bg-background">
+      <section className="sticky top-10 z-30 flex h-10 shrink-0 items-center border-b border-border bg-background px-3">
+          <div className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto">
+            <div className="relative h-7 min-w-64 shrink-0">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={nameFilter}
+                onChange={(event) => setNameFilter(event.target.value)}
+                placeholder="Search by skill name..."
+                className="h-7 rounded-lg border-border/60 bg-transparent pl-7 text-xs"
+              />
+            </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
-                />
-              }
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground">Category:</span>
-              <span>{categoryFilterLabel}</span>
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="min-w-44 rounded-xl p-1"
-            >
-              <DropdownMenuItem onClick={() => setCategoryFilter("all")}>
-                All categories
-              </DropdownMenuItem>
-              {categoryOptions.map((category) => (
-                <DropdownMenuItem
-                  key={category}
-                  onClick={() => setCategoryFilter(category)}
-                >
-                  {category}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
+                  />
+                }
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-muted-foreground">Category:</span>
+                <span>{categoryFilterLabel}</span>
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="min-w-44 rounded-xl p-1"
+              >
+                <DropdownMenuItem onClick={() => setCategoryFilter("all")}>
+                  All categories
                 </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {categoryOptions.map((category) => (
+                  <DropdownMenuItem
+                    key={category}
+                    onClick={() => setCategoryFilter(category)}
+                  >
+                    {category}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
-                />
-              }
-            >
-              <Circle className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground">Status:</span>
-              <span>{statusFilterLabel}</span>
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="min-w-40 rounded-xl p-1"
-            >
-              <DropdownMenuItem onClick={() => setStatusFilter("all")}>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
+                  />
+                }
+              >
                 <Circle className="h-3.5 w-3.5 text-muted-foreground" />
-                All
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter("Active")}>
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                Active
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter("Draft")}>
-                <Circle className="h-3.5 w-3.5 text-muted-foreground" />
-                Draft
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+                <span className="text-muted-foreground">Status:</span>
+                <span>{statusFilterLabel}</span>
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="min-w-40 rounded-xl p-1"
+              >
+                <DropdownMenuItem onClick={() => setStatusFilter("all")}>
+                  <Circle className="h-3.5 w-3.5 text-muted-foreground" />
+                  All
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("Active")}>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  Active
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("Draft")}>
+                  <Circle className="h-3.5 w-3.5 text-muted-foreground" />
+                  Draft
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
       </section>
 
+      <div className="flex min-h-0 flex-1">
       <div className="flex-1 px-3 py-4">
         <p className="mb-3 text-sm text-muted-foreground">
           {filteredSkills.length} skills
@@ -481,11 +382,12 @@ function SkillsPageContent() {
                       <h3 className="truncate text-sm font-semibold text-foreground">
                         {skill.name}
                       </h3>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${statusStyles[skill.status]}`}
+                      <Badge
+                        variant={statusStyles[skill.status]}
+                        className="shrink-0"
                       >
                         {skill.status}
-                      </span>
+                      </Badge>
                     </div>
 
                     <p className="mt-2 text-sm text-muted-foreground">
@@ -493,16 +395,16 @@ function SkillsPageContent() {
                     </p>
 
                     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className="rounded-full bg-muted px-2 py-0.5">
+                      <Badge variant="neutral">
                         {skill.category}
-                      </span>
+                      </Badge>
                       {skill.connectedApps?.map((app) => (
-                        <span
+                        <Badge
                           key={`${skill.id}-${app}`}
-                          className="rounded-full border border-border bg-background px-2 py-0.5"
+                          variant="violet"
                         >
                           {app}
-                        </span>
+                        </Badge>
                       ))}
                     </div>
 
@@ -551,11 +453,12 @@ function SkillsPageContent() {
                         <h3 className="truncate text-sm font-semibold text-foreground">
                           {skill.name}
                         </h3>
-                        <span
-                          className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${statusStyles[skill.status]}`}
+                        <Badge
+                          variant={statusStyles[skill.status]}
+                          className="shrink-0"
                         >
                           {skill.status}
-                        </span>
+                        </Badge>
                       </div>
 
                       <p className="mt-2 text-sm text-muted-foreground">
@@ -563,16 +466,16 @@ function SkillsPageContent() {
                       </p>
 
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <span className="rounded-full bg-muted px-2 py-0.5">
+                        <Badge variant="neutral">
                           {skill.category}
-                        </span>
+                        </Badge>
                         {skill.connectedApps?.map((app) => (
-                          <span
+                          <Badge
                             key={`${skill.id}-${app}`}
-                            className="rounded-full border border-border bg-background px-2 py-0.5"
+                            variant="violet"
                           >
                             {app}
-                          </span>
+                          </Badge>
                         ))}
                       </div>
 
@@ -593,140 +496,53 @@ function SkillsPageContent() {
           ))}
         </section>
       </div>
-
-      <Dialog
-        open={createSkillOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            closeCreateSkillDialog()
-            return
-          }
-          setCreateSkillOpen(true)
-        }}
+      <aside
+        className={cn(
+          "sticky top-20 z-20 flex h-[calc(100vh-5rem)] min-w-0 shrink-0 self-start flex-col overflow-hidden bg-transparent transition-[width,padding] duration-300 ease-out",
+          createSkillOpen ? "w-[min(42vw,620px)] p-3 pl-2" : "w-0 p-0"
+        )}
+        aria-hidden={!createSkillOpen}
       >
-        <DialogContent className="max-h-[85vh] w-[min(680px,calc(100vw-2rem))] overflow-hidden p-0 sm:max-w-[680px]">
-          <DialogHeader className="border-b border-border px-5 py-4">
-            <DialogTitle>Create Skill</DialogTitle>
-            <DialogDescription>
-              Add a title, define the prompt, connect apps, then create your
-              skill.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="max-h-[calc(85vh-138px)] space-y-4 overflow-y-auto px-5 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="new-skill-title">Title</Label>
-              <Input
-                id="new-skill-title"
-                value={newSkillTitle}
-                onChange={(event) => {
-                  setNewSkillTitle(event.target.value)
-                  setCreateSkillError(null)
-                }}
-                placeholder="e.g. Contract Redline Assistant"
-              />
+        <div
+          className={cn(
+            "flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/95 backdrop-blur-sm transition-all duration-300 ease-out",
+            createSkillOpen
+              ? "translate-x-0 opacity-100"
+              : "pointer-events-none translate-x-8 opacity-0"
+          )}
+          role="dialog"
+          aria-label="Create Skill"
+        >
+          <div className="flex items-start justify-between border-b border-border px-5 py-4">
+            <div>
+              <h2 className="text-base font-medium text-foreground">Create Skill</h2>
+              <p className="text-sm text-muted-foreground">
+                Chat to define and create a new skill.
+              </p>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="new-skill-prompt">Prompt</Label>
-              <Textarea
-                id="new-skill-prompt"
-                value={newSkillPrompt}
-                onChange={(event) => {
-                  setNewSkillPrompt(event.target.value)
-                  setCreateSkillError(null)
-                }}
-                placeholder="Describe how this skill should behave, what inputs it gets, and what output it should return."
-                className="min-h-32"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Connect Apps</Label>
-              <div className="flex flex-wrap gap-2">
-                {COMMON_APPS.map((app) => {
-                  const isSelected = selectedApps.includes(app)
-                  return (
-                    <button
-                      key={app}
-                      type="button"
-                      onClick={() => toggleAppConnection(app)}
-                      className={
-                        isSelected
-                          ? "inline-flex items-center gap-1.5 rounded-full border border-foreground/20 bg-foreground/5 px-2.5 py-1 text-xs text-foreground"
-                          : "inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                      }
-                    >
-                      {isSelected && <Check className="h-3 w-3" />}
-                      {app}
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Input
-                  value={customAppDraft}
-                  onChange={(event) => setCustomAppDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault()
-                      addCustomApp()
-                    }
-                  }}
-                  placeholder="Add custom app"
-                  className="h-8 text-xs"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="xs"
-                  className="shrink-0"
-                  onClick={addCustomApp}
-                  disabled={customAppDraft.trim().length === 0}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add
-                </Button>
-              </div>
-
-              {selectedApps.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {selectedApps.map((app) => (
-                    <span
-                      key={`selected-app-${app}`}
-                      className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs text-foreground"
-                    >
-                      {app}
-                      <button
-                        type="button"
-                        aria-label={`Remove ${app}`}
-                        onClick={() => removeConnectedApp(app)}
-                        className="rounded text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {createSkillError && (
-              <p className="text-xs text-destructive">{createSkillError}</p>
-            )}
+            <button
+              type="button"
+              aria-label="Close create skill panel"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={closeCreateSkillDialog}
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
-          <DialogFooter className="border-t border-border bg-background/70">
-            <Button type="button" variant="outline" onClick={closeCreateSkillDialog}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={createSkill}>
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <div className="min-h-0 flex-1 overflow-hidden px-4 py-4">
+            <AIPrompt
+              chatId="skills-create-skill"
+              persistChatListEntry={false}
+              hideGreeting
+              dockComposerToBottom
+              fixedCommandBadge="/create skill"
+              userFullName="You"
+            />
+          </div>
+        </div>
+      </aside>
+      </div>
     </div>
   )
 }

@@ -1,5 +1,7 @@
 "use client"
 
+import { Pattern as EmptyMyDataPattern } from "@/components/examples/c-empty-14"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -8,19 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import {
-  DocumentCsvIllustration,
-  DocumentDocxIllustration,
-  DocumentJpgIllustration,
-  DocumentJsonIllustration,
-  DocumentPdfIllustration,
-  DocumentPngIllustration,
-  DocumentPptxIllustration,
-  DocumentTxtIllustration,
-  DocumentXlsxIllustration,
-  DocumentZipIllustration,
-} from "@/components/file-type-illustrations"
-import { useMemo, useState, type ComponentType } from "react"
+import { useMemo, useState } from "react"
 import {
   CalendarDays,
   ChevronDown,
@@ -139,17 +129,17 @@ const tableData: DataItem[] = [
   },
 ]
 
-const fileTypeIllustrationMap: Record<DataItem["fileType"], ComponentType> = {
-  pdf: DocumentPdfIllustration,
-  docx: DocumentDocxIllustration,
-  xlsx: DocumentXlsxIllustration,
-  csv: DocumentCsvIllustration,
-  pptx: DocumentPptxIllustration,
-  txt: DocumentTxtIllustration,
-  json: DocumentJsonIllustration,
-  zip: DocumentZipIllustration,
-  png: DocumentPngIllustration,
-  jpg: DocumentJpgIllustration,
+const fileTypeIconMap: Record<DataItem["fileType"], string> = {
+  pdf: "/data types icons/pdf.png",
+  docx: "/data types icons/docx.png",
+  xlsx: "/data types icons/xlsx.png",
+  csv: "/data types icons/csv.png",
+  pptx: "/data types icons/pptx.png",
+  txt: "/data types icons/txt.png",
+  json: "/data types icons/json.png",
+  zip: "/data types icons/zip.png",
+  png: "/data types icons/png.png",
+  jpg: "/data types icons/jpg.png",
 }
 
 function DateAdded({ value }: { value: string }) {
@@ -166,25 +156,27 @@ function DateAdded({ value }: { value: string }) {
 }
 
 export default function MyDataPage() {
+  const [dataRows, setDataRows] = useState<DataItem[]>(tableData)
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([])
   const [search, setSearch] = useState("")
   const [workflowFilter, setWorkflowFilter] = useState("all")
   const [addedByFilter, setAddedByFilter] = useState("all")
   const [dateFilter, setDateFilter] = useState<DateFilter>("all")
 
   const workflowOptions = useMemo(
-    () => Array.from(new Set(tableData.map((item) => item.workflowName))),
-    []
+    () => Array.from(new Set(dataRows.map((item) => item.workflowName))),
+    [dataRows]
   )
 
   const addedByOptions = useMemo(
-    () => Array.from(new Set(tableData.map((item) => item.addedBy.name))),
-    []
+    () => Array.from(new Set(dataRows.map((item) => item.addedBy.name))),
+    [dataRows]
   )
 
   const filteredRows = useMemo(() => {
     const now = new Date("2026-03-14")
 
-    return tableData.filter((item) => {
+    return dataRows.filter((item) => {
       const matchSearch =
         search.trim().length === 0 ||
         item.fileName.toLowerCase().includes(search.toLowerCase()) ||
@@ -209,7 +201,54 @@ export default function MyDataPage() {
 
       return matchSearch && matchWorkflow && matchAddedBy && matchDate
     })
-  }, [search, workflowFilter, addedByFilter, dateFilter])
+  }, [dataRows, search, workflowFilter, addedByFilter, dateFilter])
+
+  const selectedRowIdsSet = useMemo(() => new Set(selectedRowIds), [selectedRowIds])
+  const hasSelectedRows = selectedRowIds.length > 0
+  const areAllFilteredRowsSelected =
+    filteredRows.length > 0 &&
+    filteredRows.every((row) => selectedRowIdsSet.has(row.id))
+  const isSomeFilteredRowSelected =
+    filteredRows.length > 0 &&
+    filteredRows.some((row) => selectedRowIdsSet.has(row.id))
+
+  const deleteRows = (rowIds: string[]) => {
+    if (rowIds.length === 0) return
+    const rowIdsSet = new Set(rowIds)
+    setDataRows((previous) => previous.filter((item) => !rowIdsSet.has(item.id)))
+    setSelectedRowIds((previous) =>
+      previous.filter((rowId) => !rowIdsSet.has(rowId))
+    )
+  }
+
+  const handleDeleteRow = (rowId: string) => {
+    deleteRows([rowId])
+  }
+
+  const handleDeleteSelectedRows = () => {
+    deleteRows(selectedRowIds)
+  }
+
+  const toggleRowSelection = (rowId: string, checked: boolean) => {
+    setSelectedRowIds((previous) => {
+      if (checked) {
+        if (previous.includes(rowId)) return previous
+        return [...previous, rowId]
+      }
+      return previous.filter((itemId) => itemId !== rowId)
+    })
+  }
+
+  const toggleSelectAllFilteredRows = (checked: boolean) => {
+    const filteredRowIds = filteredRows.map((row) => row.id)
+    setSelectedRowIds((previous) => {
+      if (checked) {
+        return Array.from(new Set([...previous, ...filteredRowIds]))
+      }
+      const filteredRowIdsSet = new Set(filteredRowIds)
+      return previous.filter((itemId) => !filteredRowIdsSet.has(itemId))
+    })
+  }
 
   const workflowFilterLabel =
     workflowFilter === "all" ? "All workflows" : workflowFilter
@@ -226,7 +265,7 @@ export default function MyDataPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-2.5rem)] flex-1 flex-col bg-background">
-      <section className="flex h-10 items-center border-b border-border px-3">
+      <section className="sticky top-10 z-30 flex h-10 items-center border-b border-border bg-background px-3">
         <div className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto">
           <div className="relative h-7 min-w-64 shrink-0">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -337,118 +376,170 @@ export default function MyDataPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {hasSelectedRows && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 shrink-0 bg-sidebar px-2.5 text-xs text-foreground hover:bg-sidebar-accent"
+              onClick={handleDeleteSelectedRows}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete selected ({selectedRowIds.length})
+            </Button>
+          )}
         </div>
       </section>
 
-      <div className="flex-1 px-3 pt-1 pb-4">
-        <div className="-mx-3 overflow-x-auto">
-          <table className="w-full min-w-[980px] border-collapse">
-            <thead className="border-y border-border bg-muted/30">
-              <tr className="text-left text-xs text-muted-foreground">
-                <th className="border-r border-border/80 px-4 py-1.5 font-medium">
-                  File name
-                </th>
-                <th className="border-r border-border/80 px-4 py-1.5 font-medium">
-                  Related project
-                </th>
-                <th className="border-r border-border/80 px-4 py-1.5 font-medium">
-                  Date added
-                </th>
-                <th className="border-r border-border/80 px-4 py-1.5 font-medium">
-                  Workflow assigned
-                </th>
-                <th className="border-r border-border/80 px-4 py-1.5 font-medium">
-                  Added by
-                </th>
-                <th className="px-4 py-1.5 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.map((row) => {
-                const FileIllustration = fileTypeIllustrationMap[row.fileType]
+      <div className="flex-1 px-3 pt-0 pb-4">
+        {dataRows.length === 0 ? (
+          <div className="flex h-full min-h-[50vh] items-center justify-center">
+            <EmptyMyDataPattern />
+          </div>
+        ) : filteredRows.length === 0 ? (
+          <div className="flex h-44 items-center justify-center rounded-xl border border-dashed border-border">
+            <p className="text-sm text-muted-foreground">
+              No files match the current filters.
+            </p>
+          </div>
+        ) : (
+          <div className="-mx-3 overflow-x-auto">
+            <table className="w-full min-w-[980px] border-collapse">
+              <thead className="border-b border-border bg-muted/30">
+                <tr className="text-left text-xs text-muted-foreground">
+                  <th className="w-11 border-r border-border/80 px-3 py-1.5 text-center font-medium">
+                    <input
+                      type="checkbox"
+                      checked={areAllFilteredRowsSelected}
+                      ref={(input) => {
+                        if (input) input.indeterminate = isSomeFilteredRowSelected && !areAllFilteredRowsSelected
+                      }}
+                      onChange={(event) =>
+                        toggleSelectAllFilteredRows(event.target.checked)
+                      }
+                      aria-label="Select all visible files"
+                      className="h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-ring"
+                    />
+                  </th>
+                  <th className="border-r border-border/80 px-4 py-1.5 font-medium">
+                    File name
+                  </th>
+                  <th className="border-r border-border/80 px-4 py-1.5 font-medium">
+                    Related project
+                  </th>
+                  <th className="border-r border-border/80 px-4 py-1.5 font-medium">
+                    Date added
+                  </th>
+                  <th className="border-r border-border/80 px-4 py-1.5 font-medium">
+                    Workflow assigned
+                  </th>
+                  <th className="border-r border-border/80 px-4 py-1.5 font-medium">
+                    Added by
+                  </th>
+                  <th className="px-4 py-1.5 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((row) => {
+                  const iconSrc =
+                    fileTypeIconMap[row.fileType] ??
+                    "/data types icons/any other file type.png"
 
-                return (
-                  <tr
-                    key={row.id}
-                    className="border-b border-border text-sm hover:bg-muted/30"
-                  >
-                    <td className="border-r border-border/70 px-4 py-1 font-medium text-foreground">
-                      <span className="flex items-center gap-2">
-                        <span className="relative inline-block h-8 w-9 shrink-0 overflow-hidden rounded-sm align-middle">
-                          <span
-                            className="pointer-events-none absolute top-1/2 left-1/2 block"
-                            style={{
-                              transform: "translate(-50%, -50%) scale(0.2)",
-                            }}
-                          >
-                            <FileIllustration />
+                  return (
+                    <tr
+                      key={row.id}
+                      className="border-b border-border text-sm hover:bg-muted/30"
+                    >
+                      <td className="border-r border-border/70 px-3 py-1 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedRowIdsSet.has(row.id)}
+                          onChange={(event) =>
+                            toggleRowSelection(row.id, event.target.checked)
+                          }
+                          aria-label={`Select ${row.fileName}`}
+                          className="h-4 w-4 cursor-pointer rounded border-border text-primary focus:ring-ring"
+                        />
+                      </td>
+                      <td className="border-r border-border/70 px-4 py-1 font-medium text-foreground">
+                        <span className="flex items-center gap-2">
+                          <span className="inline-flex h-7 w-8 shrink-0 items-center justify-center overflow-hidden rounded-sm align-middle">
+                            <Image
+                              src={iconSrc}
+                              alt={`${row.fileType.toUpperCase()} icon`}
+                              width={20}
+                              height={20}
+                              className="h-auto w-auto max-h-5 max-w-5 object-contain"
+                            />
                           </span>
+                          <span>{row.fileName}</span>
                         </span>
-                        <span>{row.fileName}</span>
-                      </span>
-                    </td>
-                    <td className="border-r border-border/70 px-4 py-1 text-muted-foreground">
-                      {row.relatedProject}
-                    </td>
-                    <td className="border-r border-border/70 px-4 py-1">
-                      <DateAdded value={row.dateAdded} />
-                    </td>
-                    <td className="border-r border-border/70 px-4 py-1 text-foreground">
-                      {row.workflowName}
-                    </td>
-                    <td className="border-r border-border/70 px-4 py-1">
-                      <span
-                        title={row.addedBy.name}
-                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold ${row.addedBy.tone}`}
-                      >
-                        {row.addedBy.initials}
-                      </span>
-                    </td>
-                    <td className="px-4 py-1">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="xs"
-                          variant="ghost"
-                          className="bg-sidebar px-1.5 text-xs text-foreground hover:bg-sidebar-accent hover:text-foreground"
+                      </td>
+                      <td className="border-r border-border/70 px-4 py-1 text-muted-foreground">
+                        {row.relatedProject}
+                      </td>
+                      <td className="border-r border-border/70 px-4 py-1">
+                        <DateAdded value={row.dateAdded} />
+                      </td>
+                      <td className="border-r border-border/70 px-4 py-1 text-foreground">
+                        {row.workflowName}
+                      </td>
+                      <td className="border-r border-border/70 px-4 py-1">
+                        <span
+                          title={row.addedBy.name}
+                          className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold ${row.addedBy.tone}`}
                         >
-                          Update
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <Button
-                                size="icon-xs"
-                                variant="ghost"
-                                className="bg-sidebar text-foreground hover:bg-sidebar-accent hover:text-foreground"
-                                aria-label="More actions"
-                                title="More actions"
-                              />
-                            }
+                          {row.addedBy.initials}
+                        </span>
+                      </td>
+                      <td className="px-4 py-1">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            className="bg-sidebar px-1.5 text-xs text-foreground hover:bg-sidebar-accent hover:text-foreground"
                           >
-                            <MoreHorizontal className="h-3.5 w-3.5" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="min-w-32 rounded-xl p-1"
-                          >
-                            <DropdownMenuItem>
-                              <Download className="h-3.5 w-3.5" />
-                              Download
-                            </DropdownMenuItem>
-                            <DropdownMenuItem variant="destructive">
-                              <Trash2 className="h-3.5 w-3.5" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                            Update
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <Button
+                                  size="icon-xs"
+                                  variant="ghost"
+                                  className="bg-sidebar text-foreground hover:bg-sidebar-accent hover:text-foreground"
+                                  aria-label="More actions"
+                                  title="More actions"
+                                />
+                              }
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              className="min-w-32 rounded-xl p-1"
+                            >
+                              <DropdownMenuItem>
+                                <Download className="h-3.5 w-3.5" />
+                                Download
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => handleDeleteRow(row.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )

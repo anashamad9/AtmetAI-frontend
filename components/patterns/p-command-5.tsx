@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Badge } from "@/components/reui/badge"
+import { Badge } from "@/registry/spell-ui/badge"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -54,7 +54,7 @@ export function Pattern() {
                     </span>
                   </div>
                   <div className="ms-auto" data-slot="command-shortcut">
-                    <Badge variant="outline" size="sm">
+                    <Badge variant="neutral" size="sm">
                       {file.type}
                     </Badge>
                   </div>

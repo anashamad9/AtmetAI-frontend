@@ -155,6 +155,7 @@ type AIPromptProps = {
   persistChatListEntry?: boolean;
   hideGreeting?: boolean;
   dockComposerToBottom?: boolean;
+  fixedCommandBadge?: string;
   onConversationStart?: () => void;
   onAutomationConversationStart?: () => void;
   onConversationActivityChange?: (isActive: boolean) => void;
@@ -185,6 +186,7 @@ export default function AI_Prompt({
   persistChatListEntry = true,
   hideGreeting = false,
   dockComposerToBottom = false,
+  fixedCommandBadge,
   onConversationStart,
   onAutomationConversationStart,
   onConversationActivityChange,
@@ -225,6 +227,23 @@ export default function AI_Prompt({
     maxHeight: 300,
   });
   const [selectedModel, setSelectedModel] = useState("Claude 4.5 Sonnet");
+  const fixedSkillName = useMemo(() => {
+    if (!fixedCommandBadge) return null;
+    const normalized = fixedCommandBadge.trim().replace(/^\//, "").trim();
+    return normalized.length > 0 ? normalized : null;
+  }, [fixedCommandBadge]);
+  const lockedComposerPrefix = useMemo(
+    () => (fixedSkillName ? `/${fixedSkillName} ` : ""),
+    [fixedSkillName]
+  );
+  const mentionableSkills = useMemo(() => {
+    const baseSkills = SKILLS.filter((skill) => skill !== "No skill");
+    if (!fixedSkillName) return baseSkills;
+    if (baseSkills.some((skill) => skill.toLowerCase() === fixedSkillName.toLowerCase())) {
+      return baseSkills;
+    }
+    return [fixedSkillName, ...baseSkills];
+  }, [fixedSkillName]);
   const firstName = useMemo(
     () => userFullName.trim().split(/\s+/)[0] || "Amir",
     [userFullName]
@@ -402,12 +421,12 @@ export default function AI_Prompt({
 
     const source =
       commandMenu.type === "skill"
-        ? SKILLS.filter((skill) => skill !== "No skill")
+        ? mentionableSkills
         : APPS;
 
     const query = commandMenu.query.trim().toLowerCase();
     return source.filter((item) => item.toLowerCase().includes(query));
-  }, [commandMenu]);
+  }, [commandMenu, mentionableSkills]);
 
   const MODEL_ICONS: Record<string, React.ReactNode> = {
     "GPT-5-mini": OPENAI_SVG,
@@ -549,6 +568,22 @@ export default function AI_Prompt({
   useEffect(() => {
     attachedFilesRef.current = attachedFiles;
   }, [attachedFiles]);
+
+  useEffect(() => {
+    if (!lockedComposerPrefix) return;
+
+    setValue((prev) => {
+      if (prev.startsWith(lockedComposerPrefix)) return prev;
+      const withoutPrefix = prev.replace(
+        new RegExp(
+          `^\\s*\\/${fixedSkillName?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") ?? ""}\\s*`,
+          "i"
+        ),
+        ""
+      );
+      return `${lockedComposerPrefix}${withoutPrefix.replace(/^\s+/, "")}`;
+    });
+  }, [fixedSkillName, lockedComposerPrefix]);
 
   useEffect(() => {
     activeChatIdRef.current = chatId ?? null;
@@ -724,7 +759,6 @@ export default function AI_Prompt({
       return { nextValue: inputValue, nextCursor: cursorPosition };
     }
 
-    const mentionableSkills = SKILLS.filter((skill) => skill !== "No skill");
     const mentionTokens = [
       ...APPS.map((app) => `@${app}`),
       ...mentionableSkills.map((skill) => `/${skill}`),
@@ -749,8 +783,58 @@ export default function AI_Prompt({
     return { nextValue: inputValue, nextCursor: cursorPosition };
   };
 
+  const normalizeMentionSpacing = (
+    inputValue: string,
+    cursorPosition: number
+  ): { nextValue: string; nextCursor: number } => {
+    const escapedApps = APPS.map((app) => app.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).sort(
+      (a, b) => b.length - a.length
+    );
+    const escapedSkills = mentionableSkills
+      .map((skill) => skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .sort((a, b) => b.length - a.length);
+
+    if (escapedApps.length === 0 && escapedSkills.length === 0) {
+      return { nextValue: inputValue, nextCursor: cursorPosition };
+    }
+
+    const mentionParts: string[] = [];
+    if (escapedApps.length > 0) {
+      mentionParts.push(`@(?:${escapedApps.join("|")})`);
+    }
+    if (escapedSkills.length > 0) {
+      mentionParts.push(`\\/(?:${escapedSkills.join("|")})`);
+    }
+
+    if (mentionParts.length === 0) {
+      return { nextValue: inputValue, nextCursor: cursorPosition };
+    }
+
+    const mentionRegex = new RegExp(`(^|\\s)(${mentionParts.join("|")})(?=\\S|$)`, "gi");
+
+    let cursorDelta = 0;
+    const nextValue = inputValue.replace(
+      mentionRegex,
+      (fullMatch, leadingSpace = "", mentionToken = "", offset = 0) => {
+        const insertionPoint = Number(offset) + String(leadingSpace).length + String(mentionToken).length;
+        if (insertionPoint <= cursorPosition) {
+          cursorDelta += 1;
+        }
+        return `${leadingSpace}${mentionToken} `;
+      }
+    );
+
+    if (nextValue === inputValue) {
+      return { nextValue: inputValue, nextCursor: cursorPosition };
+    }
+
+    return {
+      nextValue,
+      nextCursor: cursorPosition + cursorDelta,
+    };
+  };
+
   const getMentionRanges = (inputValue: string): Array<{ start: number; end: number }> => {
-    const mentionableSkills = SKILLS.filter((skill) => skill !== "No skill");
     const escapedApps = APPS.map((app) => app.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).sort(
       (a, b) => b.length - a.length
     );
@@ -831,21 +915,58 @@ export default function AI_Prompt({
     const { nextValue, nextCursor } = isDeleteAction
       ? { nextValue: rawValue, nextCursor: rawCursor }
       : applyMentionAutoSpace(rawValue, rawCursor);
+    const normalizedSpacing = isDeleteAction
+      ? { nextValue, nextCursor }
+      : normalizeMentionSpacing(nextValue, nextCursor);
+    const spacedValue = normalizedSpacing.nextValue;
+    const spacedCursor = normalizedSpacing.nextCursor;
 
-    setValue(nextValue);
+    let guardedValue = spacedValue;
+    let guardedCursor = spacedCursor;
+    if (lockedComposerPrefix) {
+      const withoutLockedPrefix = guardedValue.replace(
+        new RegExp(
+          `^\\s*\\/${fixedSkillName?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") ?? ""}\\s*`,
+          "i"
+        ),
+        ""
+      );
+      guardedValue = `${lockedComposerPrefix}${withoutLockedPrefix.replace(/^\s+/, "")}`;
+      guardedCursor = Math.max(guardedCursor, lockedComposerPrefix.length);
+    }
+
+    setValue(guardedValue);
     adjustHeight();
-    updateCommandMenuFromInput(nextValue, nextCursor);
+    updateCommandMenuFromInput(guardedValue, guardedCursor);
 
-    if (nextValue !== rawValue) {
+    if (guardedValue !== rawValue || guardedCursor !== rawCursor) {
       requestAnimationFrame(() => {
         if (!textareaRef.current) return;
-        textareaRef.current.setSelectionRange(nextCursor, nextCursor);
+        textareaRef.current.setSelectionRange(guardedCursor, guardedCursor);
       });
     }
   };
 
   const handleComposerScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     setComposerScrollTop(e.currentTarget.scrollTop);
+  };
+
+  const handleComposerSelection = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    if (!lockedComposerPrefix) return;
+    const target = e.currentTarget;
+    const start = target.selectionStart ?? 0;
+    const end = target.selectionEnd ?? start;
+    if (start >= lockedComposerPrefix.length && end >= lockedComposerPrefix.length) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      if (!textareaRef.current) return;
+      textareaRef.current.setSelectionRange(
+        lockedComposerPrefix.length,
+        lockedComposerPrefix.length
+      );
+    });
   };
 
   const insertAppMention = (app: string) => {
@@ -1005,7 +1126,10 @@ export default function AI_Prompt({
 
   const sendMessage = () => {
     const content = value.trim();
-    if (!content) return;
+    const hasUserTextBeyondLockedPrefix = lockedComposerPrefix
+      ? value.slice(lockedComposerPrefix.length).trim().length > 0
+      : content.length > 0;
+    if (!hasUserTextBeyondLockedPrefix && attachedFiles.length === 0) return;
     const attachmentData = attachedFiles.map(({ id, name, kind, previewUrl }) => ({
       id,
       name,
@@ -1051,7 +1175,7 @@ export default function AI_Prompt({
         return updated.slice(0, editIndex + 1);
       });
 
-      setValue("");
+      setValue(lockedComposerPrefix);
       setComposerScrollTop(0);
       setAttachedFiles([]);
       adjustHeight(true);
@@ -1077,7 +1201,7 @@ export default function AI_Prompt({
       ...prev,
       { id: Date.now(), role: "user", content, attachments: attachmentData },
     ]);
-    setValue("");
+    setValue(lockedComposerPrefix);
     setComposerScrollTop(0);
     setAttachedFiles([]);
     adjustHeight(true);
@@ -1298,11 +1422,11 @@ export default function AI_Prompt({
       showLogo?: boolean;
       plainInline?: boolean;
       preserveComposerCaret?: boolean;
+      lockedSkillName?: string | null;
     }
   ) => {
     const useInlineMentionStyle = options?.plainInline ?? true;
     const preserveComposerCaret = options?.preserveComposerCaret ?? false;
-    const mentionableSkills = SKILLS.filter((skill) => skill !== "No skill");
     const escapedApps = APPS.map((app) => app.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).sort(
       (a, b) => b.length - a.length
     );
@@ -1331,6 +1455,10 @@ export default function AI_Prompt({
         ? skillByLower.get(skillRaw.toLowerCase()) ?? skillRaw
         : "";
       const isSkillMention = skillName.length > 0;
+      const isLockedSkillMention =
+        isSkillMention &&
+        !!options?.lockedSkillName &&
+        skillName.toLowerCase() === options.lockedSkillName.toLowerCase();
       const start = match.index;
       const end = start + fullMatch.length;
 
@@ -1343,22 +1471,26 @@ export default function AI_Prompt({
           nodes.push(
             <span
               key={`${keyPrefix}-mention-${mentionIndex}`}
-                className={cn(
-                  isSkillMention
-                    ? "relative inline whitespace-nowrap align-baseline text-pink-600 font-normal leading-[inherit] tracking-normal dark:text-pink-300"
-                    : "relative inline whitespace-nowrap align-baseline text-[#01a4f3] font-normal leading-[inherit] tracking-normal",
-                  options?.badgeClassName
-                )}
-              >
+              className={cn(
+                isSkillMention
+                  ? isLockedSkillMention
+                    ? "relative inline whitespace-nowrap align-baseline text-violet-600 font-normal leading-[inherit] tracking-normal dark:text-violet-300"
+                    : "relative inline whitespace-nowrap align-baseline text-pink-600 font-normal leading-[inherit] tracking-normal dark:text-pink-300"
+                  : "relative inline whitespace-nowrap align-baseline text-[#01a4f3] font-normal leading-[inherit] tracking-normal",
+                options?.badgeClassName
+              )}
+            >
               <span
                 aria-hidden="true"
-                  className={cn(
-                    "pointer-events-none absolute -inset-x-[0.14em] -inset-y-[0.1em] rounded-[min(var(--radius-sm),8px)]",
-                    isSkillMention
-                      ? "bg-pink-500/12 dark:bg-pink-400/14"
-                      : "bg-[#01a4f3]/12 dark:bg-[#01a4f3]/16"
-                  )}
-                />
+                className={cn(
+                  "pointer-events-none absolute -inset-x-[0.2em] -inset-y-[0.1em] rounded-[min(var(--radius-sm),8px)]",
+                  isSkillMention
+                    ? isLockedSkillMention
+                      ? "bg-violet-500/14 dark:bg-violet-400/16"
+                      : "bg-pink-500/12 dark:bg-pink-400/14"
+                    : "bg-[#01a4f3]/12 dark:bg-[#01a4f3]/16"
+                )}
+              />
               <span className="relative z-[1]">
                 {isSkillMention ? (
                   <span>/{skillName}</span>
@@ -1382,7 +1514,9 @@ export default function AI_Prompt({
               <span
                 key={`${keyPrefix}-mention-${mentionIndex}`}
                 className={cn(
-                  "mx-[0.02em] inline-flex whitespace-nowrap items-center rounded-[min(var(--radius-sm),8px)] bg-pink-500/12 px-[0.14em] py-[0.08em] align-baseline text-pink-600 font-normal leading-[inherit] tracking-normal dark:bg-pink-400/14 dark:text-pink-300",
+                  isLockedSkillMention
+                    ? "mx-[0.02em] inline-flex whitespace-nowrap items-center rounded-[min(var(--radius-sm),8px)] bg-violet-500/14 px-[0.24em] py-[0.08em] align-baseline text-violet-600 font-normal leading-[inherit] tracking-normal dark:bg-violet-400/16 dark:text-violet-300"
+                    : "mx-[0.02em] inline-flex whitespace-nowrap items-center rounded-[min(var(--radius-sm),8px)] bg-pink-500/12 px-[0.24em] py-[0.08em] align-baseline text-pink-600 font-normal leading-[inherit] tracking-normal dark:bg-pink-400/14 dark:text-pink-300",
                   options?.badgeClassName
                 )}
               >
@@ -1394,7 +1528,7 @@ export default function AI_Prompt({
                 <span
                   key={`${keyPrefix}-mention-${mentionIndex}`}
                   className={cn(
-                    "mx-[0.02em] inline-flex whitespace-nowrap items-center gap-[0.24em] rounded-[min(var(--radius-sm),8px)] bg-[#01a4f3]/12 px-[0.14em] py-[0.08em] align-baseline text-[#01a4f3] font-normal leading-[inherit] tracking-normal dark:bg-[#01a4f3]/16",
+                    "mx-[0.02em] inline-flex whitespace-nowrap items-center gap-[0.24em] rounded-[min(var(--radius-sm),8px)] bg-[#01a4f3]/12 px-[0.24em] py-[0.08em] align-baseline text-[#01a4f3] font-normal leading-[inherit] tracking-normal dark:bg-[#01a4f3]/16",
                     options?.badgeClassName
                   )}
                 >
@@ -1410,7 +1544,9 @@ export default function AI_Prompt({
             key={`${keyPrefix}-mention-${mentionIndex}`}
             className={cn(
               isSkillMention
-                ? "mx-0.5 inline-flex items-center rounded-[min(var(--radius-sm),8px)] bg-pink-500/12 px-1.5 py-0.5 align-middle text-pink-600 dark:bg-pink-400/14 dark:text-pink-300"
+                ? isLockedSkillMention
+                  ? "mx-0.5 inline-flex items-center rounded-[min(var(--radius-sm),8px)] bg-violet-500/14 px-1.5 py-0.5 align-middle text-violet-600 dark:bg-violet-400/16 dark:text-violet-300"
+                  : "mx-0.5 inline-flex items-center rounded-[min(var(--radius-sm),8px)] bg-pink-500/12 px-1.5 py-0.5 align-middle text-pink-600 dark:bg-pink-400/14 dark:text-pink-300"
                 : "mx-0.5 inline-flex items-center rounded-[min(var(--radius-sm),8px)] bg-[#01a4f3]/12 px-1.5 py-0.5 align-middle text-[#01a4f3] dark:bg-[#01a4f3]/16",
               options?.badgeClassName
             )}
@@ -1437,11 +1573,23 @@ export default function AI_Prompt({
   };
 
   const renderComposerValue = () => {
-    if (!value) {
+    const hasOnlyLockedPrefix =
+      !!lockedComposerPrefix &&
+      value.startsWith(lockedComposerPrefix) &&
+      value.slice(lockedComposerPrefix.length).length === 0;
+
+    if (!value || hasOnlyLockedPrefix) {
       return (
-        <span className="text-muted-foreground">
-          Use / to add a skill or @ to connect an app.
-        </span>
+        <>
+          {lockedComposerPrefix ? (
+            <span className="mr-[0.08em] inline-flex whitespace-nowrap items-center rounded-[min(var(--radius-sm),8px)] bg-violet-500/14 px-[0.24em] py-[0.08em] align-baseline text-violet-600 font-normal leading-[inherit] tracking-normal dark:bg-violet-400/16 dark:text-violet-300">
+              {lockedComposerPrefix.trim()}
+            </span>
+          ) : null}
+          <span className="ml-[0.28em] text-muted-foreground">
+            Use / to add a skill or @ to connect an app.
+          </span>
+        </>
       );
     }
 
@@ -1452,6 +1600,7 @@ export default function AI_Prompt({
       showLogo: false,
       plainInline: true,
       preserveComposerCaret: true,
+      lockedSkillName: fixedSkillName,
     });
   };
 
@@ -1587,7 +1736,7 @@ export default function AI_Prompt({
 
   const cancelEditingMessage = () => {
     setEditingMessageId(null);
-    setValue("");
+    setValue(lockedComposerPrefix);
     setComposerScrollTop(0);
     setAttachedFiles([]);
     setCommandMenu(null);
@@ -1679,6 +1828,17 @@ export default function AI_Prompt({
     ) {
       const selectionStart = e.currentTarget.selectionStart ?? 0;
       const selectionEnd = e.currentTarget.selectionEnd ?? selectionStart;
+      if (lockedComposerPrefix && selectionStart <= lockedComposerPrefix.length) {
+        e.preventDefault();
+        requestAnimationFrame(() => {
+          if (!textareaRef.current) return;
+          textareaRef.current.setSelectionRange(
+            lockedComposerPrefix.length,
+            lockedComposerPrefix.length
+          );
+        });
+        return;
+      }
 
       if (selectionStart === selectionEnd) {
         const removal = removeWholeMentionAtCursor(
@@ -2020,7 +2180,7 @@ export default function AI_Prompt({
       <div
         className={cn(
           "p-0",
-          hasConversation && !dockComposerToBottom && "sticky bottom-4 z-20"
+          hasConversation && "sticky bottom-4 z-20"
         )}
       >
         {connectedApps.length > 0 && (
@@ -2046,27 +2206,75 @@ export default function AI_Prompt({
             </div>
           </div>
         )}
-        {hasConversation && (
+        <div
+          className={cn(
+            "relative transition-transform duration-300 ease-out",
+            attachedFiles.length > 0 && "translate-y-[-10px]"
+          )}
+        >
           <div
-            className="mb-2 flex min-h-11 w-full items-center rounded-xl border border-sidebar-border px-4 py-2 text-sm text-white/95"
-            style={{
-              backgroundImage: "url('/Atemt.avif')",
-              backgroundSize: `${100 / 6}% 100%`,
-              backgroundPosition: "left center",
-              backgroundRepeat: "repeat-x",
-            }}
-          />
-        )}
-        <div className="relative">
+            className={cn(
+              "overflow-hidden transition-all duration-300 ease-out",
+              attachedFiles.length > 0
+                ? "mb-2 max-h-40 opacity-100"
+                : "mb-0 max-h-0 opacity-0"
+            )}
+          >
+            <div className="relative z-10 p-2 sm:p-2.5">
+              <div className="flex max-h-36 min-h-9 flex-wrap items-start gap-2 overflow-y-auto">
+                {attachedFiles.map((attachment) => (
+                  <div
+                    key={attachment.id}
+                    className="w-32 overflow-hidden rounded-lg border border-sidebar-border bg-background/85 sm:w-36"
+                  >
+                    {attachment.kind === "image" && attachment.previewUrl ? (
+                      <Image
+                        src={attachment.previewUrl}
+                        alt={attachment.name}
+                        width={144}
+                        height={80}
+                        unoptimized
+                        className="h-20 w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-20 flex-col items-center justify-center gap-1 text-muted-foreground">
+                        {renderAttachmentPreviewAsset(attachment)}
+                        <span className="text-[10px]">
+                          {getAttachmentKindLabel(attachment.kind)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between gap-1 border-t border-sidebar-border px-2 py-1">
+                      <span className="truncate text-[11px] text-muted-foreground" title={attachment.name}>
+                        {attachment.name}
+                      </span>
+                      <button
+                        type="button"
+                        title="Remove file"
+                        aria-label={`Remove ${attachment.name}`}
+                        onClick={() => removeAttachedFile(attachment.id)}
+                        className="text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 rounded-xl border border-sidebar-border bg-sidebar"
           />
-          <div className="relative z-10 flex flex-col overflow-hidden rounded-xl border border-sidebar-border bg-sidebar/95">
+          <div className="relative z-10 flex flex-col overflow-hidden rounded-xl border border-sidebar-border bg-sidebar">
             <div className="relative overflow-y-auto" style={{ maxHeight: "400px" }}>
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 z-0 overflow-hidden px-4 py-3 text-base text-foreground font-normal leading-normal tracking-normal md:text-sm"
+                className={cn(
+                  "pointer-events-none absolute inset-0 z-0 overflow-hidden px-4 pb-3 text-base text-foreground font-normal leading-normal tracking-normal md:text-sm",
+                  "pt-3"
+                )}
               >
                 <div
                   className="whitespace-pre-wrap break-words"
@@ -2077,12 +2285,14 @@ export default function AI_Prompt({
               </div>
               <Textarea
                 className={cn(
-                  "relative z-10 w-full resize-none border-none bg-transparent px-4 py-3 text-transparent caret-foreground selection:bg-primary/20 selection:text-transparent focus-visible:ring-0 focus-visible:ring-offset-0",
+                  "relative z-10 w-full resize-none border-none bg-transparent px-4 pb-3 text-transparent caret-foreground selection:bg-primary/20 selection:text-transparent focus-visible:ring-0 focus-visible:ring-offset-0 dark:bg-transparent",
+                  "pt-3",
                   "min-h-[72px]"
                 )}
                 id="ai-input-15"
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
+                onSelect={handleComposerSelection}
                 onScroll={handleComposerScroll}
                 placeholder=""
                 ref={textareaRef}
@@ -2090,7 +2300,7 @@ export default function AI_Prompt({
               />
             </div>
 
-            <div className="flex h-11 items-center bg-transparent">
+            <div className="flex h-11 items-center bg-sidebar">
               <div className="absolute inset-x-2 bottom-1.5 flex items-center justify-between">
                 <div className="flex min-w-0 items-center gap-1 overflow-x-auto pr-2">
                   <DropdownMenu>
@@ -2267,7 +2477,11 @@ export default function AI_Prompt({
                     className={cn(
                       "h-7 rounded-[min(var(--radius-md),12px)] bg-primary px-2.5 text-[0.8rem] font-medium text-primary-foreground hover:bg-primary/90"
                     )}
-                    disabled={!value.trim()}
+                    disabled={
+                      lockedComposerPrefix
+                        ? value.slice(lockedComposerPrefix.length).trim().length === 0
+                        : !value.trim()
+                    }
                     type="button"
                     onClick={sendMessage}
                     size="sm"
@@ -2314,50 +2528,6 @@ export default function AI_Prompt({
                   )}
                 </button>
               ))}
-            </div>
-          )}
-          {attachedFiles.length > 0 && (
-            <div className="relative z-10 -mt-px p-2 sm:p-2.5">
-              <div className="flex max-h-36 min-h-9 flex-wrap items-start gap-2 overflow-y-auto">
-                {attachedFiles.map((attachment) => (
-                  <div
-                    key={attachment.id}
-                    className="w-32 overflow-hidden rounded-lg border border-sidebar-border bg-background/85 sm:w-36"
-                  >
-                    {attachment.kind === "image" && attachment.previewUrl ? (
-                      <Image
-                        src={attachment.previewUrl}
-                        alt={attachment.name}
-                        width={144}
-                        height={80}
-                        unoptimized
-                        className="h-20 w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-20 flex-col items-center justify-center gap-1 text-muted-foreground">
-                        {renderAttachmentPreviewAsset(attachment)}
-                        <span className="text-[10px]">
-                          {getAttachmentKindLabel(attachment.kind)}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between gap-1 border-t border-sidebar-border px-2 py-1">
-                      <span className="truncate text-[11px] text-muted-foreground" title={attachment.name}>
-                        {attachment.name}
-                      </span>
-                      <button
-                        type="button"
-                        title="Remove file"
-                        aria-label={`Remove ${attachment.name}`}
-                        onClick={() => removeAttachedFile(attachment.id)}
-                        className="text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </div>

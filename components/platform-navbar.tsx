@@ -80,12 +80,13 @@ const defaultWorkflowControlState: WorkflowControlState = {
 }
 
 const routeTitles: Record<string, string> = {
-  "/ai-core": "AI Core",
+  "/ai-core": "New Chat",
   "/workflow": "Workflow",
   "/automations": "Automations",
   "/skills": "Skills",
   "/my-data": "My Data",
-  "/integrations": "Integrations",
+  "/notifications": "Notifications",
+  "/integrations": "Apps",
   "/settings": "Settings",
   "/dashboard": "Dashboard",
 }
@@ -93,6 +94,9 @@ const routeTitles: Record<string, string> = {
 function getPageTitle(pathname: string) {
   if (pathname.startsWith("/workflow")) {
     return "Workflow"
+  }
+  if (pathname.startsWith("/notifications")) {
+    return "Notifications"
   }
 
   return routeTitles[pathname] ?? "Platform"
@@ -606,7 +610,7 @@ export function PlatformNavbar() {
                       render={<button type="button" />}
                       onClick={() => router.push("/integrations")}
                     >
-                      Integrations
+                      Apps
                     </BreadcrumbLink>
                   </BreadcrumbItem>
                   <BreadcrumbSeparator />
@@ -637,11 +641,13 @@ export function PlatformNavbar() {
           )}
           {isWorkflowProject && (
             <>
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={requestWorkflowRun}
                 disabled={activeWorkflowControlState.isRunning}
-                className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2.5 text-xs text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-70"
+                className="h-7 gap-1 px-2.5 text-xs disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {activeWorkflowControlState.isRunning ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -649,14 +655,16 @@ export function PlatformNavbar() {
                   <Play className="h-3.5 w-3.5" />
                 )}
                 {activeWorkflowControlState.isRunning ? "Running..." : "Run"}
-              </button>
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
-                    <button
+                    <Button
                       type="button"
+                      variant="default"
+                      size="sm"
                       disabled={activeWorkflowControlState.isPublishing}
-                      className="inline-flex h-7 items-center gap-1 rounded-md bg-foreground px-2.5 text-xs text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-70"
+                      className="h-7 gap-1 px-2.5 text-xs disabled:cursor-not-allowed disabled:opacity-70"
                     />
                   }
                 >
