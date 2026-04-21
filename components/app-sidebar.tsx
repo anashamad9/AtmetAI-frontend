@@ -55,7 +55,6 @@ import {
 import {
   IconApps,
   IconBell,
-  IconBulb,
   IconBuilding,
   IconChartBar,
   IconChevronDown,
@@ -79,16 +78,19 @@ import {
 } from "@tabler/icons-react"
 import { useTheme } from "next-themes"
 import {
+  Brain,
   Briefcase,
   Camera,
   Check,
   Clock3,
   Copy,
+  Gift,
   Globe2,
   Hash,
   KeyRound,
   Languages,
   Mail,
+  MessageSquare,
   Monitor,
   MoreHorizontal,
   Palette,
@@ -97,7 +99,10 @@ import {
   Pin,
   PinOff,
   Plus,
+  RefreshCw,
   Search,
+  Share2,
+  Smile,
   SlidersHorizontal,
   Trash2,
   User,
@@ -124,12 +129,6 @@ const navItems = [
     icon: IconPuzzle,
   },
   {
-    title: "My Data",
-    url: "/my-data",
-    iconType: "tabler" as const,
-    icon: IconDatabase,
-  },
-  {
     title: "Notifications",
     url: "/notifications",
     iconType: "tabler" as const,
@@ -145,6 +144,7 @@ const navItems = [
 const workspaces = ["Documentation", "Product", "Operations", "Marketing"]
 const baseSettingsSections = [
   "Account",
+  "Personalization",
   "Workspace",
   "General",
   "Notifications",
@@ -153,6 +153,7 @@ const baseSettingsSections = [
   "Usage and limits",
   "Data controls",
   "Plans (soon)",
+  "Refer and earn",
   "Billing",
   "Help Docs",
   "Contact Support",
@@ -396,6 +397,7 @@ const workspaceMembers: WorkspaceMember[] = [
 
 const settingsContent: Record<SettingsSection, string[]> = {
   Account: ["Profile details", "Email and login", "Security"],
+  Personalization: ["About me", "Preferences", "Saved answers"],
   Notifications: [
     "Email notifications",
     "Push notifications",
@@ -408,6 +410,7 @@ const settingsContent: Record<SettingsSection, string[]> = {
   "Usage and limits": ["Usage summary", "Rate limits", "Quota alerts"],
   "Data controls": ["Retention policy", "Data export", "Delete requests"],
   "Plans (soon)": ["Current plan", "Billing", "Upgrade options"],
+  "Refer and earn": ["Referral link", "Rewards", "Payout value"],
   Billing: ["Payment methods", "Invoices", "Billing history"],
   "Help Docs": ["Help center", "Guides", "API references"],
   "Contact Support": ["Support contact", "Live chat", "Report a bug"],
@@ -423,11 +426,17 @@ const settingsContent: Record<SettingsSection, string[]> = {
   ],
   "Audit logs": ["Admin actions", "Security events", "Export logs"],
 }
+
+const PersonalizationIcon = ({ className }: { className?: string }) => (
+  <Smile className={className} strokeWidth={1.6} />
+)
+
 const settingsSectionIcons: Record<
   SettingsSection,
   React.ComponentType<{ className?: string }>
 > = {
   Account: IconUser,
+  Personalization: PersonalizationIcon,
   Notifications: IconBell,
   General: Monitor,
   Workspace: IconBuilding,
@@ -436,6 +445,7 @@ const settingsSectionIcons: Record<
   "Usage and limits": IconChartBar,
   "Data controls": IconShield,
   "Plans (soon)": IconSettings,
+  "Refer and earn": Gift,
   Billing: IconCreditCard,
   "Help Docs": IconFileText,
   "Contact Support": IconHelpCircle,
@@ -528,7 +538,9 @@ type OpenSettingsPanelDetail = {
 const INITIAL_VISIBLE_CHATS = 4
 const CHAT_LOAD_STEP = 10
 const APPEARANCE_SETTINGS_STORAGE_KEY = "atmet-appearance-settings"
+const PERSONALIZATION_SETTINGS_STORAGE_KEY = "atmet-personalization-settings"
 const HELP_DOCS_EXTERNAL_URL = "https://atmet.ai/help-docs"
+const CHANALOGE_EXTERNAL_URL = "https://chanaloge.com"
 const BILLING_PORTAL_EXTERNAL_URL = "#"
 const appearanceColorOptions = [
   {
@@ -935,6 +947,130 @@ function AccountSettingsContent() {
               customRole,
             })
           }
+        >
+          <Check className="h-3.5 w-3.5" />
+          Save
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function PersonalizationSettingsContent() {
+  const initialAnswers = React.useMemo(
+    () => ({
+      aboutMe: "",
+      communicationStyle: "",
+      preferences: "",
+    }),
+    []
+  )
+  const [savedAnswers, setSavedAnswers] = React.useState(initialAnswers)
+  const [answers, setAnswers] = React.useState(initialAnswers)
+
+  React.useEffect(() => {
+    try {
+      const rawSettings = window.localStorage.getItem(
+        PERSONALIZATION_SETTINGS_STORAGE_KEY
+      )
+      if (!rawSettings) return
+      const parsed = JSON.parse(rawSettings) as Partial<typeof initialAnswers>
+      const nextAnswers = {
+        aboutMe:
+          typeof parsed.aboutMe === "string" ? parsed.aboutMe : initialAnswers.aboutMe,
+        communicationStyle:
+          typeof parsed.communicationStyle === "string"
+            ? parsed.communicationStyle
+            : initialAnswers.communicationStyle,
+        preferences:
+          typeof parsed.preferences === "string"
+            ? parsed.preferences
+            : initialAnswers.preferences,
+      }
+      setSavedAnswers(nextAnswers)
+      setAnswers(nextAnswers)
+    } catch {}
+  }, [initialAnswers])
+
+  const hasUnsavedChanges =
+    answers.aboutMe !== savedAnswers.aboutMe ||
+    answers.communicationStyle !== savedAnswers.communicationStyle ||
+    answers.preferences !== savedAnswers.preferences
+
+  return (
+    <div className="space-y-3 pb-1">
+      <section className="space-y-0.5">
+        <p className="text-sm font-semibold text-foreground">Personalization</p>
+        <p className="text-sm text-muted-foreground">
+          Add saved answers about yourself so the assistant can personalize your
+          experience.
+        </p>
+      </section>
+
+      <section className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="personalization-about-me">About me</Label>
+          <Textarea
+            id="personalization-about-me"
+            value={answers.aboutMe}
+            onChange={(event) =>
+              setAnswers((previous) => ({
+                ...previous,
+                aboutMe: event.target.value,
+              }))
+            }
+            placeholder="Write a short summary about yourself."
+            className="min-h-[90px]"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="personalization-communication-style">
+            Preferred communication style
+          </Label>
+          <Textarea
+            id="personalization-communication-style"
+            value={answers.communicationStyle}
+            onChange={(event) =>
+              setAnswers((previous) => ({
+                ...previous,
+                communicationStyle: event.target.value,
+              }))
+            }
+            placeholder="Example: concise answers, Arabic + English mixed, include examples."
+            className="min-h-[90px]"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="personalization-preferences">My preferences</Label>
+          <Textarea
+            id="personalization-preferences"
+            value={answers.preferences}
+            onChange={(event) =>
+              setAnswers((previous) => ({
+                ...previous,
+                preferences: event.target.value,
+              }))
+            }
+            placeholder="Anything the assistant should remember for better help."
+            className="min-h-[90px]"
+          />
+        </div>
+      </section>
+
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          size="sm"
+          disabled={!hasUnsavedChanges}
+          onClick={() => {
+            setSavedAnswers(answers)
+            window.localStorage.setItem(
+              PERSONALIZATION_SETTINGS_STORAGE_KEY,
+              JSON.stringify(answers)
+            )
+          }}
         >
           <Check className="h-3.5 w-3.5" />
           Save
@@ -3327,6 +3463,118 @@ function DataControlsSettingsContent() {
   )
 }
 
+function ReferAndEarnSettingsContent() {
+  const referredUsers = 12
+  const totalCredits = 310
+  const referralCode = accountProfile.userId.replace(/^usr_/, "").toUpperCase()
+  const referralLink = React.useMemo(() => {
+    if (typeof window === "undefined") {
+      return `https://app.atmet.ai/signup?ref=${referralCode}`
+    }
+    return `${window.location.origin}/signup?ref=${referralCode}`
+  }, [referralCode])
+  const [copied, setCopied] = React.useState(false)
+  const [payoutStatus, setPayoutStatus] = React.useState("")
+
+  React.useEffect(() => {
+    if (!copied) return
+    const timeoutId = window.setTimeout(() => {
+      setCopied(false)
+    }, 2000)
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [copied])
+
+  const handleCopy = React.useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(referralLink)
+      setCopied(true)
+    } catch {}
+  }, [referralLink])
+
+  const handleShare = React.useCallback(async () => {
+    const shareMessage =
+      "Join Atmet AI with my referral link and get 25% for your first year."
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({
+          title: "Atmet AI referral",
+          text: shareMessage,
+          url: referralLink,
+        })
+        return
+      }
+      await navigator.clipboard.writeText(referralLink)
+      setCopied(true)
+    } catch {}
+  }, [referralLink])
+
+  const handleRequestMoney = React.useCallback(() => {
+    setPayoutStatus("Payout request submitted. Our team will contact you soon.")
+  }, [])
+
+  return (
+    <div className="space-y-3 pb-1">
+      <div className="space-y-0.5 px-1">
+        <p className="text-sm font-semibold text-foreground">Refer and earn</p>
+        <p className="text-sm text-muted-foreground">
+          Share your unique link. New clients get 25% for one year, and you
+          earn referral credits when they pay.
+        </p>
+      </div>
+
+      <section className="rounded-lg border border-border bg-muted/25 p-2.5">
+        <Label htmlFor="referral-link" className="text-xs text-muted-foreground">
+          Your unique referral link
+        </Label>
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          <Input id="referral-link" value={referralLink} readOnly />
+          <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
+            <Copy className="h-3.5 w-3.5" />
+            {copied ? "Copied" : "Copy"}
+          </Button>
+          <Button type="button" size="sm" onClick={handleShare}>
+            <Share2 className="h-3.5 w-3.5" />
+            Share
+          </Button>
+        </div>
+      </section>
+
+      <section className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-xl border border-border bg-background px-3 py-2.5">
+          <p className="text-[11px] text-muted-foreground">Referred users</p>
+          <p className="text-sm font-semibold text-foreground">{referredUsers}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-background px-3 py-2.5">
+          <p className="text-[11px] text-muted-foreground">Total credits</p>
+          <p className="text-sm font-semibold text-foreground">
+            {totalCredits.toLocaleString()} credits
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-background px-3 py-2.5">
+          <p className="text-[11px] text-muted-foreground">Balance payout</p>
+          <Button type="button" size="sm" className="mt-1" onClick={handleRequestMoney}>
+            Request money
+          </Button>
+          {payoutStatus ? (
+            <p className="mt-2 text-xs text-muted-foreground">{payoutStatus}</p>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-sidebar p-3">
+        <p className="text-sm font-semibold text-foreground">Example earnings</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          If a referred client stays on the monthly plan for 12 months, you
+          receive 120 credits. If they choose the yearly plan, you receive 150
+          credits from that purchase.
+        </p>
+      </section>
+    </div>
+  )
+}
+
 function BillingSettingsContent({
   onGoToMembers,
   onGoToUsageLimits,
@@ -4508,6 +4756,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [membersQuickInviteToken, setMembersQuickInviteToken] =
     React.useState(0)
   const [storedChats, setStoredChats] = React.useState<StoredChatItem[]>([])
+  const [isMemoryExpanded, setIsMemoryExpanded] = React.useState(false)
   const [isChatsExpanded, setIsChatsExpanded] = React.useState(true)
   const [visibleChatsCount, setVisibleChatsCount] = React.useState(
     INITIAL_VISIBLE_CHATS
@@ -4659,6 +4908,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     persistStoredChats(nextChats)
     router.push(nextChat.path ?? "/ai-core")
   }, [persistStoredChats, router, storedChats])
+
+  const openPersonalizationSettings = React.useCallback(() => {
+    setActiveSettingsSection("Personalization")
+    setSettingsOpen(true)
+  }, [])
+
+  const openMemoryChats = React.useCallback(() => {
+    setIsChatsExpanded(true)
+    router.push("/ai-core")
+  }, [router])
 
   React.useEffect(() => {
     const syncChats = () => {
@@ -4821,6 +5080,68 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  className="h-7"
+                  render={
+                    <button
+                      type="button"
+                      onClick={() => setIsMemoryExpanded((previous) => !previous)}
+                    />
+                  }
+                >
+                  <Brain className="h-3.5 w-3.5 shrink-0 opacity-80" strokeWidth={1.6} />
+                  <span>Memory</span>
+                  <IconChevronRight
+                    className={cn(
+                      "ms-auto h-3.5 w-3.5 shrink-0 opacity-80 transition-transform duration-200",
+                      isMemoryExpanded && "rotate-90"
+                    )}
+                  />
+                </SidebarMenuButton>
+                <div
+                  className={cn(
+                    "grid overflow-hidden transition-[grid-template-rows,opacity] duration-200 ease-out group-data-[collapsible=icon]:hidden",
+                    isMemoryExpanded
+                      ? "grid-rows-[1fr] opacity-100"
+                      : "pointer-events-none grid-rows-[0fr] opacity-0"
+                  )}
+                >
+                  <div className="min-h-0">
+                    <div className="mt-1 ms-4 space-y-1 border-s border-sidebar-border ps-2">
+                      <button
+                        type="button"
+                        onClick={openPersonalizationSettings}
+                        className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      >
+                        <Smile
+                          className="h-3.5 w-3.5 shrink-0 opacity-80"
+                          strokeWidth={1.6}
+                        />
+                        <span>Personalization</span>
+                      </button>
+                      <Link
+                        href="/my-data"
+                        className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      >
+                        <IconDatabase className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                        <span>My data</span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={openMemoryChats}
+                        className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      >
+                        <MessageSquare
+                          className="h-3.5 w-3.5 shrink-0 opacity-80"
+                          strokeWidth={1.6}
+                        />
+                        <span>Chats</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -5129,6 +5450,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
+            <SidebarMenuButton
+              className="group-data-[collapsible=icon]:justify-center"
+              render={
+                <a
+                  href={CHANALOGE_EXTERNAL_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              }
+            >
+              <RefreshCw className="h-3.5 w-3.5 shrink-0 opacity-80" />
+              <span>chanaloge</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
             <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
               <SheetTrigger
                 render={
@@ -5180,6 +5516,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <div className="min-h-0 flex-1 overflow-auto p-4">
                       {activeSettingsSection === "Account" ? (
                         <AccountSettingsContent />
+                      ) : activeSettingsSection === "Personalization" ? (
+                        <PersonalizationSettingsContent />
                       ) : activeSettingsSection === "Notifications" ? (
                         <NotificationSettingsContent />
                       ) : activeSettingsSection === "General" ? (
@@ -5218,6 +5556,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             Soon
                           </h2>
                         </div>
+                      ) : activeSettingsSection === "Refer and earn" ? (
+                        <ReferAndEarnSettingsContent />
                       ) : activeSettingsSection === "Billing" ? (
                         <BillingSettingsContent
                           onGoToMembers={() =>
@@ -5292,18 +5632,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   }
                 >
                   {resolvedTheme === "dark" ? (
-                    <IconSun className="h-4 w-4" />
+                    <IconSun className="h-4 w-4" stroke={1.5} />
                   ) : (
-                    <IconMoon className="h-4 w-4" />
+                    <IconMoon className="h-4 w-4" stroke={1.5} />
                   )}
                   Theme toggle
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <IconUser className="h-4 w-4" />
+                  <IconUser className="h-4 w-4" stroke={1.5} />
                   Profile
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setActiveSettingsSection("Refer and earn")
+                    setSettingsOpen(true)
+                  }}
+                >
+                  <Gift className="h-4 w-4" strokeWidth={1.6} />
+                  Refer and earn
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive">
-                  <IconLogout2 className="h-4 w-4" />
+                  <IconLogout2 className="h-4 w-4" stroke={1.5} />
                   Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>

@@ -38,6 +38,7 @@ type DataItem = {
     | "png"
     | "jpg"
   fileName: string
+  fileSize: string
   relatedProject: string
   dateAdded: string
   workflowName: string
@@ -53,6 +54,7 @@ const tableData: DataItem[] = [
     id: "d1",
     fileType: "pdf",
     fileName: "Supplier Master Agreement",
+    fileSize: "2.4 MB",
     relatedProject: "Project Atlas Procurement rollout",
     dateAdded: "2026-03-10",
     workflowName: "Contract Risk Review",
@@ -66,6 +68,7 @@ const tableData: DataItem[] = [
     id: "d2",
     fileType: "xlsx",
     fileName: "Q1 Vendor Security Matrix",
+    fileSize: "1.1 MB",
     relatedProject: "Vendor onboarding revamp - Q1",
     dateAdded: "2026-03-08",
     workflowName: "Vendor Onboarding QA",
@@ -79,6 +82,7 @@ const tableData: DataItem[] = [
     id: "d3",
     fileType: "json",
     fileName: "IP Ownership Summary",
+    fileSize: "420 KB",
     relatedProject: "IP compliance modernization",
     dateAdded: "2026-02-26",
     workflowName: "IP Clause Watch",
@@ -92,6 +96,7 @@ const tableData: DataItem[] = [
     id: "d4",
     fileType: "docx",
     fileName: "Diligence Checklist v4",
+    fileSize: "860 KB",
     relatedProject: "M&A diligence sprint - North region",
     dateAdded: "2026-02-14",
     workflowName: "M&A Diligence Runbook",
@@ -105,6 +110,7 @@ const tableData: DataItem[] = [
     id: "d5",
     fileType: "txt",
     fileName: "Clause Parser Ruleset",
+    fileSize: "96 KB",
     relatedProject: "Contract AI extraction engine",
     dateAdded: "2026-01-29",
     workflowName: "Contract Risk Review",
@@ -118,6 +124,7 @@ const tableData: DataItem[] = [
     id: "d6",
     fileType: "pdf",
     fileName: "Data Processing Addendum",
+    fileSize: "3.2 MB",
     relatedProject: "Enterprise privacy program 2026",
     dateAdded: "2026-03-12",
     workflowName: "IP Clause Watch",
@@ -403,7 +410,7 @@ export default function MyDataPage() {
           </div>
         ) : (
           <div className="-mx-3 overflow-x-auto">
-            <table className="w-full min-w-[980px] border-collapse">
+            <table className="w-full min-w-[1060px] border-collapse">
               <thead className="border-b border-border bg-muted/30">
                 <tr className="text-left text-xs text-muted-foreground">
                   <th className="w-11 border-r border-border/80 px-3 py-1.5 text-center font-medium">
@@ -422,6 +429,9 @@ export default function MyDataPage() {
                   </th>
                   <th className="border-r border-border/80 px-4 py-1.5 font-medium">
                     File name
+                  </th>
+                  <th className="border-r border-border/80 px-4 py-1.5 font-medium">
+                    File size
                   </th>
                   <th className="border-r border-border/80 px-4 py-1.5 font-medium">
                     Related project
@@ -473,6 +483,9 @@ export default function MyDataPage() {
                           </span>
                           <span>{row.fileName}</span>
                         </span>
+                      </td>
+                      <td className="border-r border-border/70 px-4 py-1 text-muted-foreground">
+                        {row.fileSize}
                       </td>
                       <td className="border-r border-border/70 px-4 py-1 text-muted-foreground">
                         {row.relatedProject}

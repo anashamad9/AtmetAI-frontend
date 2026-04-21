@@ -18,7 +18,9 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   SidebarLeftIcon,
 } from "@hugeicons/core-free-icons"
-import { Check, ChevronDown, Crown, Plus, Users } from "lucide-react"
+import { Check, ChevronDown, Crown, Gift, Plus, Users } from "lucide-react"
+
+const OPEN_SETTINGS_PANEL_EVENT = "open-settings-panel"
 
 export function VersionSwitcher({
   workspaces,
@@ -127,6 +129,19 @@ export function VersionSwitcher({
               <DropdownMenuItem>
                 <Users className="h-4 w-4 opacity-80" />
                 Add users to workspace
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => {
+                  window.dispatchEvent(
+                    new CustomEvent(OPEN_SETTINGS_PANEL_EVENT, {
+                      detail: { section: "Refer and earn" },
+                    })
+                  )
+                }}
+              >
+                <Gift className="h-4 w-4 opacity-80" />
+                Refer and earn
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
