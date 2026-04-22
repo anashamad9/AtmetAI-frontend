@@ -784,7 +784,11 @@ export function SearchForm({
   }, [open, runAction, shortcutActions])
 
   return (
-    <div className={cn("relative", className)} {...props}>
+    <div
+      className={cn("relative", className)}
+      data-quick-actions-scope="true"
+      {...props}
+    >
       <Button
         type="button"
         variant="outline"
@@ -805,6 +809,7 @@ export function SearchForm({
       </Button>
 
       <CommandDialog
+        data-quick-actions-scope="true"
         open={open}
         onOpenChange={(nextOpen) => {
           setOpen(nextOpen)

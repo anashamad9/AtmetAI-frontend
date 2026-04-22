@@ -197,6 +197,76 @@
   ):not(:where([data-chatbot-scope="true"] *)) {
     border-radius: var(--control-radius) !important;
   }
+  :where(
+    [data-slot="input"]:not([type="search"]),
+    [data-slot="textarea"]
+  ):not(
+      :where(
+        [data-slot="sidebar"] *,
+        [data-chatbot-scope="true"] *,
+        [data-quick-actions-scope="true"] *
+      )
+    ) {
+    @apply border-sidebar-border bg-sidebar;
+    border-color: var(--color-sidebar-border) !important;
+    border-width: 0.75px !important;
+    background-color: var(--color-sidebar) !important;
+    transition:
+      border-color 180ms cubic-bezier(0.2, 0.7, 0.2, 1),
+      box-shadow 180ms cubic-bezier(0.2, 0.7, 0.2, 1) !important;
+  }
+  :where(
+    [data-slot="input"]:not([type="search"]):focus,
+    [data-slot="input"]:not([type="search"]):focus-visible,
+    [data-slot="textarea"]:focus,
+    [data-slot="textarea"]:focus-visible
+  ):not(
+      :where(
+        [data-slot="sidebar"] *,
+        [data-chatbot-scope="true"] *,
+        [data-quick-actions-scope="true"] *
+      )
+    ) {
+    border-color: var(--color-ring) !important;
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-ring) 35%, transparent) !important;
+  }
+  :where(
+    [data-settings-scope="true"] [data-slot="dropdown-menu-content"],
+    [data-settings-scope="true"] [data-slot="dropdown-menu-sub-content"]
+  ) {
+    @apply border-border bg-popover text-popover-foreground;
+    border-style: solid !important;
+    border-width: 0.75px !important;
+    border-color: var(--color-border) !important;
+    background-color: var(--color-popover) !important;
+  }
+  :where(
+    [data-slot="button"].bg-background:not([aria-haspopup]),
+    [data-slot="button"].bg-background:not([aria-haspopup]):hover
+  ):not(
+      :where(
+        [data-slot="sidebar"] *,
+        [data-chatbot-scope="true"] *,
+        [data-quick-actions-scope="true"] *
+      )
+    ) {
+    background-color: var(--color-sidebar) !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+  :where([data-slot="button"].bg-primary):not(
+      :where(
+        [data-slot="sidebar"] *,
+        [data-chatbot-scope="true"] *,
+        [data-quick-actions-scope="true"] *
+      )
+    ) {
+    height: 1.75rem !important;
+    padding-inline: 0.625rem !important;
+    border-radius: min(var(--radius-md), 12px) !important;
+    font-size: 0.8rem !important;
+    gap: 0.25rem !important;
+  }
   body {
     @apply bg-background text-foreground;
     }
@@ -206,6 +276,20 @@
 }
 
 @layer utilities {
+  .surface-sidebar-bg {
+    background-color: var(--color-sidebar) !important;
+  }
+
+  .surface-sidebar-field {
+    background-color: var(--color-sidebar) !important;
+    border-color: var(--color-sidebar-border) !important;
+  }
+
+  .surface-sidebar-menu {
+    background-color: var(--color-popover) !important;
+    border-color: var(--color-border) !important;
+  }
+
   .ui-badge {
     @apply inline-flex items-center justify-center gap-1 whitespace-nowrap border-0 px-2 py-0.5 text-[11px] font-medium;
     border-radius: var(--control-radius) !important;

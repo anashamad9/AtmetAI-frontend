@@ -5513,7 +5513,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         {activeSettingsSection}
                       </SheetTitle>
                     </SheetHeader>
-                    <div className="min-h-0 flex-1 overflow-auto p-4">
+                    <div
+                      className="min-h-0 flex-1 overflow-auto p-4"
+                      data-settings-scope="true"
+                    >
                       {activeSettingsSection === "Account" ? (
                         <AccountSettingsContent />
                       ) : activeSettingsSection === "Personalization" ? (

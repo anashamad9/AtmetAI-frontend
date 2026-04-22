@@ -4,18 +4,21 @@ import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft,
+  Briefcase,
   CheckCircle2,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Circle,
   CircleSlash2,
+  Code2,
+  Database,
+  LifeBuoy,
+  MessageCircle,
   Search,
-  SlidersHorizontal,
+  Server,
 } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
 import { Pattern as EmptyIntegrationsPattern } from "@/components/examples/c-empty-19"
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -70,10 +73,41 @@ type IntegrationApp = {
     | "Support"
 }
 
-type IntegrationPreviewFrame = {
-  id: string
-  title: string
-  subtitle: string
+const categoryMeta: Record<
+  IntegrationApp["category"],
+  {
+    icon: React.ComponentType<{ className?: string }>
+    iconClassName: string
+  }
+> = {
+  Productivity: {
+    icon: Briefcase,
+    iconClassName: "text-blue-500",
+  },
+  Communication: {
+    icon: MessageCircle,
+    iconClassName: "text-violet-500",
+  },
+  Infrastructure: {
+    icon: Server,
+    iconClassName: "text-amber-500",
+  },
+  Development: {
+    icon: Code2,
+    iconClassName: "text-emerald-500",
+  },
+  CRM: {
+    icon: Database,
+    iconClassName: "text-pink-500",
+  },
+  Storage: {
+    icon: Database,
+    iconClassName: "text-cyan-500",
+  },
+  Support: {
+    icon: LifeBuoy,
+    iconClassName: "text-orange-500",
+  },
 }
 
 const integrationApps: IntegrationApp[] = [
@@ -400,56 +434,6 @@ const integrationApps: IntegrationApp[] = [
   },
 ]
 
-const integrationCategories: Array<IntegrationApp["category"]> = [
-  "Productivity",
-  "Development",
-  "Communication",
-  "CRM",
-  "Storage",
-  "Support",
-  "Infrastructure",
-]
-
-const INITIAL_VISIBLE_APPS = 5
-const LOAD_MORE_STEP = 10
-const SHOW_MORE_LOGO_COUNT = 9
-
-function getSeededScore(seed: string, value: string) {
-  const input = `${seed}:${value}`
-  let hash = 0
-
-  for (let index = 0; index < input.length; index += 1) {
-    hash = (hash << 5) - hash + input.charCodeAt(index)
-    hash |= 0
-  }
-
-  return Math.abs(hash)
-}
-
-function getShowMorePreviewApps(
-  category: IntegrationApp["category"],
-  hiddenApps: IntegrationApp[],
-  categoryApps: IntegrationApp[]
-) {
-  const sourceApps = hiddenApps.length > 0 ? hiddenApps : categoryApps
-
-  return [...sourceApps]
-    .sort(
-      (firstApp, secondApp) =>
-        getSeededScore(category, firstApp.id) -
-        getSeededScore(category, secondApp.id)
-    )
-    .slice(0, SHOW_MORE_LOGO_COUNT)
-}
-
-function getAppPreviewFrames(app: IntegrationApp): IntegrationPreviewFrame[] {
-  return Array.from({ length: 8 }, (_, index) => ({
-    id: `${app.id}-preview-${index + 1}`,
-    title: `${app.name} Preview ${index + 1}`,
-    subtitle: `Workflow view ${index + 1}`,
-  }))
-}
-
 export default function IntegrationsPage() {
   const router = useRouter()
   const pathname = usePathname()
@@ -459,26 +443,14 @@ export default function IntegrationsPage() {
   const [connectionFilter, setConnectionFilter] = React.useState<
     "all" | "connected" | "not-connected"
   >("all")
-  const [pendingInstallApp, setPendingInstallApp] =
-    React.useState<IntegrationApp | null>(null)
-  const [isMemoryReferenceEnabled, setIsMemoryReferenceEnabled] =
-    React.useState(false)
   const [selectedAppId, setSelectedAppId] = React.useState<string>(
     integrationApps[0]?.id ?? ""
   )
   const [isAppDetailsOpen, setIsAppDetailsOpen] = React.useState(false)
-  const [activePreviewIndex, setActivePreviewIndex] = React.useState(0)
-  const [visibleAppsByCategory, setVisibleAppsByCategory] = React.useState<
-    Record<IntegrationApp["category"], number>
-  >(() =>
-    integrationCategories.reduce(
-      (accumulator, category) => ({
-        ...accumulator,
-        [category]: INITIAL_VISIBLE_APPS,
-      }),
-      {} as Record<IntegrationApp["category"], number>
-    )
-  )
+  const [pendingInstallApp, setPendingInstallApp] =
+    React.useState<IntegrationApp | null>(null)
+  const [isMemoryReferenceEnabled, setIsMemoryReferenceEnabled] =
+    React.useState(false)
 
   const filteredApps = React.useMemo(() => {
     const normalizedQuery = nameQuery.trim().toLowerCase()
@@ -491,12 +463,27 @@ export default function IntegrationsPage() {
         connectionFilter === "all" ||
         (connectionFilter === "connected" && app.connected) ||
         (connectionFilter === "not-connected" && !app.connected)
+
       return matchesName && matchesConnection
     })
   }, [apps, connectionFilter, nameQuery])
 
+  const installedApps = React.useMemo(
+    () => apps.filter((app) => app.connected),
+    [apps]
+  )
+
+  const installedCategories = React.useMemo(
+    () =>
+      Array.from(new Set(installedApps.map((app) => app.category))).sort(
+        (firstCategory, secondCategory) =>
+          firstCategory.localeCompare(secondCategory)
+      ),
+    [installedApps]
+  )
+
   const selectedApp = React.useMemo(
-    () => apps.find((app) => app.id === selectedAppId) ?? apps[0] ?? null,
+    () => apps.find((app) => app.id === selectedAppId) ?? null,
     [apps, selectedAppId]
   )
 
@@ -528,21 +515,6 @@ export default function IntegrationsPage() {
     closeInstallDialog()
   }, [closeInstallDialog, handleConnectApp, pendingInstallApp])
 
-  const handleShowMoreApps = React.useCallback(
-    (category: IntegrationApp["category"]) => {
-      setVisibleAppsByCategory((prev) => ({
-        ...prev,
-        [category]: (prev[category] ?? INITIAL_VISIBLE_APPS) + LOAD_MORE_STEP,
-      }))
-    },
-    []
-  )
-
-  const openAppDetails = React.useCallback((appId: string) => {
-    setSelectedAppId(appId)
-    setIsAppDetailsOpen(true)
-  }, [])
-
   const setIntegrationAppInQuery = React.useCallback(
     (appId: string | null) => {
       const nextParams = new URLSearchParams(searchParams.toString())
@@ -561,9 +533,19 @@ export default function IntegrationsPage() {
     [pathname, router, searchParams]
   )
 
-  React.useEffect(() => {
-    setActivePreviewIndex(0)
-  }, [selectedAppId])
+  const openAppDetails = React.useCallback(
+    (appId: string) => {
+      setSelectedAppId(appId)
+      setIsAppDetailsOpen(true)
+      setIntegrationAppInQuery(appId)
+    },
+    [setIntegrationAppInQuery]
+  )
+
+  const closeAppDetails = React.useCallback(() => {
+    setIsAppDetailsOpen(false)
+    setIntegrationAppInQuery(null)
+  }, [setIntegrationAppInQuery])
 
   React.useEffect(() => {
     const appIdFromQuery = searchParams.get("app")
@@ -584,287 +566,258 @@ export default function IntegrationsPage() {
 
   const connectionFilterLabel =
     connectionFilter === "all"
-      ? "All"
+      ? "All Integrations"
       : connectionFilter === "connected"
-        ? "Connected"
-        : "Not connected"
+        ? "Installed"
+        : "Not Installed"
+
+  const shouldRenderConnectedEmptyState =
+    connectionFilter === "connected" || apps.every((app) => !app.connected)
+
   return (
     <div className="flex min-h-[calc(100vh-2.5rem)] flex-1 flex-col bg-background">
-      <div className="sticky top-10 z-30 flex h-10 shrink-0 items-center border-b border-border bg-background px-3">
-        <div
-          className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto"
-          data-slot="integrations-secondary-navbar"
-        >
-          {isAppDetailsOpen ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 shrink-0 gap-1.5 border-border/60 px-2.5 text-xs"
-              onClick={() => {
-                setIsAppDetailsOpen(false)
-                setIntegrationAppInQuery(null)
-              }}
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back to apps
-            </Button>
-          ) : (
-            <>
-              <div className="relative h-7 min-w-64 shrink-0">
-                <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={nameQuery}
-                  onChange={(event) => setNameQuery(event.target.value)}
-                  placeholder="Search by app name..."
-                  className="h-7 rounded-lg border-border/60 bg-transparent pl-7 text-xs"
-                />
-              </div>
+      <section className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="space-y-6">
+          <header className="space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Integrations
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Connect external apps and manage your workspace integrations.
+            </p>
+          </header>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
-                    />
-                  }
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-muted-foreground">Status:</span>
-                  <span>{connectionFilterLabel}</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  className="min-w-40 rounded-xl p-1"
-                >
-                  <DropdownMenuItem onClick={() => setConnectionFilter("all")}>
-                    <Circle className="h-3.5 w-3.5 text-muted-foreground" />
-                    All
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setConnectionFilter("connected")}
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    Connected
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setConnectionFilter("not-connected")}
-                  >
-                    <CircleSlash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    Not connected
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+          {isAppDetailsOpen && selectedApp ? (
+            <section className="space-y-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={closeAppDetails}
+                className="h-8 w-fit rounded-lg border-border/70 px-3 text-xs"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to apps
+              </Button>
 
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="mx-auto flex w-full max-w-5xl flex-1 px-0 py-4 sm:px-1 lg:px-2">
-        <section className="mx-auto w-full max-w-4xl">
-          <div className="space-y-6">
-            {isAppDetailsOpen && selectedApp ? (
-              <div className="space-y-4">
-                {(() => {
-                  const previewFrames = getAppPreviewFrames(selectedApp)
-                  const maxPreviewIndex = previewFrames.length - 1
-                  const boundedPreviewIndex = Math.min(
-                    activePreviewIndex,
-                    maxPreviewIndex
-                  )
-                  const activePreviewFrame =
-                    previewFrames[boundedPreviewIndex] ?? previewFrames[0]
-
-                  return (
-                    <>
-                <div className="space-y-4">
-                  <div className="flex min-h-[72px] items-center gap-3">
-                    <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-sm font-semibold text-foreground">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+                <article className="rounded-2xl border border-border bg-card p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-muted text-sm font-semibold text-muted-foreground">
                       {selectedApp.logo}
                     </span>
-                    <div className="min-w-0 space-y-1">
-                      <h2 className="text-[2rem] font-semibold leading-tight tracking-tight text-foreground">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {selectedApp.company} · {selectedApp.category}
+                      </p>
+                      <h2 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
                         {selectedApp.name}
                       </h2>
-                      <p className="text-base leading-6 text-muted-foreground">
-                        Unlock smarter answers and faster team workflows.
-                      </p>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="h-36 w-full rounded-lg border border-border bg-gradient-to-br from-muted to-background p-3">
-                      <p className="text-sm font-semibold text-foreground">
-                        {activePreviewFrame?.title}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {activePreviewFrame?.subtitle}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <button
-                        type="button"
-                        className="inline-flex h-8 items-center justify-center border border-transparent bg-sidebar px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-sidebar-accent"
-                        onClick={() =>
-                          setActivePreviewIndex((prev) =>
-                            prev <= 0 ? maxPreviewIndex : prev - 1
-                          )
-                        }
-                      >
-                        <ChevronLeft className="h-3.5 w-3.5" />
-                        Left
-                      </button>
-                      <p className="text-xs text-muted-foreground">
-                        {boundedPreviewIndex + 1} / {previewFrames.length}
-                      </p>
-                      <button
-                        type="button"
-                        className="inline-flex h-8 items-center justify-center border border-transparent bg-sidebar px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-sidebar-accent"
-                        onClick={() =>
-                          setActivePreviewIndex((prev) =>
-                            prev >= maxPreviewIndex ? 0 : prev + 1
-                          )
-                        }
-                      >
-                        Right
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <p className="text-sm leading-7 text-muted-foreground">
-                    {selectedApp.description} Use this integration to keep your AI
-                    context aligned with the latest updates from{" "}
+                  <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                    {selectedApp.description} You can use this integration to
+                    keep answers grounded in up-to-date context from{" "}
                     {selectedApp.name}.
                   </p>
 
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        selectedApp.connected
-                          ? handleUnconnectApp(selectedApp.id)
-                          : openInstallDialog(selectedApp)
-                      }
-                      className={
-                        selectedApp.connected
-                          ? "inline-flex h-9 items-center justify-center border border-transparent bg-sidebar px-3.5 text-sm font-medium text-foreground transition-colors hover:bg-sidebar-accent"
-                          : "inline-flex h-9 items-center justify-center rounded-lg bg-black px-3.5 text-sm font-medium text-white transition-colors hover:bg-black/90"
-                      }
-                    >
-                      {selectedApp.connected
-                        ? "Unconnect"
-                        : `Connect ${selectedApp.name}`}
-                    </button>
+                  <Separator className="my-4" />
+
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      What you can do
+                    </h3>
+                    <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                      <li>Search and reference {selectedApp.name} content.</li>
+                      <li>
+                        Bring relevant records into prompts and team workflows.
+                      </li>
+                      <li>Control access by connecting only trusted apps.</li>
+                    </ul>
                   </div>
-                </div>
-                    </>
-                  )
-                })()}
-              </div>
-            ) : (
-              <>
-                <div className="flex aspect-[16/9] w-full items-center rounded-xl border border-border bg-muted/50 px-4 py-5 sm:px-5">
-                  <p className="text-sm text-muted-foreground">
-                    Banner content will be added here.
+                </article>
+
+                <aside className="rounded-2xl border border-border bg-card p-5">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Connection Status
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {selectedApp.connected
+                      ? `${selectedApp.name} is currently connected to this workspace.`
+                      : `${selectedApp.name} is not connected yet. Install to enable access.`}
                   </p>
+
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      selectedApp.connected
+                        ? handleUnconnectApp(selectedApp.id)
+                        : openInstallDialog(selectedApp)
+                    }
+                    className={
+                      selectedApp.connected
+                        ? "mt-4 h-9 w-full rounded-lg border border-sidebar-border bg-sidebar text-sm font-medium text-foreground hover:bg-sidebar-accent"
+                        : "mt-4 h-9 w-full rounded-lg bg-black text-sm font-medium text-white hover:bg-black/90"
+                    }
+                  >
+                    {selectedApp.connected
+                      ? "Connected"
+                      : `Install ${selectedApp.name}`}
+                  </Button>
+                </aside>
+              </div>
+            </section>
+          ) : (
+            <>
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-foreground">
+                    Installed
+                  </h2>
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sidebar-accent px-1.5 text-[11px] font-medium text-muted-foreground">
+                    {installedCategories.length}
+                  </span>
                 </div>
 
-                {integrationCategories.map((category) => {
-              const categoryApps = filteredApps.filter(
-                (app) => app.category === category
-              )
-              if (categoryApps.length === 0) return null
-              const visibleCount =
-                visibleAppsByCategory[category] ?? INITIAL_VISIBLE_APPS
-              const visibleApps = categoryApps.slice(0, visibleCount)
-              const hiddenApps = categoryApps.slice(visibleCount)
-              const showMorePreviewApps = getShowMorePreviewApps(
-                category,
-                hiddenApps,
-                categoryApps
-              )
-              const remainingAppsCount = hiddenApps.length
-
-              return (
-                <div key={category}>
-                  <div className="mb-2 flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-foreground">
-                      {category}
-                    </h2>
-                    <span className="text-xs text-muted-foreground">
-                      {categoryApps.length} apps
-                    </span>
+                {installedCategories.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {installedCategories.map((category) => {
+                      const Icon = categoryMeta[category].icon
+                      return (
+                        <span
+                          key={category}
+                          className="inline-flex h-7 items-center gap-2 rounded-lg bg-sidebar px-2.5 text-xs text-foreground"
+                        >
+                          <Icon
+                            className={`h-3.5 w-3.5 ${categoryMeta[category].iconClassName}`}
+                          />
+                          <span className="truncate">{category}</span>
+                        </span>
+                      )
+                    })}
                   </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No installed integrations yet.
+                  </p>
+                )}
+              </section>
 
-                  <div className="space-y-1.5">
-                    {visibleApps.map((app) => (
+              <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 justify-start gap-1.5 border-transparent bg-sidebar px-2.5 text-xs text-foreground hover:bg-sidebar-accent"
+                      />
+                    }
+                  >
+                    <span>{connectionFilterLabel}</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    className="surface-sidebar-menu min-w-44 rounded-xl border p-1"
+                  >
+                    <DropdownMenuItem onClick={() => setConnectionFilter("all")}>
+                      <Circle className="h-3.5 w-3.5 text-muted-foreground" />
+                      All Integrations
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setConnectionFilter("connected")}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      Installed
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setConnectionFilter("not-connected")}
+                    >
+                      <CircleSlash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                      Not Installed
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <div className="relative w-full sm:max-w-xs">
+                  <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={nameQuery}
+                    onChange={(event) => setNameQuery(event.target.value)}
+                    placeholder="Search"
+                    className="surface-sidebar-field h-7 rounded-lg border-transparent pl-7 text-xs"
+                  />
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                    Apps
+                  </h2>
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sidebar-accent px-1.5 text-[11px] font-medium text-muted-foreground">
+                    {filteredApps.length}
+                  </span>
+                </div>
+
+                {filteredApps.length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                    {filteredApps.map((app) => (
                       <article
                         key={app.id}
-                        className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1.5 transition-colors hover:bg-muted/25"
-                        onClick={() => {
-                          openAppDetails(app.id)
-                          setIntegrationAppInQuery(app.id)
-                        }}
+                        className="flex min-h-[184px] flex-col rounded-xl bg-sidebar p-3.5"
                       >
-                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-[10px] font-semibold text-muted-foreground">
+                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-sidebar-accent text-[11px] font-semibold text-muted-foreground">
                           {app.logo}
                         </span>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="text-sm font-semibold tracking-tight text-foreground">
+
+                        <div className="mt-2.5 space-y-1">
+                          <button
+                            type="button"
+                            onClick={() => openAppDetails(app.id)}
+                            className="text-left text-sm font-semibold tracking-tight text-foreground transition-colors hover:text-foreground/75"
+                          >
                             {app.name}
-                          </h3>
-                          <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-muted-foreground">
+                          </button>
+                          <p className="line-clamp-2 text-xs leading-4 text-muted-foreground">
                             {app.description}
                           </p>
                         </div>
+
+                        <div className="mt-auto pt-3">
+                          <Button
+                            type="button"
+                            onClick={() =>
+                              app.connected
+                                ? handleUnconnectApp(app.id)
+                                : openAppDetails(app.id)
+                            }
+                            className={
+                              app.connected
+                                ? "h-8 w-full rounded-md bg-sidebar text-xs font-medium text-foreground hover:bg-sidebar-accent"
+                                : "h-8 w-full rounded-md bg-black text-xs font-medium text-white hover:bg-black/90"
+                            }
+                          >
+                            {app.connected ? "Connected" : "Install"}
+                          </Button>
+                        </div>
                       </article>
                     ))}
-
-                    {remainingAppsCount > 0 && (
-                      <div className="flex items-center gap-2 py-1">
-                        <div className="flex items-center gap-1">
-                          {showMorePreviewApps.map((previewApp) => (
-                            <span
-                              key={previewApp.id}
-                              className="inline-flex h-5 w-5 items-center justify-center text-[9px] font-semibold text-muted-foreground"
-                            >
-                              {previewApp.logo}
-                            </span>
-                          ))}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleShowMoreApps(category)}
-                          className="text-xs font-medium text-foreground underline underline-offset-4 hover:text-foreground/80"
-                        >
-                          Show more
-                        </button>
-                      </div>
-                    )}
                   </div>
-                </div>
-              )
-                })}
-                {filteredApps.length === 0 && (
-                  connectionFilter === "connected" ||
-                  apps.every((app) => !app.connected) ? (
-                    <EmptyIntegrationsPattern />
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-                      No integrations match your current filters.
-                    </div>
-                  )
+                ) : shouldRenderConnectedEmptyState ? (
+                  <EmptyIntegrationsPattern />
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
+                    No integrations match your current filters.
+                  </div>
                 )}
-              </>
-            )}
-          </div>
-        </section>
-      </div>
+              </section>
+            </>
+          )}
+        </div>
+      </section>
 
       <Dialog
         open={pendingInstallApp !== null}
