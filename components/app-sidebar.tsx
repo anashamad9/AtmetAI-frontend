@@ -2431,7 +2431,7 @@ function MembersSettingsContent({
             </Button>
           </div>
 
-          <section className="mt-3 space-y-2 rounded-xl border border-border bg-background px-3 py-2.5">
+          <section className="mt-3 space-y-2 px-1 py-1">
             <div className="flex items-center justify-between gap-2">
               <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
                 <IconUsers className="h-3.5 w-3.5 text-muted-foreground" />
@@ -3132,19 +3132,7 @@ function IntegrationsSettingsContent() {
 
   return (
     <div className="space-y-3 pb-1">
-      <section className="rounded-xl border border-border bg-background px-3 py-2.5">
-        <div className="flex flex-col gap-1">
-          <p className="text-sm font-semibold text-foreground">
-            Integrations policy
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Workspace owners can enforce selected integrations for every member.
-            Forced integrations are available for all users by default.
-          </p>
-        </div>
-      </section>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-background px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1 py-1">
         <div className="inline-flex rounded-[min(var(--radius-md),12px)] bg-muted p-0.5">
           <Button
             type="button"
@@ -3524,7 +3512,7 @@ function ReferAndEarnSettingsContent() {
         </p>
       </div>
 
-      <section className="rounded-lg border border-border bg-muted/25 p-2.5">
+      <section className="p-1">
         <Label htmlFor="referral-link" className="text-xs text-muted-foreground">
           Your unique referral link
         </Label>
@@ -4909,16 +4897,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     router.push(nextChat.path ?? "/ai-core")
   }, [persistStoredChats, router, storedChats])
 
-  const openPersonalizationSettings = React.useCallback(() => {
-    setActiveSettingsSection("Personalization")
-    setSettingsOpen(true)
-  }, [])
-
-  const openMemoryChats = React.useCallback(() => {
-    setIsChatsExpanded(true)
-    router.push("/ai-core")
-  }, [router])
-
   React.useEffect(() => {
     const syncChats = () => {
       setStoredChats(readStoredChats())
@@ -5109,17 +5087,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 >
                   <div className="min-h-0">
                     <div className="mt-1 ms-4 space-y-1 border-s border-sidebar-border ps-2">
-                      <button
-                        type="button"
-                        onClick={openPersonalizationSettings}
-                        className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      >
-                        <Smile
-                          className="h-3.5 w-3.5 shrink-0 opacity-80"
-                          strokeWidth={1.6}
-                        />
-                        <span>Personalization</span>
-                      </button>
                       <Link
                         href="/my-data"
                         className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -5127,17 +5094,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <IconDatabase className="h-3.5 w-3.5 shrink-0 opacity-80" />
                         <span>My data</span>
                       </Link>
-                      <button
-                        type="button"
-                        onClick={openMemoryChats}
-                        className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      >
-                        <MessageSquare
-                          className="h-3.5 w-3.5 shrink-0 opacity-80"
-                          strokeWidth={1.6}
-                        />
-                        <span>Chats</span>
-                      </button>
                     </div>
                   </div>
                 </div>

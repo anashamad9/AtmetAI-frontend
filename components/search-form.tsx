@@ -6,23 +6,32 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Search01Icon } from "@hugeicons/core-free-icons"
 import {
   Bell,
+  BookOpen,
   Bot,
   CreditCard,
   Database,
-  FolderKanban,
+  Disc3,
+  FileSearch,
+  FolderOpen,
+  FolderPlus,
   Globe2,
-  KeyRound,
-  Layers,
+  Gauge,
   Languages,
+  LifeBuoy,
   LockKeyhole,
   Mail,
+  MessageCircle,
   MessageSquare,
   Palette,
   Puzzle,
   Shield,
+  Sparkles,
   Settings,
   SlidersHorizontal,
+  UserPlus,
   Users,
+  Workflow,
+  Wrench,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -38,29 +47,15 @@ import {
 } from "@/components/ui/command"
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useTheme } from "next-themes"
 import { OPEN_NEW_SKILL_DIALOG_EVENT } from "@/lib/skills-events"
 
 const OPEN_MANAGE_CHAT_USERS_EVENT = "open-manage-chat-users"
 const OPEN_SETTINGS_PANEL_EVENT = "open-settings-panel"
 
-const sectors = ["Data", "Chats", "Projects", "Users", "Settings"] as const
+const sectors = ["Data", "Chats", "Projects", "Users", "Settings", "Apps"] as const
 type QuickActionSector = (typeof sectors)[number]
-type QuickActionTab = "All" | QuickActionSector
-const quickActionTabs: Array<{
-  id: QuickActionTab
-  label: string
-  icon: React.ComponentType<React.ComponentProps<"svg">>
-}> = [
-  { id: "All", label: "All", icon: Layers },
-  { id: "Data", label: "Data", icon: Database },
-  { id: "Chats", label: "Chats", icon: MessageSquare },
-  { id: "Projects", label: "Projects", icon: FolderKanban },
-  { id: "Users", label: "Users", icon: Users },
-  { id: "Settings", label: "Settings", icon: Settings },
-]
 const settingsSections = [
   "Account",
   "Workspace",
@@ -108,6 +103,8 @@ type QuickAction = {
   keywords?: string[]
   intent?: QuickActionIntent
   shortcut?: QuickActionShortcut
+  avatarUrl?: string
+  logoUrl?: string
 }
 
 const dataQuickActions: QuickAction[] = [
@@ -134,7 +131,7 @@ const dataQuickActions: QuickAction[] = [
     label: "Search Data",
     description: "Open files, records, and uploads in My Data.",
     path: "/my-data",
-    icon: Database,
+    icon: FileSearch,
   },
   {
     id: "data-integrations",
@@ -178,7 +175,7 @@ const chatQuickActions: QuickAction[] = [
     label: "Open Chats",
     description: "Go to AI Core conversations.",
     path: "/ai-core",
-    icon: MessageSquare,
+    icon: MessageCircle,
   },
   {
     id: "chats-users",
@@ -201,7 +198,7 @@ const projectQuickActions: QuickAction[] = [
     label: "New Project",
     description: "Start a new workflow project.",
     path: "/workflow",
-    icon: FolderKanban,
+    icon: FolderPlus,
     shortcut: {
       key: "p",
       primary: true,
@@ -233,7 +230,7 @@ const projectQuickActions: QuickAction[] = [
     label: "Manage Projects",
     description: "Open workflow projects and builders.",
     path: "/workflow",
-    icon: FolderKanban,
+    icon: FolderOpen,
     shortcut: {
       key: "w",
       primary: true,
@@ -249,7 +246,7 @@ const projectQuickActions: QuickAction[] = [
     label: "Workflow Builder",
     description: "Create and manage workflow automations.",
     path: "/workflow",
-    icon: FolderKanban,
+    icon: Workflow,
   },
   {
     id: "projects-skills",
@@ -292,7 +289,7 @@ const userQuickActionRoots: QuickAction[] = [
     sector: "Users",
     label: "Invite Member",
     description: "Open invite flow in members settings.",
-    icon: Users,
+    icon: UserPlus,
     eventName: OPEN_SETTINGS_PANEL_EVENT,
     eventDetail: { section: "Members", membersAction: "invite" },
     keywords: ["invite", "add member", "new user", "create user"],
@@ -315,6 +312,24 @@ const settingsRootAction: QuickAction = {
   icon: Settings,
   eventName: OPEN_SETTINGS_PANEL_EVENT,
   eventDetail: { section: "General" },
+}
+
+const settingsSectionIcons: Record<
+  SettingsSection,
+  React.ComponentType<React.ComponentProps<"svg">>
+> = {
+  Account: Shield,
+  Workspace: Globe2,
+  General: SlidersHorizontal,
+  Notifications: Bell,
+  Members: Users,
+  Integrations: Puzzle,
+  "Usage and limits": Gauge,
+  "Data controls": Database,
+  "Plans (soon)": Sparkles,
+  Billing: CreditCard,
+  "Help Docs": BookOpen,
+  "Contact Support": LifeBuoy,
 }
 
 const settingsSystemQuickActions: QuickAction[] = [
@@ -358,7 +373,7 @@ const settingsSectionQuickActions: QuickAction[] = settingsSections.map(
     sector: "Settings",
     label: section,
     description: `Open ${section.toLowerCase()} settings.`,
-    icon: Settings,
+    icon: settingsSectionIcons[section],
     eventName: OPEN_SETTINGS_PANEL_EVENT,
     eventDetail: { section },
   })
@@ -468,7 +483,7 @@ const settingsNestedQuickActions: QuickAction[] = [
     sector: "Settings",
     label: "Invite Members",
     description: "Members > Invite team users.",
-    icon: Users,
+    icon: UserPlus,
     eventName: OPEN_SETTINGS_PANEL_EVENT,
     eventDetail: { section: "Members" },
     keywords: ["invite", "add member", "team"],
@@ -480,7 +495,7 @@ const settingsNestedQuickActions: QuickAction[] = [
     sector: "Settings",
     label: "Rate Limits and Quotas",
     description: "Usage and limits > Monitor usage ceilings.",
-    icon: Shield,
+    icon: Gauge,
     eventName: OPEN_SETTINGS_PANEL_EVENT,
     eventDetail: { section: "Usage and limits" },
     keywords: ["quota", "usage", "limit", "rate limit"],
@@ -516,7 +531,7 @@ const settingsNestedQuickActions: QuickAction[] = [
     sector: "Settings",
     label: "API References",
     description: "Help Docs > Browse API documentation.",
-    icon: KeyRound,
+    icon: Wrench,
     eventName: OPEN_SETTINGS_PANEL_EVENT,
     eventDetail: { section: "Help Docs" },
     keywords: ["api docs", "documentation", "guides"],
@@ -529,30 +544,40 @@ const workspaceMemberTargets = [
     name: "Amir Haddad",
     email: "amir.haddad@atmet.ai",
     role: "Super Admin",
+    avatarUrl:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=128&q=80",
   },
   {
     id: "mem_002",
     name: "Lina Saad",
     email: "lina.saad@atmet.ai",
     role: "Admin",
+    avatarUrl:
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=128&q=80",
   },
   {
     id: "mem_003",
     name: "Omar Khaled",
     email: "omar.khaled@atmet.ai",
     role: "Member",
+    avatarUrl:
+      "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?auto=format&fit=crop&w=128&q=80",
   },
   {
     id: "mem_004",
     name: "Yara Nasser",
     email: "yara.nasser@atmet.ai",
     role: "Member",
+    avatarUrl:
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=128&q=80",
   },
   {
     id: "mem_005",
     name: "Fadi Mourad",
     email: "fadi.mourad@atmet.ai",
     role: "Admin",
+    avatarUrl:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=128&q=80",
   },
 ] as const
 
@@ -572,8 +597,94 @@ const userQuickActions: QuickAction[] = workspaceMemberTargets.map(
       memberQuery: member.name,
     },
     keywords: [member.email, member.role, "member profile", "workspace user"],
+    avatarUrl: member.avatarUrl,
   })
 )
+
+const topApps = [
+  {
+    slug: "gmail",
+    name: "Gmail",
+    logoUrl: "https://cdn.simpleicons.org/gmail",
+    description: "Email automations and workflow triggers.",
+  },
+  {
+    slug: "slack",
+    name: "Slack",
+    logoUrl: "https://cdn.simpleicons.org/slack",
+    description: "Channel notifications and team messaging flows.",
+  },
+  {
+    slug: "notion",
+    name: "Notion",
+    logoUrl: "https://cdn.simpleicons.org/notion",
+    description: "Sync pages and databases into automations.",
+  },
+  {
+    slug: "hubspot",
+    name: "HubSpot",
+    logoUrl: "https://cdn.simpleicons.org/hubspot",
+    description: "CRM contacts, deals, and lifecycle events.",
+  },
+  {
+    slug: "github",
+    name: "GitHub",
+    logoUrl: "https://cdn.simpleicons.org/github",
+    description: "Repository events, PRs, and issue actions.",
+  },
+  {
+    slug: "x",
+    name: "X",
+    logoUrl: "https://cdn.simpleicons.org/x",
+    description: "Social publishing and mention-based triggers.",
+  },
+  {
+    slug: "jira",
+    name: "Jira",
+    logoUrl: "https://cdn.simpleicons.org/jira",
+    description: "Issue tracking workflows and sprint updates.",
+  },
+  {
+    slug: "asana",
+    name: "Asana",
+    logoUrl: "https://cdn.simpleicons.org/asana",
+    description: "Task orchestration and status transitions.",
+  },
+  {
+    slug: "salesforce",
+    name: "Salesforce",
+    logoUrl: "https://cdn.simpleicons.org/salesforce",
+    description: "Enterprise CRM objects and record updates.",
+  },
+  {
+    slug: "discord",
+    name: "Discord",
+    logoUrl: "https://cdn.simpleicons.org/discord",
+    description: "Community notifications and engagement signals.",
+  },
+] as const
+
+const appQuickActions: QuickAction[] = topApps.map((app, index) => ({
+  id: `apps-${app.slug}`,
+  level: 0,
+  sector: "Apps",
+  label: app.name,
+  description: app.description,
+  path: `/apps/${app.slug}`,
+  icon: Disc3,
+  logoUrl: app.logoUrl,
+  keywords: [app.slug, "apps", "integrations", "connect", "manage"],
+  shortcut:
+    index === 0
+      ? {
+          key: "i",
+          primary: true,
+          alt: true,
+          shift: true,
+          display: "⇧⌥⌘I",
+        }
+      : undefined,
+}))
 
 const settingsNestedByParent = new Map<string, QuickAction[]>(
   settingsNestedQuickActions.reduce<Array<[string, QuickAction[]]>>(
@@ -599,6 +710,7 @@ const orderedSettingsTreeActions = settingsSectionQuickActions.flatMap(
 )
 
 const quickActions = [
+  ...appQuickActions,
   ...dataQuickActions,
   ...chatQuickActions,
   ...projectQuickActions,
@@ -608,6 +720,17 @@ const quickActions = [
   settingsRootAction,
   ...settingsSystemQuickActions,
   ...orderedSettingsTreeActions,
+]
+
+const pinnedQuickActions: Array<{ id: string; label: string }> = [
+  { id: "settings-theme-toggle", label: "Toggle theme" },
+  { id: "projects-new", label: "New project" },
+  { id: "users-add", label: "Add user" },
+  { id: "data-integrations", label: "Apps & integrations" },
+  { id: "settings-section-billing", label: "Subscription" },
+  { id: "data-manage", label: "My data" },
+  { id: "settings-notification-center", label: "Notifications" },
+  { id: "projects-new-skill", label: "New skill" },
 ]
 
 function matchesShortcut(event: KeyboardEvent, shortcut: QuickActionShortcut) {
@@ -630,23 +753,12 @@ export function SearchForm({
   const { resolvedTheme, setTheme } = useTheme()
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
-  const [activeTab, setActiveTab] = React.useState<QuickActionTab>("All")
-  const [tabTransitionDirection, setTabTransitionDirection] = React.useState<
-    "forward" | "backward"
-  >("forward")
   const actionMap = React.useMemo(
     () => new Map(quickActions.map((action) => [action.id, action])),
     []
   )
   const shortcutActions = React.useMemo(
     () => quickActions.filter((action) => Boolean(action.shortcut)),
-    []
-  )
-  const tabIndexMap = React.useMemo(
-    () =>
-      new Map(
-        quickActionTabs.map((tab, index) => [tab.id, index] as const)
-      ),
     []
   )
 
@@ -690,10 +802,22 @@ export function SearchForm({
     return quickActions.filter((action) => includedIds.has(action.id))
   }, [actionMap, query])
 
-  const visibleActions = React.useMemo(() => {
-    if (activeTab === "All") return filteredActions
-    return filteredActions.filter((action) => action.sector === activeTab)
-  }, [activeTab, filteredActions])
+  const pinnedActions = React.useMemo(() => {
+    return pinnedQuickActions
+      .map((pinned) => {
+        const action = actionMap.get(pinned.id)
+        if (!action) return null
+        return {
+          ...action,
+          pinnedLabel: pinned.label,
+        }
+      })
+      .filter((action): action is QuickAction & { pinnedLabel: string } => Boolean(action))
+  }, [actionMap])
+  const pinnedActionIds = React.useMemo(
+    () => new Set(pinnedActions.map((action) => action.id)),
+    [pinnedActions]
+  )
 
   const runAction = React.useCallback(
     (action: QuickAction) => {
@@ -723,23 +847,6 @@ export function SearchForm({
       emitEvent()
     },
     [resolvedTheme, router, setTheme]
-  )
-
-  const handleTabChange = React.useCallback(
-    (nextTab: QuickActionTab) => {
-      setActiveTab((previousTab) => {
-        if (previousTab === nextTab) return previousTab
-
-        const previousIndex = tabIndexMap.get(previousTab) ?? 0
-        const nextIndex = tabIndexMap.get(nextTab) ?? 0
-        setTabTransitionDirection(
-          nextIndex >= previousIndex ? "forward" : "backward"
-        )
-
-        return nextTab
-      })
-    },
-    [tabIndexMap]
   )
 
   React.useEffect(() => {
@@ -814,8 +921,6 @@ export function SearchForm({
         onOpenChange={(nextOpen) => {
           setOpen(nextOpen)
           if (!nextOpen) {
-            setActiveTab("All")
-            setTabTransitionDirection("forward")
             setQuery("")
           }
         }}
@@ -828,39 +933,29 @@ export function SearchForm({
             value={query}
             onValueChange={(next) => setQuery(next)}
           />
-          <div className="border-b border-border px-1 pb-1.5 pt-1">
-            <Tabs
-              value={activeTab}
-              onValueChange={(value) => handleTabChange(value as QuickActionTab)}
-              className="inline-flex w-fit gap-0"
-            >
-              <TabsList className="h-8 w-fit max-w-full justify-start gap-1 p-1">
-                {quickActionTabs.map((tab) => (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    className="h-6 !flex-none gap-1.5 rounded-md border border-transparent px-2 text-xs duration-200"
-                  >
-                    <tab.icon className="size-3.5 shrink-0" />
-                    <span>{tab.label}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          </div>
-          <CommandList
-            key={`${activeTab}-${tabTransitionDirection}`}
-            className={cn(
-              "max-h-none flex-1 animate-in fade-in-0 duration-200",
-              tabTransitionDirection === "forward"
-                ? "slide-in-from-right-2"
-                : "slide-in-from-left-2"
-            )}
-          >
+          <CommandList className="max-h-none flex-1">
             <CommandEmpty>No actions found.</CommandEmpty>
+            {pinnedActions.length > 0 ? (
+              <CommandGroup heading="Quick action">
+                {pinnedActions.map((action) => (
+                  <CommandItem
+                    key={action.id}
+                    value={`${action.pinnedLabel} ${action.label} ${action.description} ${(action.keywords ?? []).join(" ")}`}
+                    onSelect={() => runAction(action)}
+                    className="gap-2.5"
+                  >
+                    <action.icon className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 truncate text-sm font-medium">{action.pinnedLabel}</span>
+                    {action.shortcut ? (
+                      <CommandShortcut>{action.shortcut.display}</CommandShortcut>
+                    ) : null}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ) : null}
             {sectors.map((sector) => {
-              const groupActions = visibleActions.filter(
-                (action) => action.sector === sector
+              const groupActions = filteredActions.filter(
+                (action) => action.sector === sector && !pinnedActionIds.has(action.id)
               )
               if (groupActions.length === 0) return null
 
@@ -877,12 +972,21 @@ export function SearchForm({
                         action.level === 2 && "pl-10"
                       )}
                     >
-                      {action.id.startsWith("users-member-") ? (
+                      {action.avatarUrl ? (
                         <Avatar size="sm" className="size-5">
+                          <AvatarImage src={action.avatarUrl} alt={action.label} />
                           <AvatarFallback className="text-[10px] font-medium">
                             {getInitials(action.label)}
                           </AvatarFallback>
                         </Avatar>
+                      ) : action.logoUrl ? (
+                        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-background">
+                          <img
+                            src={action.logoUrl}
+                            alt={`${action.label} logo`}
+                            className="h-3.5 w-3.5 object-contain"
+                          />
+                        </span>
                       ) : (
                         <action.icon className="size-4 shrink-0 text-muted-foreground" />
                       )}
