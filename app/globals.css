@@ -197,6 +197,9 @@
   ):not(:where([data-chatbot-scope="true"] *)) {
     border-radius: var(--control-radius) !important;
   }
+  :where([data-workflow-node-card="true"]) {
+    border-radius: 16px !important;
+  }
   :where(
     [data-slot="input"]:not([type="search"]),
     [data-slot="textarea"]
@@ -236,9 +239,102 @@
   ) {
     @apply border-border bg-popover text-popover-foreground;
     border-style: solid !important;
-    border-width: 0.75px !important;
+    border-width: 0.5px !important;
+    border-color: color-mix(in oklab, var(--color-border) 72%, transparent) !important;
+    background-color: var(--color-popover) !important;
+  }
+  :where(
+    [data-settings-scope="true"] [data-slot="input"],
+    [data-settings-scope="true"] [data-slot="textarea"],
+    [data-settings-scope="true"] select,
+    [data-settings-scope="true"] .surface-sidebar-field
+  ) {
+    border-color: var(--color-sidebar-border) !important;
+    background-color: var(--color-sidebar) !important;
+  }
+  :where(
+    [data-settings-scope="true"] [data-slot="input"]:disabled,
+    [data-settings-scope="true"] [data-slot="textarea"]:disabled,
+    [data-settings-scope="true"] input:disabled,
+    [data-settings-scope="true"] textarea:disabled
+  ) {
+    background-color: var(--color-sidebar) !important;
+    opacity: 1 !important;
+  }
+  :where([data-slot="dropdown-menu-trigger"]) {
+    border-style: none !important;
+    border-width: 0 !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    background-color: var(--color-sidebar) !important;
+    color: var(--color-muted-foreground) !important;
+  }
+  :where([data-slot="dropdown-menu-trigger"]):hover {
+    background-color: var(--color-sidebar-accent) !important;
+    color: var(--color-foreground) !important;
+  }
+  :where(
+    [data-workspace-switcher-scope="true"] [data-slot="dropdown-menu-trigger"],
+    [data-workspace-switcher-trigger="true"][data-slot="dropdown-menu-trigger"]
+  ) {
+    border-style: none !important;
+    border-width: 0 !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+  :where([data-user-menu-trigger="true"][data-slot="dropdown-menu-trigger"]) {
+    border-style: none !important;
+    border-width: 0 !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+  }
+  :where(
+    [data-filter-bar-scope="true"] [data-slot="input"],
+    [data-filter-bar-scope="true"] [data-slot="dropdown-menu-trigger"]
+  ):not(:where([data-chatbot-scope="true"] *)) {
     border-color: var(--color-border) !important;
     background-color: var(--color-popover) !important;
+  }
+  :where([data-filter-bar-scope="true"] [data-slot="dropdown-menu-trigger"]):not(
+      :where([data-chatbot-scope="true"] *)
+    ):hover {
+    background-color: var(--color-popover) !important;
+    color: var(--color-foreground) !important;
+  }
+  :where(
+    [data-filter-bar-scope="true"] [data-slot="dropdown-menu-content"],
+    [data-filter-bar-scope="true"] [data-slot="dropdown-menu-sub-content"]
+  ):not(:where([data-chatbot-scope="true"] *)) {
+    border-color: color-mix(in oklab, var(--color-border) 72%, transparent) !important;
+    border-width: 0.75px !important;
+    border-radius: min(var(--radius-lg), 12px) !important;
+    padding: 0.25rem !important;
+    background-color: var(--color-popover) !important;
+    box-shadow:
+      0 6px 16px -12px color-mix(in oklab, var(--color-foreground) 22%, transparent) !important;
+  }
+  :where(
+    [data-filter-bar-scope="true"] [data-slot="dropdown-menu-item"],
+    [data-filter-bar-scope="true"] [data-slot="dropdown-menu-sub-trigger"],
+    [data-filter-bar-scope="true"] [data-slot="dropdown-menu-checkbox-item"],
+    [data-filter-bar-scope="true"] [data-slot="dropdown-menu-radio-item"]
+  ):not(:where([data-chatbot-scope="true"] *)) {
+    border-radius: min(var(--radius-md), 10px) !important;
+  }
+  :where(
+    [data-slot="dropdown-menu-content"],
+    [data-slot="dropdown-menu-sub-content"]
+  ):not(:where([data-chatbot-scope="true"] *)) {
+    border-style: solid !important;
+    border-width: 0.5px !important;
+    border-color: color-mix(in oklab, var(--color-border) 72%, transparent) !important;
+    background-color: var(--color-popover) !important;
+  }
+  :where([data-slot="dropdown-menu-separator"]):not(
+      :where([data-chatbot-scope="true"] *)
+    ) {
+    background-color: color-mix(in oklab, var(--color-border) 55%, transparent) !important;
   }
   :where(
     [data-slot="button"].bg-background:not([aria-haspopup]),
@@ -283,6 +379,11 @@
   .surface-sidebar-field {
     background-color: var(--color-sidebar) !important;
     border-color: var(--color-sidebar-border) !important;
+  }
+
+  .surface-filter-field {
+    background-color: var(--color-popover) !important;
+    border-color: var(--color-border) !important;
   }
 
   .surface-sidebar-menu {

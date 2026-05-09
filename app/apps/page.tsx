@@ -84,14 +84,14 @@ export default function AppsPage() {
             </p>
           </header>
 
-          <section className="flex flex-col gap-3">
+          <section data-filter-bar-scope="true" className="flex flex-col gap-3">
             <div className="relative w-full sm:max-w-xs">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search integrations"
-                className="surface-sidebar-field h-7 rounded-lg border-transparent pl-7 text-xs"
+                className="surface-filter-field h-7 rounded-lg border-transparent pl-7 text-xs"
               />
             </div>
 

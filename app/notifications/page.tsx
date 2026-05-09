@@ -142,7 +142,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-2.5rem)] flex-1 flex-col bg-background">
-      <section className="sticky top-10 z-30 flex h-10 items-center border-b border-border bg-background px-3">
+      <section data-filter-bar-scope="true" className="sticky top-10 z-30 flex h-10 items-center border-b border-border bg-background px-3">
         <div className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto">
           <div className="relative h-7 min-w-64 shrink-0">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -150,7 +150,7 @@ export default function NotificationsPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search notifications..."
-              className="h-7 rounded-lg border-border/60 bg-transparent pl-7 text-xs"
+              className="surface-filter-field h-7 rounded-lg pl-7 text-xs"
             />
           </div>
 
@@ -189,7 +189,7 @@ export default function NotificationsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
+                  className="surface-filter-field h-7 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
                 />
               }
             >
@@ -228,7 +228,7 @@ export default function NotificationsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
+                  className="surface-filter-field h-7 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
                 />
               }
             >
@@ -346,7 +346,7 @@ export default function NotificationsPage() {
                                   <Button
                                     variant="ghost"
                                     size="icon-sm"
-                                    className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
+                                    className="h-7 w-7 rounded-lg border-0 bg-transparent text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground aria-expanded:bg-transparent"
                                   />
                                 }
                               >

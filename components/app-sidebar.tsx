@@ -2,10 +2,14 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { SearchForm } from "@/components/search-form"
-import { VersionSwitcher } from "@/components/version-switcher"
+import {
+  VersionSwitcher,
+  type WorkspaceSwitcherItem,
+} from "@/components/version-switcher"
 import { BarInteractive } from "@/components/charts/bar-interactive"
 import { ChartBarPattern } from "@/components/examples/c-chart-5"
 import { Pattern as EmptyIntegrationsPattern } from "@/components/examples/c-empty-19"
@@ -31,6 +35,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -55,6 +67,7 @@ import {
 import {
   IconApps,
   IconBell,
+  IconBulb,
   IconBuilding,
   IconChartBar,
   IconChevronDown,
@@ -68,7 +81,6 @@ import {
   IconLogout2,
   IconMoon,
   IconPlus,
-  IconPuzzle,
   IconSettings,
   IconShield,
   IconSun,
@@ -78,7 +90,6 @@ import {
 } from "@tabler/icons-react"
 import { useTheme } from "next-themes"
 import {
-  Brain,
   Briefcase,
   Camera,
   Check,
@@ -117,7 +128,7 @@ const navItems = [
     icon: IconPlus,
   },
   {
-    title: "Workflow",
+    title: "Workflows",
     url: "/workflow",
     iconType: "hugeicons" as const,
     icon: WorkflowCircle01Icon,
@@ -126,7 +137,7 @@ const navItems = [
     title: "Skills",
     url: "/skills",
     iconType: "tabler" as const,
-    icon: IconPuzzle,
+    icon: IconBulb,
   },
   {
     title: "Notifications",
@@ -141,7 +152,6 @@ const navItems = [
     icon: IconApps,
   },
 ]
-const workspaces = ["Documentation", "Product", "Operations", "Marketing"]
 const baseSettingsSections = [
   "Account",
   "Personalization",
@@ -184,15 +194,70 @@ const accountProfile = {
   avatarUrl:
     "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
 }
-const workspaceProfile = {
-  name: "Atmet AI Workspace",
-  primaryEmail: "workspace@atmet.ai",
-  description:
-    "Main workspace for collaboration, automations, and shared project operations.",
-  avatarUrl:
-    "https://images.unsplash.com/photo-1556155092-490a1ba16284?auto=format&fit=crop&w=256&q=80",
-  initials: "AT",
+type WorkspaceProfile = WorkspaceSwitcherItem & {
+  primaryEmail: string
+  description: string
 }
+
+const initialWorkspaces: WorkspaceProfile[] = [
+  {
+    id: "documentation",
+    name: "Documentation",
+    primaryEmail: "workspace@atmet.ai",
+    description:
+      "Main workspace for collaboration, automations, and shared project operations.",
+    avatarUrl:
+      "https://images.unsplash.com/photo-1556155092-490a1ba16284?auto=format&fit=crop&w=256&q=80",
+    initials: "D",
+    bgClass: "bg-sky-500/20",
+    textClass: "text-sky-700 dark:text-sky-300",
+  },
+  {
+    id: "product",
+    name: "Product",
+    primaryEmail: "product@atmet.ai",
+    description:
+      "Plans releases, collects product feedback, and prioritizes roadmap delivery.",
+    avatarUrl: null,
+    initials: "P",
+    bgClass: "bg-indigo-500/20",
+    textClass: "text-indigo-700 dark:text-indigo-300",
+  },
+  {
+    id: "operations",
+    name: "Operations",
+    primaryEmail: "operations@atmet.ai",
+    description:
+      "Runs operations playbooks, support workflows, and internal service quality.",
+    avatarUrl: null,
+    initials: "O",
+    bgClass: "bg-emerald-500/20",
+    textClass: "text-emerald-700 dark:text-emerald-300",
+  },
+  {
+    id: "marketing",
+    name: "Marketing",
+    primaryEmail: "marketing@atmet.ai",
+    description:
+      "Owns campaign planning, brand assets, and performance reporting pipelines.",
+    avatarUrl: null,
+    initials: "M",
+    bgClass: "bg-amber-500/20",
+    textClass: "text-amber-700 dark:text-amber-300",
+  },
+]
+
+function deriveInitialsFromName(name: string) {
+  const tokens = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+
+  if (tokens.length === 0) return "W"
+  return tokens.map((token) => token[0]?.toUpperCase() ?? "").join("")
+}
+
 type WorkspaceMemberApp = {
   name: string
   category: string
@@ -729,16 +794,16 @@ function AccountSettingsContent() {
               <span className="pointer-events-none absolute inset-0 rounded-lg bg-background/20 opacity-0 backdrop-blur-sm transition-opacity duration-200 group-focus-within/avatar-edit:opacity-100 group-hover/avatar-edit:opacity-100" />
               <DropdownMenuTrigger
                 render={
-                  <Button
+                  <button
                     type="button"
-                    size="icon-xs"
-                    variant="outline"
-                    className="pointer-events-none absolute inset-0 z-10 m-auto border-border/70 bg-background/90 opacity-0 shadow-xs transition-opacity duration-200 group-focus-within/avatar-edit:pointer-events-auto group-focus-within/avatar-edit:opacity-100 group-hover/avatar-edit:pointer-events-auto group-hover/avatar-edit:opacity-100"
+                    className="absolute inset-0 z-10 flex cursor-pointer items-center justify-center rounded-lg opacity-0 transition-opacity duration-200 group-focus-within/avatar-edit:opacity-100 group-hover/avatar-edit:opacity-100"
                     aria-label="Edit profile image"
                   />
                 }
               >
-                <PenLine className="h-3.5 w-3.5" />
+                <span className="inline-flex size-8 items-center justify-center rounded-lg border border-border/70 bg-background/90 shadow-xs">
+                  <PenLine className="h-3.5 w-3.5" />
+                </span>
               </DropdownMenuTrigger>
             </div>
             <DropdownMenuContent
@@ -1346,9 +1411,11 @@ function NotificationSettingsContent() {
 function GeneralSettingsContent({
   currentTheme,
   setTheme,
+  onUnsavedChangesChange,
 }: {
   currentTheme?: string
   setTheme: (theme: string) => void
+  onUnsavedChangesChange?: (hasUnsavedChanges: boolean) => void
 }) {
   const inferredTimezone = React.useMemo(() => {
     try {
@@ -1479,76 +1546,28 @@ function GeneralSettingsContent({
       (option) => option.id === appearanceSettings.colorId
     ) ?? appearanceColorOptions[0]
 
-  const renderThemePagePreview = React.useCallback(
-    (tone: "light" | "dark") => (
-      <div
-        className={cn(
-          "relative h-full overflow-hidden rounded-md border p-1.5",
-          tone === "dark"
-            ? "border-white/12 bg-slate-950 text-slate-300"
-            : "border-foreground/10 bg-[#f8fafc] text-slate-700"
-        )}
-      >
-        <div
-          aria-hidden="true"
-          className={cn(
-            "pointer-events-none absolute inset-0",
-            tone === "dark"
-              ? "bg-[radial-gradient(circle_at_20%_0%,rgba(56,189,248,0.18),transparent_48%)]"
-              : "bg-[radial-gradient(circle_at_20%_0%,rgba(14,165,233,0.08),transparent_46%)]"
-          )}
-        />
-        <div className="relative flex h-full flex-col">
-          <div
-            className={cn(
-              "mt-0.5 text-center text-[8px] font-semibold",
-              tone === "dark" ? "text-slate-200/90" : "text-slate-700/90"
-            )}
-          >
-            Good evening, Amir
-          </div>
-          <div
-            className={cn(
-              "mt-auto space-y-1 rounded-md border px-1.5 py-1",
-              tone === "dark"
-                ? "border-white/12 bg-white/[0.04]"
-                : "border-foreground/10 bg-white/85"
-            )}
-          >
-            <div
-              className={cn(
-                "truncate text-[7px]",
-                tone === "dark" ? "text-slate-300/70" : "text-slate-500"
-              )}
-            >
-              Use / to add a skill or @ to connect an app.
-            </div>
-            <div className="flex items-center justify-between">
-              <div
-                className={cn(
-                  "truncate text-[6.5px]",
-                  tone === "dark" ? "text-slate-300/75" : "text-slate-500"
-                )}
-              >
-                AI Claude 4.5 Sonnet | Apps + Skills +
-              </div>
-              <span
-                className={cn(
-                  "rounded-[4px] px-1 py-0.5 text-[6px] font-medium",
-                  tone === "dark"
-                    ? "bg-slate-200/15 text-slate-100"
-                    : "bg-slate-200 text-slate-700"
-                )}
-              >
-                Send
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    ),
+  const themePreviewImageById: Record<"light" | "dark" | "system", string> = {
+    light: "/white.png",
+    dark: "/dark.png",
+    system: "/both.jpg",
+  }
+
+  const persistAppearanceSettings = React.useCallback(
+    (nextSettings: AppearanceSettings) => {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          APPEARANCE_SETTINGS_STORAGE_KEY,
+          JSON.stringify(nextSettings)
+        )
+      }
+    },
     []
   )
+
+  React.useEffect(() => {
+    onUnsavedChangesChange?.(hasUnsavedChanges)
+    return () => onUnsavedChangesChange?.(false)
+  }, [hasUnsavedChanges, onUnsavedChangesChange])
 
   return (
     <div className="flex min-h-full flex-col">
@@ -1574,27 +1593,39 @@ function GeneralSettingsContent({
                     key={themeOption.id}
                     type="button"
                     onClick={() =>
-                      setAppearanceSettings((prev) => ({
-                        ...prev,
-                        theme: themeOption.id,
-                      }))
+                      setAppearanceSettings((prev) => {
+                        const nextSettings: AppearanceSettings = {
+                          ...prev,
+                          theme: themeOption.id,
+                        }
+                        setTheme(themeOption.id)
+                        setSavedAppearanceSettings((previousSaved) => ({
+                          ...previousSaved,
+                          theme: themeOption.id,
+                        }))
+                        persistAppearanceSettings(nextSettings)
+                        return nextSettings
+                      })
                     }
                     className={cn(
-                      "rounded-xl border p-2 text-left transition-colors",
-                      appearanceSettings.theme === themeOption.id
-                        ? "border-primary ring-1 ring-primary/35"
-                        : "border-input hover:bg-muted/30"
+                      "group rounded-xl p-2 text-left transition-colors hover:bg-muted/20"
                     )}
                   >
-                    <div className="h-24">
-                      {themeOption.id === "system" ? (
-                        <div className="grid h-full grid-cols-2 gap-1.5 rounded-lg border border-input/70 bg-muted/20 p-1.5">
-                          {renderThemePagePreview("light")}
-                          {renderThemePagePreview("dark")}
-                        </div>
-                      ) : (
-                        renderThemePagePreview(themeOption.id as "light" | "dark")
+                    <div
+                      className={cn(
+                        "relative h-32 w-full overflow-hidden rounded-md border transition-colors",
+                        appearanceSettings.theme === themeOption.id
+                          ? "border-primary ring-1 ring-primary/35"
+                          : "border-input/80 group-hover:border-input"
                       )}
+                    >
+                      <Image
+                        src={themePreviewImageById[themeOption.id]}
+                        alt={`${themeOption.label} preview`}
+                        fill
+                        sizes="(max-width: 768px) 33vw, 180px"
+                        className="object-cover"
+                      />
                     </div>
                     <div className="mt-2 flex items-center justify-center gap-1.5 text-sm font-medium text-foreground">
                       <ThemeIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1623,6 +1654,16 @@ function GeneralSettingsContent({
                   ...prev,
                   colorId: matchedColor.id,
                 }))
+                setSavedAppearanceSettings((previousSaved) => ({
+                  ...previousSaved,
+                  colorId: matchedColor.id,
+                }))
+                applyAppearanceColor(matchedColor.id)
+                const nextSettings: AppearanceSettings = {
+                  ...appearanceSettings,
+                  colorId: matchedColor.id,
+                }
+                persistAppearanceSettings(nextSettings)
               }}
               className="flex flex-wrap items-center gap-2"
             />
@@ -1785,65 +1826,123 @@ function GeneralSettingsContent({
 }
 
 function WorkspaceSettingsContent({
+  workspace,
+  onSaveWorkspace,
   onGoToMembers,
 }: {
+  workspace: WorkspaceProfile
+  onSaveWorkspace: (workspace: WorkspaceProfile) => void
   onGoToMembers: () => void
 }) {
+  const imageInputRef = React.useRef<HTMLInputElement>(null)
   const [savedWorkspace, setSavedWorkspace] = React.useState({
-    name: workspaceProfile.name,
-    description: workspaceProfile.description,
+    name: workspace.name,
+    description: workspace.description,
+    avatarUrl: workspace.avatarUrl ?? null,
   })
-  const [workspaceName, setWorkspaceName] = React.useState(
-    workspaceProfile.name
+  const [workspaceName, setWorkspaceName] = React.useState(workspace.name)
+  const [description, setDescription] = React.useState(workspace.description)
+  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(
+    workspace.avatarUrl ?? null
   )
-  const [description, setDescription] = React.useState(
-    workspaceProfile.description
-  )
+
+  React.useEffect(() => {
+    setWorkspaceName(workspace.name)
+    setDescription(workspace.description)
+    setAvatarUrl(workspace.avatarUrl ?? null)
+    setSavedWorkspace({
+      name: workspace.name,
+      description: workspace.description,
+      avatarUrl: workspace.avatarUrl ?? null,
+    })
+  }, [
+    workspace.avatarUrl,
+    workspace.description,
+    workspace.id,
+    workspace.name,
+  ])
 
   const hasUnsavedChanges =
     workspaceName !== savedWorkspace.name ||
-    description !== savedWorkspace.description
+    description !== savedWorkspace.description ||
+    avatarUrl !== savedWorkspace.avatarUrl
+
+  const handleWorkspaceImageUpload = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setAvatarUrl(reader.result)
+      }
+    }
+    reader.readAsDataURL(file)
+    event.currentTarget.value = ""
+  }
+  const openWorkspaceImagePicker = React.useCallback(() => {
+    window.setTimeout(() => {
+      imageInputRef.current?.click()
+    }, 0)
+  }, [])
+
+  const displayName = workspaceName.trim() || "Workspace"
+  const displayInitials = deriveInitialsFromName(displayName)
 
   return (
     <div className="flex min-h-full flex-col">
       <div className="space-y-3">
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={handleWorkspaceImageUpload}
+        />
         <div className="flex items-center gap-2.5">
           <DropdownMenu>
             <div className="group/workspace-avatar relative">
               <Avatar className="size-14 !rounded-lg ring-1 ring-border after:!rounded-lg">
                 <AvatarImage
-                  src={workspaceProfile.avatarUrl}
-                  alt={`${workspaceProfile.name} avatar`}
+                  src={avatarUrl ?? undefined}
+                  alt={`${displayName} avatar`}
                   className="!rounded-lg"
                 />
                 <AvatarFallback className="!rounded-lg text-sm font-semibold">
-                  {workspaceProfile.initials}
+                  {displayInitials}
                 </AvatarFallback>
               </Avatar>
               <span className="pointer-events-none absolute inset-0 rounded-lg bg-background/20 opacity-0 backdrop-blur-sm transition-opacity duration-200 group-focus-within/workspace-avatar:opacity-100 group-hover/workspace-avatar:opacity-100" />
               <DropdownMenuTrigger
                 render={
-                  <Button
+                  <button
                     type="button"
-                    size="icon-xs"
-                    variant="outline"
-                    className="pointer-events-none absolute inset-0 z-10 m-auto border-border/70 bg-background/90 opacity-0 shadow-xs transition-opacity duration-200 group-focus-within/workspace-avatar:pointer-events-auto group-focus-within/workspace-avatar:opacity-100 group-hover/workspace-avatar:pointer-events-auto group-hover/workspace-avatar:opacity-100"
+                    className="absolute inset-0 z-10 flex cursor-pointer items-center justify-center rounded-lg opacity-0 transition-opacity duration-200 group-focus-within/workspace-avatar:opacity-100 group-hover/workspace-avatar:opacity-100"
                     aria-label="Edit workspace image"
                   />
                 }
               >
-                <PenLine className="h-3.5 w-3.5" />
+                <span className="inline-flex size-8 items-center justify-center rounded-lg border border-border/70 bg-background/90 shadow-xs">
+                  <PenLine className="h-3.5 w-3.5" />
+                </span>
               </DropdownMenuTrigger>
             </div>
             <DropdownMenuContent
               align="start"
               className="min-w-44 rounded-lg p-1"
             >
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={openWorkspaceImagePicker}
+              >
                 <Camera className="h-3.5 w-3.5" />
                 Upload image
               </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive">
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => setAvatarUrl(null)}
+              >
                 <Trash2 className="h-3.5 w-3.5" />
                 Delete image
               </DropdownMenuItem>
@@ -1851,7 +1950,7 @@ function WorkspaceSettingsContent({
           </DropdownMenu>
           <div className="space-y-0.5 leading-tight">
             <p className="text-sm font-medium text-foreground">
-              {workspaceName || "Workspace"}
+              {displayName}
             </p>
             <p className="text-sm text-muted-foreground">Workspace profile</p>
           </div>
@@ -1905,7 +2004,7 @@ function WorkspaceSettingsContent({
             <Input
               id="settings-workspace-email"
               type="email"
-              value={workspaceProfile.primaryEmail}
+              value={workspace.primaryEmail}
               disabled
               className="h-7 cursor-not-allowed bg-muted/55 pr-20 text-muted-foreground disabled:opacity-100"
             />
@@ -1976,12 +2075,21 @@ function WorkspaceSettingsContent({
           type="button"
           size="sm"
           disabled={!hasUnsavedChanges}
-          onClick={() =>
-            setSavedWorkspace({
-              name: workspaceName,
+          onClick={() => {
+            const nextWorkspace: WorkspaceProfile = {
+              ...workspace,
+              name: displayName,
               description,
+              avatarUrl,
+              initials: deriveInitialsFromName(displayName),
+            }
+            setSavedWorkspace({
+              name: displayName,
+              description,
+              avatarUrl,
             })
-          }
+            onSaveWorkspace(nextWorkspace)
+          }}
         >
           <Check className="h-3.5 w-3.5" />
           Save
@@ -2522,7 +2630,7 @@ function MembersSettingsContent({
                                 type="button"
                                 size="icon-xs"
                                 variant="ghost"
-                                className="text-muted-foreground hover:text-foreground"
+                                className="border-0 bg-transparent text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground aria-expanded:bg-transparent"
                                 aria-label={`Actions for ${member.name}`}
                                 onClick={(event) => event.stopPropagation()}
                               />
@@ -4732,8 +4840,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     [isPlatformAdmin]
   )
   const [settingsOpen, setSettingsOpen] = React.useState(false)
+  const [isSettingsCloseConfirmOpen, setIsSettingsCloseConfirmOpen] =
+    React.useState(false)
+  const [hasGeneralUnsavedChanges, setHasGeneralUnsavedChanges] =
+    React.useState(false)
   const [activeSettingsSection, setActiveSettingsSection] =
     React.useState<SettingsSection>("Account")
+  const [workspaceRecords, setWorkspaceRecords] =
+    React.useState<WorkspaceProfile[]>(initialWorkspaces)
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = React.useState(
+    initialWorkspaces[0]?.id ?? ""
+  )
   const [membersQuickSearchQuery, setMembersQuickSearchQuery] =
     React.useState("")
   const [membersQuickSelectedId, setMembersQuickSelectedId] = React.useState<
@@ -4744,7 +4861,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [membersQuickInviteToken, setMembersQuickInviteToken] =
     React.useState(0)
   const [storedChats, setStoredChats] = React.useState<StoredChatItem[]>([])
-  const [isMemoryExpanded, setIsMemoryExpanded] = React.useState(false)
   const [isChatsExpanded, setIsChatsExpanded] = React.useState(true)
   const [visibleChatsCount, setVisibleChatsCount] = React.useState(
     INITIAL_VISIBLE_CHATS
@@ -4753,6 +4869,35 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [editingChatTitle, setEditingChatTitle] = React.useState("")
   const discardNextRenameSubmitRef = React.useRef(false)
   const activeChatId = searchParams.get("chat")
+  const selectedWorkspace = React.useMemo(
+    () => {
+      const fallbackWorkspace = workspaceRecords[0] ?? initialWorkspaces[0]
+      if (!fallbackWorkspace) return null
+      return (
+        workspaceRecords.find(
+          (workspace) => workspace.id === selectedWorkspaceId
+        ) ?? fallbackWorkspace
+      )
+    },
+    [selectedWorkspaceId, workspaceRecords]
+  )
+
+  const handleSettingsOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen) {
+        setSettingsOpen(true)
+        return
+      }
+
+      if (hasGeneralUnsavedChanges) {
+        setIsSettingsCloseConfirmOpen(true)
+        return
+      }
+
+      setSettingsOpen(false)
+    },
+    [hasGeneralUnsavedChanges]
+  )
 
   const sortedChats = React.useMemo(() => {
     return [...storedChats].sort((a, b) => {
@@ -4897,6 +5042,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     router.push(nextChat.path ?? "/ai-core")
   }, [persistStoredChats, router, storedChats])
 
+  const handleWorkspaceSave = React.useCallback(
+    (nextWorkspace: WorkspaceProfile) => {
+      setWorkspaceRecords((previous) =>
+        previous.map((workspace) =>
+          workspace.id === nextWorkspace.id ? nextWorkspace : workspace
+        )
+      )
+    },
+    []
+  )
+
   React.useEffect(() => {
     const syncChats = () => {
       setStoredChats(readStoredChats())
@@ -5017,8 +5173,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader className="gap-0 p-0">
         <div className="h-10 border-b border-sidebar-border px-2 py-1 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:border-b-0">
           <VersionSwitcher
-            workspaces={workspaces}
-            defaultWorkspace={workspaces[0]}
+            workspaces={workspaceRecords}
+            selectedWorkspaceId={
+              selectedWorkspaceId || workspaceRecords[0]?.id || ""
+            }
+            onSelectedWorkspaceIdChange={setSelectedWorkspaceId}
           />
         </div>
         <div className="px-2 py-2 group-data-[collapsible=icon]:hidden">
@@ -5060,43 +5219,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               ))}
               <SidebarMenuItem>
                 <SidebarMenuButton
+                  isActive={pathname.startsWith("/my-data")}
                   className="h-7"
-                  render={
-                    <button
-                      type="button"
-                      onClick={() => setIsMemoryExpanded((previous) => !previous)}
-                    />
-                  }
+                  render={<Link href="/my-data" />}
                 >
-                  <Brain className="h-3.5 w-3.5 shrink-0 opacity-80" strokeWidth={1.6} />
-                  <span>Memory</span>
-                  <IconChevronRight
-                    className={cn(
-                      "ms-auto h-3.5 w-3.5 shrink-0 opacity-80 transition-transform duration-200",
-                      isMemoryExpanded && "rotate-90"
-                    )}
-                  />
+                  <IconDatabase className="h-3.5 w-3.5 shrink-0 opacity-80" stroke={1.6} />
+                  <span>My Data</span>
                 </SidebarMenuButton>
-                <div
-                  className={cn(
-                    "grid overflow-hidden transition-[grid-template-rows,opacity] duration-200 ease-out group-data-[collapsible=icon]:hidden",
-                    isMemoryExpanded
-                      ? "grid-rows-[1fr] opacity-100"
-                      : "pointer-events-none grid-rows-[0fr] opacity-0"
-                  )}
-                >
-                  <div className="min-h-0">
-                    <div className="mt-1 ms-4 space-y-1 border-s border-sidebar-border ps-2">
-                      <Link
-                        href="/my-data"
-                        className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      >
-                        <IconDatabase className="h-3.5 w-3.5 shrink-0 opacity-80" />
-                        <span>My data</span>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -5203,7 +5332,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                               render={
                                 <SidebarMenuAction
                                   showOnHover
-                                  className="z-10"
+                                  className="z-10 hover:bg-transparent aria-expanded:bg-transparent"
                                   onClick={(event) => {
                                     event.preventDefault()
                                     event.stopPropagation()
@@ -5319,7 +5448,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                               render={
                                 <SidebarMenuAction
                                   showOnHover
-                                  className="z-10"
+                                  className="z-10 hover:bg-transparent aria-expanded:bg-transparent"
                                   onClick={(event) => {
                                     event.preventDefault()
                                     event.stopPropagation()
@@ -5421,7 +5550,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <Sheet open={settingsOpen} onOpenChange={handleSettingsOpenChange}>
               <SheetTrigger
                 render={
                   <SidebarMenuButton
@@ -5483,13 +5612,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <GeneralSettingsContent
                           currentTheme={theme}
                           setTheme={setTheme}
+                          onUnsavedChangesChange={setHasGeneralUnsavedChanges}
                         />
                       ) : activeSettingsSection === "Workspace" ? (
-                        <WorkspaceSettingsContent
-                          onGoToMembers={() =>
-                            setActiveSettingsSection("Members")
-                          }
-                        />
+                        selectedWorkspace ? (
+                          <WorkspaceSettingsContent
+                            workspace={selectedWorkspace}
+                            onSaveWorkspace={handleWorkspaceSave}
+                            onGoToMembers={() =>
+                              setActiveSettingsSection("Members")
+                            }
+                          />
+                        ) : null
                       ) : activeSettingsSection === "Members" ? (
                         <MembersSettingsContent
                           quickActionToken={membersQuickActionToken}
@@ -5560,6 +5694,40 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </div>
               </SheetContent>
             </Sheet>
+            <Dialog
+              open={isSettingsCloseConfirmOpen}
+              onOpenChange={setIsSettingsCloseConfirmOpen}
+            >
+              <DialogContent className="max-w-sm" showCloseButton={false}>
+                <DialogHeader>
+                  <DialogTitle>Discard unsaved changes?</DialogTitle>
+                  <DialogDescription>
+                    You have unsaved changes in General settings. If you close
+                    now, those changes will be lost.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsSettingsCloseConfirmOpen(false)}
+                  >
+                    Keep editing
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      setIsSettingsCloseConfirmOpen(false)
+                      setSettingsOpen(false)
+                    }}
+                  >
+                    Discard and close
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -5567,13 +5735,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 render={
                   <SidebarMenuButton
                     size="lg"
+                    data-user-menu-trigger="true"
                     className="group-data-[collapsible=icon]:p-0!"
                   />
                 }
               >
-                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-xs font-semibold text-sidebar-primary-foreground">
-                  {currentUser.initials}
-                </span>
+                <Avatar className="size-8 shrink-0">
+                  <AvatarImage
+                    src={accountProfile.avatarUrl}
+                    alt={`${currentUser.name} avatar`}
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="text-xs font-semibold">
+                    {currentUser.initials}
+                  </AvatarFallback>
+                </Avatar>
                 <span className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
                   <span className="truncate text-sm font-medium">
                     {currentUser.name}

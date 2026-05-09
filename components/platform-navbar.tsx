@@ -643,7 +643,7 @@ export function PlatformNavbar() {
             <>
               <Button
                 type="button"
-                variant="outline"
+                variant="default"
                 size="sm"
                 onClick={requestWorkflowRun}
                 disabled={activeWorkflowControlState.isRunning}

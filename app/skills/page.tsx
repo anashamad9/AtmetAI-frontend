@@ -267,7 +267,7 @@ function SkillsPageContent() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
-      <section className="sticky top-10 z-30 flex h-10 shrink-0 items-center border-b border-border bg-background px-3">
+      <section data-filter-bar-scope="true" className="sticky top-10 z-30 flex h-10 shrink-0 items-center border-b border-border bg-background px-3">
           <div className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto">
             <div className="relative h-7 min-w-64 shrink-0">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -275,7 +275,7 @@ function SkillsPageContent() {
                 value={nameFilter}
                 onChange={(event) => setNameFilter(event.target.value)}
                 placeholder="Search by skill name..."
-                className="h-7 rounded-lg border-border/60 bg-transparent pl-7 text-xs"
+                className="surface-filter-field h-7 rounded-lg pl-7 text-xs"
               />
             </div>
 
@@ -285,7 +285,7 @@ function SkillsPageContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
+                    className="surface-filter-field h-7 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
                   />
                 }
               >
@@ -318,7 +318,7 @@ function SkillsPageContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 shrink-0 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
+                    className="surface-filter-field h-7 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
                   />
                 }
               >

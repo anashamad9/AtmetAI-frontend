@@ -112,14 +112,14 @@ export default function WorkflowPage() {
             </div>
           ) : (
             <>
-              <section className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
+              <section data-filter-bar-scope="true" className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
                 <div className="relative w-full max-w-52 sm:max-w-64">
                   <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Search tasks"
-                    className="surface-sidebar-field h-7 pl-7 text-xs"
+                    className="surface-filter-field h-7 pl-7 text-xs"
                   />
                 </div>
 
@@ -129,7 +129,7 @@ export default function WorkflowPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="surface-sidebar-field h-7 gap-1.5 px-2.5 text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                        className="surface-filter-field h-7 gap-1.5 px-2.5 text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
                       />
                     }
                   >
@@ -139,7 +139,7 @@ export default function WorkflowPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="end"
-                    className="surface-sidebar-menu min-w-40 rounded-xl border p-1"
+                    className="surface-filter-field min-w-40 rounded-xl border p-1"
                   >
                     <DropdownMenuItem onClick={() => setStatusFilter("all")}>All statuses</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setStatusFilter("Active")}>Active</DropdownMenuItem>
@@ -246,7 +246,7 @@ export default function WorkflowPage() {
                                       type="button"
                                       size="icon-xs"
                                       variant="ghost"
-                                      className="text-muted-foreground hover:text-foreground"
+                                      className="border-0 bg-transparent text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground aria-expanded:bg-transparent"
                                       aria-label={`Task actions for ${project.title}`}
                                       onClick={(event) => {
                                         event.stopPropagation()

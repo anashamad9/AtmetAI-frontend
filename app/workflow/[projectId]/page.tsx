@@ -27,7 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ContextMenu5Wrapper } from "@/components/examples/c-context-menu-5"
-import { Badge, badgeVariants } from "@/registry/spell-ui/badge"
+import { Badge } from "@/registry/spell-ui/badge"
 import { cn } from "@/lib/utils"
 import { getWorkflowProject, type WorkflowProject } from "@/lib/workflow-projects"
 import {
@@ -43,9 +43,7 @@ import {
 } from "@/lib/workflow-events"
 import {
   Check,
-  Clock3,
   Files,
-  MoreVertical,
   PenSquare,
   PlayCircle,
   Plus,
@@ -60,6 +58,7 @@ type WorkflowNode = {
   nodeType: "Action" | "Trigger"
   stepName: string
   status: "Done" | "In review" | "Pending"
+  executionStatus: "idle" | "running" | "success" | "error"
   owner: string
   provider: string
   model: string
@@ -95,28 +94,128 @@ type WorkflowSnapshot = {
   selectedNodeId: string
 }
 
-const NODE_WIDTH = 320
-const NODE_HANDLE_Y = 146
+const NODE_WIDTH = 392
+const DEFAULT_NODE_HEIGHT = 176
+const CANVAS_GRID_STEP = 12
+const WIRE_GRID_STEP = CANVAS_GRID_STEP
 const WORKSPACE_WIDTH = 10000
 const WORKSPACE_HEIGHT = 7000
 const WORKSPACE_OFFSET_X = 2200
 const WORKSPACE_OFFSET_Y = 1400
 const OPEN_MANAGE_CHAT_USERS_EVENT = "open-manage-chat-users"
-const appLogoTone: Record<string, string> = {
-  Anthropic: "bg-neutral-900 text-white",
-  ChatGPT: "bg-emerald-500 text-white",
-  Slack: "bg-fuchsia-500 text-white",
-  Airtable: "bg-amber-500 text-white",
-  Asana: "bg-rose-500 text-white",
-  GitHub: "bg-slate-900 text-white",
-  Notion: "bg-zinc-900 text-white",
+const EXECUTION_STATUS_META: Record<
+  WorkflowNode["executionStatus"],
+  { label: string; dotClass: string; borderClass: string }
+> = {
+  idle: {
+    label: "Idle",
+    dotClass: "bg-muted-foreground/45",
+    borderClass: "border-border/80",
+  },
+  running: {
+    label: "Running",
+    dotClass: "bg-sky-500 animate-pulse",
+    borderClass: "border-sky-300 dark:border-sky-500/65",
+  },
+  success: {
+    label: "Success",
+    dotClass: "bg-emerald-500",
+    borderClass: "border-emerald-300 dark:border-emerald-500/65",
+  },
+  error: {
+    label: "Error",
+    dotClass: "bg-red-500",
+    borderClass: "border-red-300 dark:border-red-500/65",
+  },
 }
 
-function getAppGlyph(app: string) {
-  const clean = app.trim()
-  if (!clean) return "A"
-  if (clean.length <= 3) return clean.toUpperCase()
-  return clean.slice(0, 2).toUpperCase()
+function snapToGrid(value: number, step: number) {
+  return Math.round(value / step) * step
+}
+
+function snapCanvasCoord(value: number) {
+  return Math.max(CANVAS_GRID_STEP, snapToGrid(value, CANVAS_GRID_STEP))
+}
+
+function getOrthogonalWirePath(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number
+) {
+  if (fromX === toX) {
+    const topY = Math.min(fromY, toY)
+    const bottomY = Math.max(fromY, toY)
+    return {
+      path: `M ${fromX} ${topY} L ${fromX} ${bottomY}`,
+      midX: fromX,
+      midY: (topY + bottomY) / 2,
+    }
+  }
+
+  const verticalDirection = toY >= fromY ? 1 : -1
+  const horizontalDirection =
+    toX > fromX
+      ? 1
+      : -1
+
+  const exitY = snapToGrid(fromY + verticalDirection * WIRE_GRID_STEP, WIRE_GRID_STEP)
+  let entryY = snapToGrid(toY - verticalDirection * WIRE_GRID_STEP, WIRE_GRID_STEP)
+  if (Math.abs(entryY - exitY) < WIRE_GRID_STEP) {
+    entryY = snapToGrid(entryY - verticalDirection * WIRE_GRID_STEP, WIRE_GRID_STEP)
+  }
+
+  const laneBaseX =
+    (fromX + toX) / 2 + horizontalDirection * WIRE_GRID_STEP
+  const laneX = snapToGrid(laneBaseX, WIRE_GRID_STEP)
+
+  const points: Array<{ x: number; y: number }> = [
+    { x: fromX, y: fromY },
+    { x: fromX, y: exitY },
+    { x: laneX, y: exitY },
+    { x: laneX, y: entryY },
+    { x: toX, y: entryY },
+    { x: toX, y: toY },
+  ]
+
+  const path = points
+    .map((point, index) =>
+      `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`
+    )
+    .join(" ")
+
+  const segmentLengths = points.slice(0, -1).map((point, index) => {
+    const next = points[index + 1]
+    return Math.abs(next.x - point.x) + Math.abs(next.y - point.y)
+  })
+  const total = segmentLengths.reduce((sum, length) => sum + length, 0)
+  const half = total / 2
+
+  let midX = points[0]?.x ?? fromX
+  let midY = points[0]?.y ?? fromY
+  let traversed = 0
+
+  for (let i = 0; i < segmentLengths.length; i += 1) {
+    const length = segmentLengths[i] ?? 0
+    const start = points[i]
+    const end = points[i + 1]
+    if (!start || !end) continue
+
+    if (traversed + length >= half) {
+      const remaining = half - traversed
+      if (start.x === end.x) {
+        midX = start.x
+        midY = start.y + (end.y > start.y ? remaining : -remaining)
+      } else {
+        midX = start.x + (end.x > start.x ? remaining : -remaining)
+        midY = start.y
+      }
+      break
+    }
+    traversed += length
+  }
+
+  return { path, midX, midY }
 }
 
 function buildNodes(project: WorkflowProject): WorkflowNode[] {
@@ -135,6 +234,7 @@ function buildNodes(project: WorkflowProject): WorkflowNode[] {
     nodeType: "Action",
     stepName: step.name,
     status: step.status,
+    executionStatus: "idle",
     owner: step.owner,
     provider: index % 2 === 0 ? "Anthropic" : "ChatGPT",
     model: index % 2 === 0 ? "Claude Opus 4.1" : "GPT-5.2",
@@ -154,8 +254,8 @@ function buildNodes(project: WorkflowProject): WorkflowNode[] {
       `${step.name.replace(/\s+/g, "_")}_notes.txt`,
       `${step.name.replace(/\s+/g, "_")}_output.json`,
     ],
-    x: WORKSPACE_OFFSET_X + 110 + index * 380,
-    y: WORKSPACE_OFFSET_Y + (index % 2 === 0 ? 150 : 330),
+    x: snapCanvasCoord(WORKSPACE_OFFSET_X + 110),
+    y: snapCanvasCoord(WORKSPACE_OFFSET_Y + 150 + index * 300),
   }))
 }
 
@@ -218,6 +318,7 @@ export default function WorkflowProjectPage() {
   const [runSchedule, setRunSchedule] = useState<WorkflowRunSchedule>({
     mode: "off",
   })
+  const [nodeHeights, setNodeHeights] = useState<Record<string, number>>({})
   const viewportRef = useRef<HTMLElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const edgeHoverTimeoutRef = useRef<number | null>(null)
@@ -241,6 +342,16 @@ export default function WorkflowProjectPage() {
     pointerOffsetY: number
   } | null>(null)
   const pointerCanvasPointRef = useRef<{ x: number; y: number } | null>(null)
+
+  const setNodeHeightRef = useCallback((nodeId: string, element: HTMLDivElement | null) => {
+    if (!element) return
+    const measuredHeight = element.offsetHeight
+    setNodeHeights((previous) =>
+      previous[nodeId] === measuredHeight
+        ? previous
+        : { ...previous, [nodeId]: measuredHeight }
+    )
+  }, [])
 
   useEffect(() => {
     if (!project) return
@@ -331,6 +442,22 @@ export default function WorkflowProjectPage() {
   )
   const pendingSteps = useMemo(
     () => nodes.filter((node) => node.status === "Pending").length,
+    [nodes]
+  )
+  const idleNodeCount = useMemo(
+    () => nodes.filter((node) => node.executionStatus === "idle").length,
+    [nodes]
+  )
+  const runningNodeCount = useMemo(
+    () => nodes.filter((node) => node.executionStatus === "running").length,
+    [nodes]
+  )
+  const successNodeCount = useMemo(
+    () => nodes.filter((node) => node.executionStatus === "success").length,
+    [nodes]
+  )
+  const errorNodeCount = useMemo(
+    () => nodes.filter((node) => node.executionStatus === "error").length,
     [nodes]
   )
   const completionPercent = useMemo(() => {
@@ -506,50 +633,31 @@ export default function WorkflowProjectPage() {
         const sourceNode = nodeMap.get(edge.sourceId)
         const targetNode = nodeMap.get(edge.targetId)
         if (!sourceNode || !targetNode) return null
+        const sourceHeight = nodeHeights[sourceNode.id] ?? DEFAULT_NODE_HEIGHT
 
-        const fromX = sourceNode.x + NODE_WIDTH
-        const fromY = sourceNode.y + NODE_HANDLE_Y
-        const toX = targetNode.x
-        const toY = targetNode.y + NODE_HANDLE_Y
-        const curve = Math.max(80, Math.abs(toX - fromX) / 2)
-        const curveDirection = toX >= fromX ? 1 : -1
-        const c1x = fromX + curve * curveDirection
-        const c1y = fromY
-        const c2x = toX - curve * curveDirection
-        const c2y = toY
-        const path = `M ${fromX} ${fromY} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${toX} ${toY}`
-
-        const t = 0.5
-        const oneMinusT = 1 - t
-        const midX =
-          oneMinusT ** 3 * fromX +
-          3 * oneMinusT ** 2 * t * c1x +
-          3 * oneMinusT * t ** 2 * c2x +
-          t ** 3 * toX
-        const midY =
-          oneMinusT ** 3 * fromY +
-          3 * oneMinusT ** 2 * t * c1y +
-          3 * oneMinusT * t ** 2 * c2y +
-          t ** 3 * toY
+        const fromX = sourceNode.x + NODE_WIDTH / 2
+        const fromY = sourceNode.y + sourceHeight
+        const toX = targetNode.x + NODE_WIDTH / 2
+        const toY = targetNode.y
+        const { path, midX, midY } = getOrthogonalWirePath(fromX, fromY, toX, toY)
 
         return { ...edge, path, fromX, fromY, toX, toY, midX, midY }
       })
       .filter((edge): edge is EdgeGeometry => edge !== null)
-  }, [edges, nodeMap])
+  }, [edges, nodeHeights, nodeMap])
 
   const draftWirePath = useMemo(() => {
     if (!connectingSourceId || !wireCursor) return null
     const sourceNode = nodeMap.get(connectingSourceId)
     if (!sourceNode) return null
+    const sourceHeight = nodeHeights[sourceNode.id] ?? DEFAULT_NODE_HEIGHT
 
-    const fromX = sourceNode.x + NODE_WIDTH
-    const fromY = sourceNode.y + NODE_HANDLE_Y
+    const fromX = sourceNode.x + NODE_WIDTH / 2
+    const fromY = sourceNode.y + sourceHeight
     const toX = wireCursor.x
     const toY = wireCursor.y
-    const curve = Math.max(80, Math.abs(toX - fromX) / 2)
-    const curveDirection = toX >= fromX ? 1 : -1
-    return `M ${fromX} ${fromY} C ${fromX + curve * curveDirection} ${fromY}, ${toX - curve * curveDirection} ${toY}, ${toX} ${toY}`
-  }, [connectingSourceId, nodeMap, wireCursor])
+    return getOrthogonalWirePath(fromX, fromY, toX, toY).path
+  }, [connectingSourceId, nodeHeights, nodeMap, wireCursor])
 
   const handleRunWorkflow = useCallback(() => {
     if (isRunningWorkflow) return
@@ -558,27 +666,64 @@ export default function WorkflowProjectPage() {
       runTimerRef.current = null
     }
 
+    const totalNodes = nodesRef.current.length
+    if (totalNodes === 0) return
+
     setIsRunningWorkflow(true)
     setNodes((previous) =>
       previous.map((node) => ({
         ...node,
-        status: "In review",
-        lastRan: "Running...",
+        status: "Pending",
+        executionStatus: "idle",
+        lastRan: "Queued...",
       }))
     )
 
-    runTimerRef.current = window.setTimeout(() => {
+    const errorIndex =
+      totalNodes > 2 && Math.random() < 0.35
+        ? Math.floor(Math.random() * totalNodes)
+        : -1
+
+    const executeNodeAt = (index: number) => {
+      if (index >= totalNodes) {
+        setLastExecutionLabel("Just now")
+        setIsRunningWorkflow(false)
+        runTimerRef.current = null
+        return
+      }
+
       setNodes((previous) =>
-        previous.map((node, index) => ({
-          ...node,
-          status: index === previous.length - 1 ? "In review" : "Done",
-          lastRan: index === 0 ? "Just now" : `${index + 1} min ago`,
-        }))
+        previous.map((node, nodeIndex) =>
+          nodeIndex === index
+            ? {
+                ...node,
+                status: "In review",
+                executionStatus: "running",
+                lastRan: "Running...",
+              }
+            : node
+        )
       )
-      setLastExecutionLabel("Just now")
-      setIsRunningWorkflow(false)
-      runTimerRef.current = null
-    }, 1300)
+
+      runTimerRef.current = window.setTimeout(() => {
+        const isError = index === errorIndex
+        setNodes((previous) =>
+          previous.map((node, nodeIndex) =>
+            nodeIndex === index
+              ? {
+                  ...node,
+                  status: isError ? "Pending" : "Done",
+                  executionStatus: isError ? "error" : "success",
+                  lastRan: "Just now",
+                }
+              : node
+          )
+        )
+        executeNodeAt(index + 1)
+      }, 600)
+    }
+
+    executeNodeAt(0)
   }, [isRunningWorkflow])
 
   const handlePublishWorkflow = useCallback(() => {
@@ -677,6 +822,7 @@ export default function WorkflowProjectPage() {
       nodeType: source.nodeType,
       stepName: "New Step",
       status: "Pending",
+      executionStatus: "idle",
       owner: "You",
       provider: source.provider,
       model: source.model,
@@ -686,8 +832,8 @@ export default function WorkflowProjectPage() {
       usedApps: [source.provider],
       usedSkills: ["Action Planner"],
       files: [],
-      x: source.x + 380,
-      y: source.y,
+      x: snapCanvasCoord(source.x + NODE_WIDTH + 52),
+      y: snapCanvasCoord(source.y),
     }
 
     pushHistorySnapshot()
@@ -742,19 +888,25 @@ export default function WorkflowProjectPage() {
       .slice(2, 6)}`
     const template = options?.template ?? copiedNode
     const preserveStepName = options?.preserveStepName ?? false
+    const snappedX = snapCanvasCoord(x)
+    const snappedY = snapCanvasCoord(y)
     const newNode: WorkflowNode = template
       ? {
           ...template,
           id: newId,
           stepName: preserveStepName ? template.stepName : `${template.stepName} Copy`,
-          x,
-          y,
+          status: "Pending",
+          executionStatus: "idle",
+          lastRan: "Never",
+          x: snappedX,
+          y: snappedY,
         }
       : {
           id: newId,
           nodeType: "Action",
           stepName: "New Step",
           status: "Pending",
+          executionStatus: "idle",
           owner: "You",
           provider: "ChatGPT",
           model: "GPT-5.2",
@@ -764,8 +916,8 @@ export default function WorkflowProjectPage() {
           usedApps: ["ChatGPT"],
           usedSkills: ["Action Planner"],
           files: [],
-          x,
-          y,
+          x: snappedX,
+          y: snappedY,
         }
 
     pushHistorySnapshot()
@@ -857,9 +1009,12 @@ export default function WorkflowProjectPage() {
   }, [addNodeAtPosition, contextMenuPoint, copiedNode, zoom])
 
   const focusFirstNodeWithAnimation = useCallback(() => {
-    const firstNode = nodesRef.current[0]
     const viewport = viewportRef.current
-    if (!firstNode || !viewport) return
+    if (!viewport) return
+
+    const targetNode =
+      (selectedNodeId ? nodeMap.get(selectedNodeId) : undefined) ??
+      nodesRef.current[0]
 
     if (focusAnimationFrameRef.current !== null) {
       window.cancelAnimationFrame(focusAnimationFrameRef.current)
@@ -870,8 +1025,24 @@ export default function WorkflowProjectPage() {
     const targetZoom = 1
     const startLeft = viewport.scrollLeft
     const startTop = viewport.scrollTop
-    const targetLeft = Math.max(0, firstNode.x + NODE_WIDTH / 2 - viewport.clientWidth / 2)
-    const targetTop = Math.max(0, firstNode.y + 220 - viewport.clientHeight / 2)
+
+    const targetNodeHeight = targetNode
+      ? (nodeHeights[targetNode.id] ?? DEFAULT_NODE_HEIGHT)
+      : DEFAULT_NODE_HEIGHT
+    const targetCenterX = targetNode
+      ? targetNode.x + NODE_WIDTH / 2
+      : WORKSPACE_WIDTH / 2
+    const targetCenterY = targetNode
+      ? targetNode.y + targetNodeHeight / 2
+      : WORKSPACE_HEIGHT / 2
+    const targetLeft = Math.max(
+      0,
+      targetCenterX * targetZoom - viewport.clientWidth / 2
+    )
+    const targetTop = Math.max(
+      0,
+      targetCenterY * targetZoom - viewport.clientHeight / 2
+    )
     const startTime = performance.now()
     const durationMs = 260
     const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
@@ -896,7 +1067,7 @@ export default function WorkflowProjectPage() {
     }
 
     focusAnimationFrameRef.current = window.requestAnimationFrame(animate)
-  }, [zoom])
+  }, [nodeHeights, nodeMap, selectedNodeId, zoom])
 
   const deleteSelectedNode = () => {
     if (!selectedNodeId || !nodeMap.has(selectedNodeId)) return
@@ -941,9 +1112,10 @@ export default function WorkflowProjectPage() {
       setWireCursor(null)
       return
     }
+    const sourceHeight = nodeHeights[sourceNode.id] ?? DEFAULT_NODE_HEIGHT
     setWireCursor({
-      x: sourceNode.x + NODE_WIDTH,
-      y: sourceNode.y + NODE_HANDLE_Y,
+      x: sourceNode.x + NODE_WIDTH / 2,
+      y: sourceNode.y + sourceHeight,
     })
   }
 
@@ -988,12 +1160,12 @@ export default function WorkflowProjectPage() {
 
       const canvasRect = canvas.getBoundingClientRect()
       const nextX = Math.max(
-        16,
-        Math.round(event.clientX - canvasRect.left - dragState.pointerOffsetX)
+        CANVAS_GRID_STEP,
+        snapToGrid(event.clientX - canvasRect.left - dragState.pointerOffsetX, CANVAS_GRID_STEP)
       )
       const nextY = Math.max(
-        16,
-        Math.round(event.clientY - canvasRect.top - dragState.pointerOffsetY)
+        CANVAS_GRID_STEP,
+        snapToGrid(event.clientY - canvasRect.top - dragState.pointerOffsetY, CANVAS_GRID_STEP)
       )
       if (!movedNode) {
         pushHistorySnapshot()
@@ -1114,7 +1286,9 @@ export default function WorkflowProjectPage() {
         return
       }
 
-      if (hasPrimaryModifier && key === "0") {
+      const isZeroShortcut =
+        key === "0" || event.code === "Digit0" || event.code === "Numpad0"
+      if (hasPrimaryModifier && isZeroShortcut) {
         event.preventDefault()
         focusFirstNodeWithAnimation()
         return
@@ -1449,7 +1623,7 @@ export default function WorkflowProjectPage() {
           backgroundColor: "var(--background)",
           backgroundImage:
             "radial-gradient(color-mix(in srgb, var(--border) 70%, transparent) 0.75px, transparent 0.75px)",
-          backgroundSize: "14px 14px",
+          backgroundSize: `${CANVAS_GRID_STEP}px ${CANVAS_GRID_STEP}px`,
           backgroundPosition: "0 0",
         }}
       >
@@ -1522,7 +1696,8 @@ export default function WorkflowProjectPage() {
                       fill="none"
                       stroke="transparent"
                       strokeLinecap="round"
-                      strokeWidth={14}
+                      strokeLinejoin="round"
+                      strokeWidth={10}
                       pointerEvents="stroke"
                       onPointerEnter={() => showEdgeDelete(edge.id)}
                       onPointerLeave={() => hideEdgeDeleteSoon(edge.id)}
@@ -1533,7 +1708,8 @@ export default function WorkflowProjectPage() {
                       style={{ stroke: "var(--muted-foreground)" }}
                       strokeOpacity={0.45}
                       strokeLinecap="round"
-                      strokeWidth={2.25}
+                      strokeLinejoin="round"
+                      strokeWidth={1.6}
                       pointerEvents="none"
                     />
                   </g>
@@ -1546,7 +1722,8 @@ export default function WorkflowProjectPage() {
                   style={{ stroke: "var(--muted-foreground)" }}
                   strokeOpacity={0.55}
                   strokeLinecap="round"
-                  strokeWidth={2}
+                  strokeLinejoin="round"
+                  strokeWidth={1.4}
                   strokeDasharray="6 6"
                 />
               )}
@@ -1584,10 +1761,12 @@ export default function WorkflowProjectPage() {
 
             {nodes.map((node) => {
               const isSelected = node.id === selectedNodeId
+              const executionState = EXECUTION_STATUS_META[node.executionStatus]
 
               return (
                 <div
                   key={node.id}
+                  ref={(element) => setNodeHeightRef(node.id, element)}
                   role="button"
                   tabIndex={0}
                   data-workflow-node-card="true"
@@ -1615,16 +1794,15 @@ export default function WorkflowProjectPage() {
                     }
                   }}
                   className={cn(
-                    "absolute w-80 select-none rounded-xl border bg-card p-4 text-left shadow-sm transition-colors touch-none",
-                    isSelected
-                      ? "border-foreground/35 ring-1 ring-foreground/20 shadow-md"
-                      : "border-border/80 hover:border-border",
+                    "absolute select-none !rounded-[16px] border bg-card p-2.5 text-left transition-colors touch-none",
+                    executionState.borderClass,
+                    "hover:border-border",
                     connectingSourceId &&
                       connectingSourceId !== node.id &&
                       "ring-1 ring-border/70",
                     draggingNodeId === node.id ? "cursor-grabbing" : "cursor-grab"
                   )}
-                  style={{ left: node.x, top: node.y }}
+                  style={{ left: node.x, top: node.y, width: NODE_WIDTH }}
                 >
                   <button
                     type="button"
@@ -1632,7 +1810,7 @@ export default function WorkflowProjectPage() {
                       event.stopPropagation()
                     }}
                     className={cn(
-                      "absolute -left-2.5 inline-flex h-5 w-5 items-center justify-center rounded-full border shadow-sm",
+                      "absolute -top-2 left-1/2 inline-flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full border shadow-sm",
                       "border-border bg-background text-muted-foreground",
                       edges.some((edge) => edge.targetId === node.id) &&
                         "border-border text-foreground/75",
@@ -1640,10 +1818,9 @@ export default function WorkflowProjectPage() {
                         connectingSourceId !== node.id &&
                         "border-border bg-muted text-foreground"
                     )}
-                    style={{ top: NODE_HANDLE_Y }}
                     aria-label={`Connect into ${node.stepName}`}
                   >
-                    <span className="h-2 w-2 rounded-full bg-current" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
                   </button>
 
                   <button
@@ -1654,17 +1831,16 @@ export default function WorkflowProjectPage() {
                       handleStartConnectionMode(node.id)
                     }}
                     className={cn(
-                      "absolute -right-2.5 inline-flex h-5 w-5 items-center justify-center rounded-full border shadow-sm",
+                      "absolute -bottom-2 left-1/2 inline-flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full border shadow-sm",
                       "border-border bg-background text-muted-foreground",
                       edges.some((edge) => edge.sourceId === node.id) &&
                         "border-border text-foreground/75",
                       connectingSourceId === node.id &&
                         "border-border bg-muted text-foreground"
                     )}
-                    style={{ top: NODE_HANDLE_Y }}
                     aria-label={`Connect out from ${node.stepName}`}
                   >
-                    <span className="h-2 w-2 rounded-full bg-current" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
                   </button>
 
                   <DropdownMenu>
@@ -1675,26 +1851,22 @@ export default function WorkflowProjectPage() {
                           onPointerDown={(event) => event.stopPropagation()}
                           onClick={(event) => event.stopPropagation()}
                           className={cn(
-                            "absolute -top-7 left-0 inline-flex items-center gap-1 transition-colors",
-                            badgeVariants({
-                              variant: node.nodeType === "Action" ? "blue" : "green",
-                              size: "sm",
-                            }),
+                            "absolute -top-[26px] left-0 inline-flex h-5 items-center gap-1 rounded-[8px] border px-1.5 py-0.5 text-xs font-medium transition-colors",
                             node.nodeType === "Action"
-                              ? "hover:bg-sky-200 dark:hover:bg-sky-500/25"
-                              : "hover:bg-emerald-200 dark:hover:bg-emerald-500/25"
+                              ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-500/40 dark:bg-blue-500/12 dark:text-blue-300 dark:hover:bg-blue-500/22"
+                              : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/40 dark:bg-emerald-500/12 dark:text-emerald-300 dark:hover:bg-emerald-500/22"
                           )}
                           aria-label={`Node type for ${node.stepName}`}
                         />
                       }
                     >
                       {node.nodeType === "Action" ? (
-                        <PlayCircle className="h-3.5 w-3.5 fill-current/25" />
+                        <PlayCircle className="h-2.5 w-2.5 fill-current/25" />
                       ) : (
-                        <Zap className="h-3.5 w-3.5" />
+                        <Zap className="h-2.5 w-2.5" />
                       )}
                       {node.nodeType}
-                      <ChevronDown className="h-3 w-3" />
+                      <ChevronDown className="h-2.5 w-2.5" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="min-w-36">
                       <DropdownMenuItem
@@ -1741,7 +1913,7 @@ export default function WorkflowProjectPage() {
                                 setTitleDraft("")
                               }
                             }}
-                            className="h-7 rounded-lg border-input bg-transparent px-2.5 text-sm font-semibold focus-visible:border-ring"
+                            className="h-6 rounded-lg border-input bg-transparent px-2 text-sm font-semibold focus-visible:border-ring"
                             autoFocus
                           />
                           <button
@@ -1755,17 +1927,22 @@ export default function WorkflowProjectPage() {
                               event.stopPropagation()
                               commitTitleEdit(node.id)
                             }}
-                            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-input bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-input bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
                             aria-label={`Save title for ${node.stepName}`}
                           >
-                            <Check className="h-3.5 w-3.5" />
+                            <Check className="h-3 w-3" />
                           </button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1">
-                          <p className="line-clamp-1 text-lg leading-none font-semibold text-foreground">
+                          <p className="line-clamp-1 text-base leading-none font-semibold text-foreground">
                             {node.stepName}
                           </p>
+                          <span
+                            className={cn("inline-flex h-2.5 w-2.5 rounded-full", executionState.dotClass)}
+                            title={`Status: ${executionState.label}`}
+                            aria-label={`Status: ${executionState.label}`}
+                          />
                           <button
                             type="button"
                             onPointerDown={(event) => event.stopPropagation()}
@@ -1773,145 +1950,75 @@ export default function WorkflowProjectPage() {
                               event.stopPropagation()
                               startTitleEdit(node)
                             }}
-                            className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                            className="inline-flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                             aria-label={`Edit title for ${node.stepName}`}
                           >
-                            <PenSquare className="h-3.5 w-3.5" />
+                            <PenSquare className="h-3 w-3" />
                           </button>
                         </div>
                       )}
                     </div>
-                    <MoreVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </div>
 
-                  <div className="mt-3 rounded-lg border border-border/80 bg-muted/40 p-3">
-                    <p className="line-clamp-4 text-sm leading-relaxed text-muted-foreground">
+                  <div className="mt-1.5 !rounded-[12px] border border-border/80 bg-muted/40 p-2">
+                    <p className="line-clamp-4 text-[13px] leading-[1.45] text-muted-foreground">
                       {node.prompt}
                     </p>
                   </div>
 
-                  {node.nodeType === "Action" && (
-                    <>
-                      <div className="mt-1">
-                        <p className="text-[11px] text-muted-foreground">
-                          {node.provider} • {node.owner}
-                        </p>
-                      </div>
-
-                      <div className="mt-3 flex items-center gap-2">
-                        <Badge variant="neutral" className="text-xs">
-                          {node.tokenCount} Tokens
-                        </Badge>
-                        <Badge variant="neutral" className="text-xs">
-                          <Clock3 className="h-3.5 w-3.5" />
-                          {node.lastRan}
-                        </Badge>
-                      </div>
-
-                      <div className="mt-3">
-                        <p className="mb-1 text-[11px] font-medium text-muted-foreground">
-                          Used Apps
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {node.usedApps.map((app) => (
-                            <Badge
-                              key={app}
-                              variant="violet"
-                              className="px-1.5"
-                            >
-                              <span
-                                className={cn(
-                                  "inline-flex h-4 w-4 items-center justify-center rounded-[4px] text-[9px] font-semibold",
-                                  appLogoTone[app] ?? "bg-primary text-primary-foreground"
-                                )}
-                              >
-                                {getAppGlyph(app)}
-                              </span>
-                              {app}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="mt-2">
-                        <p className="mb-1 text-[11px] font-medium text-muted-foreground">
-                          Used Skills
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {node.usedSkills.map((skill) => (
-                            <Badge
-                              key={skill}
-                              variant="neutral"
-                              className="px-1.5"
-                            >
-                              {skill}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </>
+                  {isSelected && (
+                    <div className="absolute top-1/2 left-[calc(100%+12px)] z-10 flex -translate-y-1/2 flex-col gap-1.5">
+                      <button
+                        type="button"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+                        onClick={() => addNodeNextTo(node.id)}
+                        aria-label="Add node"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+                        onClick={() => openNodeChatPanel(node)}
+                        aria-label="Open node chat"
+                      >
+                        <PenSquare className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+                        onClick={() => setFilesDialogOpen(true)}
+                        aria-label="Open node files"
+                      >
+                        <Files className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-destructive/25 bg-card text-destructive transition-colors hover:bg-destructive/10"
+                        onClick={() => deleteNode(node.id)}
+                        aria-label="Delete node"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   )}
+
                 </div>
               )
             })}
-
-            {selectedNode && (
-              <div
-                className="absolute z-10 flex flex-col gap-2"
-                style={{
-                  left: selectedNode.x + 332,
-                  top: selectedNode.y + NODE_HANDLE_Y - 22,
-                }}
-              >
-                <button
-                  type="button"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:text-foreground"
-                  onClick={() => addNodeNextTo(selectedNode.id)}
-                  aria-label="Add node"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:text-foreground"
-                  onClick={() => openNodeChatPanel(selectedNode)}
-                  aria-label="Open node chat"
-                >
-                  <PenSquare className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:text-foreground"
-                  onClick={() => setFilesDialogOpen(true)}
-                  aria-label="Open node files"
-                >
-                  <Files className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-destructive/25 bg-card text-destructive shadow-sm transition-colors hover:bg-destructive/10"
-                  onClick={() => deleteNode(selectedNode.id)}
-                  aria-label="Delete node"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            )}
             </div>
           </ContextMenu5Wrapper>
           <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[70] flex justify-center px-4">
-            <div className="inline-flex items-center gap-4 rounded-xl border border-border bg-card/95 px-4 py-2 text-xs text-foreground shadow-lg backdrop-blur">
+            <div className="inline-flex items-center gap-4 rounded-[10px] border border-border bg-card/95 px-4 py-2 text-xs text-muted-foreground shadow-lg backdrop-blur">
               <div className="inline-flex items-center gap-1.5">
-                <span>Zoom</span>
-                <Kbd keys={["cmd"]} />
-                <span>/</span>
-                <Kbd keys={["ctrl"]} />
+                <span>Reset view</span>
+                <Kbd keys={["cmd"]} className="text-muted-foreground" listenToKeyboard />
                 <span>+</span>
-                <span>Scroll</span>
+                <Kbd keys={["0"]} className="text-muted-foreground" listenToKeyboard />
               </div>
               <div className="inline-flex items-center gap-1.5">
                 <span>Pan</span>
-                <Kbd keys={["space"]} listenToKeyboard />
+                <Kbd keys={["space"]} className="text-muted-foreground" listenToKeyboard />
                 <span>+</span>
                 <span>Drag</span>
               </div>
@@ -2067,8 +2174,8 @@ export default function WorkflowProjectPage() {
                 <p className="text-sm font-semibold text-foreground">Run metadata</p>
                 <div className="mt-3 space-y-2 text-xs text-muted-foreground">
                   <p>
-                    Status mix: {doneSteps} done · {inReviewSteps} in review · {pendingSteps}{" "}
-                    pending
+                    Execution mix: {idleNodeCount} idle · {runningNodeCount} running ·{" "}
+                    {successNodeCount} success · {errorNodeCount} error
                   </p>
                   <p>Publish state: {publishState}</p>
                   <p>Auto-run: {runScheduleLabel}</p>
@@ -2105,14 +2212,22 @@ export default function WorkflowProjectPage() {
                     <div className="flex shrink-0 items-center gap-2">
                       <Badge
                         variant={
-                          node.status === "Done"
+                          node.executionStatus === "success"
                             ? "green"
-                            : node.status === "In review"
+                            : node.executionStatus === "running"
                               ? "amber"
-                              : "neutral"
+                              : node.executionStatus === "error"
+                                ? "red"
+                                : "neutral"
                         }
                       >
-                        {node.status}
+                        {node.executionStatus === "success"
+                          ? "Success"
+                          : node.executionStatus === "running"
+                            ? "Running"
+                            : node.executionStatus === "error"
+                              ? "Error"
+                              : "Idle"}
                       </Badge>
                       <span className="text-[11px] text-muted-foreground">{node.lastRan}</span>
                     </div>

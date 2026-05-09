@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -22,56 +23,60 @@ import { Check, ChevronDown, Crown, Gift, Plus, Users } from "lucide-react"
 
 const OPEN_SETTINGS_PANEL_EVENT = "open-settings-panel"
 
+export type WorkspaceSwitcherItem = {
+  id: string
+  name: string
+  initials?: string
+  avatarUrl?: string | null
+  bgClass?: string
+  textClass?: string
+}
+
 export function VersionSwitcher({
   workspaces,
-  defaultWorkspace,
+  selectedWorkspaceId,
+  onSelectedWorkspaceIdChange,
 }: {
-  workspaces: string[]
-  defaultWorkspace: string
+  workspaces: WorkspaceSwitcherItem[]
+  selectedWorkspaceId: string
+  onSelectedWorkspaceIdChange: (workspaceId: string) => void
 }) {
-  const WORKSPACE_LOGOS: Record<
-    string,
-    { label: string; bgClass: string; textClass: string }
-  > = {
-    Documentation: {
-      label: "D",
-      bgClass: "bg-sky-500/20",
-      textClass: "text-sky-700 dark:text-sky-300",
-    },
-    Product: {
-      label: "P",
-      bgClass: "bg-indigo-500/20",
-      textClass: "text-indigo-700 dark:text-indigo-300",
-    },
-    Operations: {
-      label: "O",
-      bgClass: "bg-emerald-500/20",
-      textClass: "text-emerald-700 dark:text-emerald-300",
-    },
-    Marketing: {
-      label: "M",
-      bgClass: "bg-amber-500/20",
-      textClass: "text-amber-700 dark:text-amber-300",
-    },
-  }
-  const [selectedWorkspace, setSelectedWorkspace] = React.useState(defaultWorkspace)
   const { state, toggleSidebar } = useSidebar()
-  const selectedWorkspaceLogo = WORKSPACE_LOGOS[selectedWorkspace] ?? {
-    label: selectedWorkspace[0] ?? "W",
-    bgClass: "bg-muted",
-    textClass: "text-foreground",
+  const selectedWorkspace =
+    workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ??
+    workspaces[0]
+
+  if (!selectedWorkspace) {
+    return null
   }
+
+  const getWorkspaceFallback = (workspace: WorkspaceSwitcherItem) =>
+    workspace.initials ?? workspace.name[0]?.toUpperCase() ?? "W"
+  const getWorkspaceIconClasses = (workspace: WorkspaceSwitcherItem) => ({
+    bgClass: workspace.bgClass ?? "bg-muted",
+    textClass: workspace.textClass ?? "text-foreground",
+  })
+
+  const collapsedClasses = getWorkspaceIconClasses(selectedWorkspace)
+  const triggerClasses = getWorkspaceIconClasses(selectedWorkspace)
 
   if (state === "collapsed") {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
           <div className="flex w-full justify-center py-1">
-            <div
-              className={`flex aspect-square size-7 items-center justify-center rounded-md ${selectedWorkspaceLogo.bgClass} ${selectedWorkspaceLogo.textClass}`}
-            >
-              <span className="text-xs font-semibold">{selectedWorkspaceLogo.label}</span>
-            </div>
+            <Avatar className="size-7 !rounded-md ring-1 ring-border/60 after:!rounded-md">
+              <AvatarImage
+                src={selectedWorkspace.avatarUrl ?? undefined}
+                alt={`${selectedWorkspace.name} avatar`}
+                className="!rounded-md object-cover"
+              />
+              <AvatarFallback
+                className={`!rounded-md text-xs font-semibold ${collapsedClasses.bgClass} ${collapsedClasses.textClass}`}
+              >
+                {getWorkspaceFallback(selectedWorkspace)}
+              </AvatarFallback>
+            </Avatar>
           </div>
         </SidebarMenuItem>
       </SidebarMenu>
@@ -81,44 +86,61 @@ export function VersionSwitcher({
   return (
     <SidebarMenu className="h-full">
       <SidebarMenuItem className="h-full">
-        <div className="flex h-full items-center gap-1">
+        <div data-workspace-switcher-scope="true" className="flex h-full items-center gap-1">
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
                 <button
                   type="button"
+                  data-workspace-switcher-trigger="true"
                   className="inline-flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md pl-0.5 pr-1.5 text-left text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 />
               }
             >
-              <div
-                className={`flex aspect-square size-7 shrink-0 items-center justify-center rounded-md ${selectedWorkspaceLogo.bgClass} ${selectedWorkspaceLogo.textClass}`}
-              >
-                <span className="text-xs font-semibold">{selectedWorkspaceLogo.label}</span>
-              </div>
-              <span className="truncate text-base font-medium">{selectedWorkspace}</span>
+              <Avatar className="size-7 shrink-0 !rounded-md ring-1 ring-border/60 after:!rounded-md">
+                <AvatarImage
+                  src={selectedWorkspace.avatarUrl ?? undefined}
+                  alt={`${selectedWorkspace.name} avatar`}
+                  className="!rounded-md object-cover"
+                />
+                <AvatarFallback
+                  className={`!rounded-md text-xs font-semibold ${triggerClasses.bgClass} ${triggerClasses.textClass}`}
+                >
+                  {getWorkspaceFallback(selectedWorkspace)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="truncate text-base font-medium">
+                {selectedWorkspace.name}
+              </span>
               <ChevronDown className="ms-auto size-4 text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-56">
               {workspaces.map((workspace) => (
                 <DropdownMenuItem
-                  key={workspace}
-                  onSelect={() => setSelectedWorkspace(workspace)}
+                  key={workspace.id}
+                  onSelect={() => onSelectedWorkspaceIdChange(workspace.id)}
                   className="flex items-center justify-between"
                 >
                   <span className="flex items-center gap-2">
-                    <span
-                      className={`flex size-5 items-center justify-center rounded-[6px] text-[11px] font-semibold ${
-                        (WORKSPACE_LOGOS[workspace]?.bgClass ?? "bg-muted")
-                      } ${
-                        (WORKSPACE_LOGOS[workspace]?.textClass ?? "text-foreground")
-                      }`}
-                    >
-                      {(WORKSPACE_LOGOS[workspace]?.label ?? workspace[0] ?? "W")}
-                    </span>
-                    <span>{workspace}</span>
+                    <Avatar className="size-5 !rounded-[6px] after:!rounded-[6px]">
+                      <AvatarImage
+                        src={workspace.avatarUrl ?? undefined}
+                        alt={`${workspace.name} avatar`}
+                        className="!rounded-[6px] object-cover"
+                      />
+                      <AvatarFallback
+                        className={`!rounded-[6px] text-[11px] font-semibold ${
+                          getWorkspaceIconClasses(workspace).bgClass
+                        } ${getWorkspaceIconClasses(workspace).textClass}`}
+                      >
+                        {getWorkspaceFallback(workspace)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>{workspace.name}</span>
                   </span>
-                  {workspace === selectedWorkspace && <Check className="h-4 w-4 text-primary" />}
+                  {workspace.id === selectedWorkspace.id && (
+                    <Check className="h-4 w-4 text-primary" />
+                  )}
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
