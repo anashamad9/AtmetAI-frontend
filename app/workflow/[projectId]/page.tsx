@@ -391,20 +391,18 @@ export default function WorkflowProjectPage() {
       const viewport = viewportRef.current
       if (!viewport || initialNodes.length === 0) return
 
-      const minX = Math.min(...initialNodes.map((node) => node.x))
-      const maxX = Math.max(...initialNodes.map((node) => node.x + NODE_WIDTH))
-      const minY = Math.min(...initialNodes.map((node) => node.y))
-      const maxY = Math.max(...initialNodes.map((node) => node.y + 520))
-      const clusterCenterX = (minX + maxX) / 2
-      const clusterCenterY = (minY + maxY) / 2
+      const firstNode = initialNodes[0]
+      if (!firstNode) return
+      const targetCenterX = firstNode.x + NODE_WIDTH / 2
+      const targetCenterY = firstNode.y + DEFAULT_NODE_HEIGHT / 2
 
       viewport.scrollLeft = Math.max(
         0,
-        clusterCenterX - viewport.clientWidth / 2
+        targetCenterX - viewport.clientWidth / 2
       )
       viewport.scrollTop = Math.max(
         0,
-        clusterCenterY - viewport.clientHeight / 2
+        targetCenterY - viewport.clientHeight / 2
       )
     })
   }, [project])
@@ -2008,7 +2006,7 @@ export default function WorkflowProjectPage() {
             })}
             </div>
           </ContextMenu5Wrapper>
-          <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[70] flex justify-center px-4">
+          <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
             <div className="inline-flex items-center gap-4 rounded-[10px] border border-border bg-card/95 px-4 py-2 text-xs text-muted-foreground shadow-lg backdrop-blur">
               <div className="inline-flex items-center gap-1.5">
                 <span>Reset view</span>

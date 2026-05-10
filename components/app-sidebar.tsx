@@ -66,8 +66,11 @@ import {
 } from "@hugeicons/core-free-icons"
 import {
   IconApps,
+  IconAppsFilled,
   IconBell,
+  IconBellFilled,
   IconBulb,
+  IconBulbFilled,
   IconBuilding,
   IconChartBar,
   IconChevronDown,
@@ -76,6 +79,7 @@ import {
   IconChevronUp,
   IconCreditCard,
   IconDatabase,
+  IconDatabaseFilled,
   IconFileText,
   IconHelpCircle,
   IconLogout2,
@@ -138,18 +142,21 @@ const navItems = [
     url: "/skills",
     iconType: "tabler" as const,
     icon: IconBulb,
+    darkIcon: IconBulbFilled,
   },
   {
     title: "Notifications",
     url: "/notifications",
     iconType: "tabler" as const,
     icon: IconBell,
+    darkIcon: IconBellFilled,
   },
   {
     title: "Apps",
     url: "/integrations",
     iconType: "tabler" as const,
     icon: IconApps,
+    darkIcon: IconAppsFilled,
   },
 ]
 const baseSettingsSections = [
@@ -5188,42 +5195,59 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup className="pt-0">
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    isActive={item.url !== "#" && pathname.startsWith(item.url)}
-                    className="h-7"
-                    render={
-                      item.url === "#" ? (
-                        <a
-                          href="#"
-                          onClick={(event) => event.preventDefault()}
-                        />
-                      ) : (
-                        <Link href={item.url} />
-                      )
-                    }
-                  >
-                    {item.iconType === "hugeicons" ? (
+              {navItems.map((item) => {
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      isActive={item.url !== "#" && pathname.startsWith(item.url)}
+                      className="h-7"
+                      render={
+                        item.url === "#" ? (
+                          <a
+                            href="#"
+                            onClick={(event) => event.preventDefault()}
+                          />
+                        ) : (
+                          <Link href={item.url} />
+                        )
+                      }
+                    >
+                      {item.iconType === "hugeicons" ? (
                       <HugeiconsIcon
                         icon={item.icon}
                         strokeWidth={1.35}
                         className="h-3.5 w-3.5 shrink-0 opacity-80"
                       />
-                    ) : (
-                      <item.icon className="h-3.5 w-3.5 shrink-0 opacity-80" stroke={1.5} />
-                    )}
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                      ) : (
+                        (() => {
+                          const TablerIcon =
+                            resolvedTheme === "dark" && item.darkIcon
+                              ? item.darkIcon
+                              : item.icon
+                          return (
+                            <TablerIcon
+                              className="h-3.5 w-3.5 shrink-0 opacity-80"
+                              stroke={1.5}
+                            />
+                          )
+                        })()
+                      )}
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={pathname.startsWith("/my-data")}
                   className="h-7"
                   render={<Link href="/my-data" />}
                 >
-                  <IconDatabase className="h-3.5 w-3.5 shrink-0 opacity-80" stroke={1.6} />
+                  {resolvedTheme === "dark" ? (
+                    <IconDatabaseFilled className="h-3.5 w-3.5 shrink-0 opacity-80" stroke={1.6} />
+                  ) : (
+                    <IconDatabase className="h-3.5 w-3.5 shrink-0 opacity-80" stroke={1.6} />
+                  )}
                   <span>My Data</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
