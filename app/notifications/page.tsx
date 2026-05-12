@@ -13,12 +13,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import {
+  AtSign,
   BellRing,
   Check,
   CheckCheck,
   ChevronDown,
   Clock3,
   Filter,
+  Inbox,
   MoreHorizontal,
   Search,
   Trash2,
@@ -33,6 +35,18 @@ import {
 
 type DateRangeFilter = "all" | "today" | "7d" | "30d"
 type NotificationView = "all" | "unread" | "mentions"
+
+const GROUP_ORDER = ["Today", "Yesterday", "Earlier this week", "Earlier"] as const
+
+const CATEGORY_OPTIONS: ReadonlyArray<NotificationCategory | "all"> = [
+  "all",
+  "Workflow",
+  "Apps",
+  "Data",
+  "Members",
+  "Security",
+  "Billing",
+]
 
 function bucketByDate(
   dateIso: string,
@@ -142,9 +156,12 @@ export default function NotificationsPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-2.5rem)] flex-1 flex-col bg-background">
-      <section data-filter-bar-scope="true" className="sticky top-10 z-30 flex h-10 items-center border-b border-border bg-background px-3">
-        <div className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto">
-          <div className="relative h-7 min-w-64 shrink-0">
+      <section
+        data-filter-bar-scope="true"
+        className="sticky top-10 z-30 border-b border-border bg-background/95 px-3 py-2 backdrop-blur supports-backdrop-filter:backdrop-blur"
+      >
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2">
+          <div className="relative h-7 min-w-[17rem] grow">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
@@ -154,12 +171,12 @@ export default function NotificationsPage() {
             />
           </div>
 
-          <div className="inline-flex h-7 shrink-0 items-center rounded-lg border border-border/60 bg-background p-0.5">
+          <div className="inline-flex h-7 items-center rounded-lg border border-border/60 bg-background p-0.5">
             {(
               [
-                { key: "all", label: "All", count: allCount },
-                { key: "unread", label: "Unread", count: unreadCount },
-                { key: "mentions", label: "Mentions", count: mentionsCount },
+                { key: "all", label: "All", count: allCount, icon: Inbox },
+                { key: "unread", label: "Unread", count: unreadCount, icon: BellRing },
+                { key: "mentions", label: "Mentions", count: mentionsCount, icon: AtSign },
               ] as const
             ).map((item) => (
               <Button
@@ -175,6 +192,7 @@ export default function NotificationsPage() {
                     : "text-muted-foreground"
                 )}
               >
+                <item.icon className="h-3.5 w-3.5" />
                 <span>{item.label}</span>
                 <Badge variant="neutral" size="sm">
                   {item.count}
@@ -189,7 +207,7 @@ export default function NotificationsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="surface-filter-field h-7 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
+                  className="surface-filter-field h-7 gap-1.5 rounded-lg px-2.5 text-xs"
                 />
               }
             >
@@ -198,27 +216,14 @@ export default function NotificationsPage() {
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-44 rounded-xl p-1">
-              <DropdownMenuItem onClick={() => setCategoryFilter("all")}>
-                All categories
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCategoryFilter("Workflow")}>
-                Workflow
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCategoryFilter("Apps")}>
-                Apps
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCategoryFilter("Data")}>
-                Data
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCategoryFilter("Members")}>
-                Members
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCategoryFilter("Security")}>
-                Security
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCategoryFilter("Billing")}>
-                Billing
-              </DropdownMenuItem>
+              {CATEGORY_OPTIONS.map((category) => (
+                <DropdownMenuItem
+                  key={category}
+                  onClick={() => setCategoryFilter(category)}
+                >
+                  {category === "all" ? "All categories" : category}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -228,7 +233,7 @@ export default function NotificationsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="surface-filter-field h-7 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
+                  className="surface-filter-field h-7 gap-1.5 rounded-lg px-2.5 text-xs"
                 />
               }
             >
@@ -252,7 +257,7 @@ export default function NotificationsPage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex items-center gap-2">
             <Button
               type="button"
               size="sm"
@@ -269,34 +274,36 @@ export default function NotificationsPage() {
       </section>
 
       <section className="flex-1 px-3 py-4">
-        {hasNoMatches ? (
-          <div className="flex h-44 items-center justify-center rounded-xl border border-border bg-card">
-            <p className="text-sm text-muted-foreground">
-              No notifications match the current filters.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {(["Today", "Yesterday", "Earlier this week", "Earlier"] as const).map(
-              (groupKey) => {
+        <div className="mx-auto w-full max-w-6xl">
+          {hasNoMatches ? (
+            <div className="flex h-52 flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-card">
+              <Inbox className="h-6 w-6 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                No notifications match the current filters.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {GROUP_ORDER.map((groupKey) => {
                 const groupItems = groupedNotifications[groupKey]
                 if (!groupItems || groupItems.length === 0) return null
 
                 return (
-                  <section key={groupKey}>
-                    <div className="mb-2 flex items-center justify-between">
+                  <section
+                    key={groupKey}
+                    className="overflow-hidden rounded-2xl border border-border bg-card"
+                  >
+                    <div className="flex items-center justify-between border-b border-border/70 px-4 py-2.5">
                       <h2 className="text-sm font-semibold text-foreground">{groupKey}</h2>
                       <Badge variant="neutral">{groupItems.length}</Badge>
                     </div>
-                    <div className="space-y-2">
+                    <div className="divide-y divide-border/70">
                       {groupItems.map((item) => (
                         <article
                           key={item.id}
                           className={cn(
-                            "flex items-start gap-3 rounded-xl border p-3 transition-colors",
-                            item.unread
-                              ? "border-border bg-muted/25"
-                              : "border-border/70 bg-card"
+                            "flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/20",
+                            item.unread && "bg-muted/20"
                           )}
                         >
                           <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background">
@@ -338,7 +345,7 @@ export default function NotificationsPage() {
                               size="sm"
                               className="h-7 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
                             >
-                              Read more
+                              Open
                             </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger
@@ -369,10 +376,10 @@ export default function NotificationsPage() {
                     </div>
                   </section>
                 )
-              }
-            )}
-          </div>
-        )}
+              })}
+            </div>
+          )}
+        </div>
       </section>
     </div>
   )

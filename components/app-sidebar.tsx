@@ -66,11 +66,8 @@ import {
 } from "@hugeicons/core-free-icons"
 import {
   IconApps,
-  IconAppsFilled,
   IconBell,
-  IconBellFilled,
   IconBulb,
-  IconBulbFilled,
   IconBuilding,
   IconChartBar,
   IconChevronDown,
@@ -79,7 +76,6 @@ import {
   IconChevronUp,
   IconCreditCard,
   IconDatabase,
-  IconDatabaseFilled,
   IconFileText,
   IconHelpCircle,
   IconLogout2,
@@ -142,21 +138,18 @@ const navItems = [
     url: "/skills",
     iconType: "tabler" as const,
     icon: IconBulb,
-    darkIcon: IconBulbFilled,
   },
   {
     title: "Notifications",
     url: "/notifications",
     iconType: "tabler" as const,
     icon: IconBell,
-    darkIcon: IconBellFilled,
   },
   {
     title: "Apps",
     url: "/integrations",
     iconType: "tabler" as const,
     icon: IconApps,
-    darkIcon: IconAppsFilled,
   },
 ]
 const baseSettingsSections = [
@@ -5213,24 +5206,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       }
                     >
                       {item.iconType === "hugeicons" ? (
-                      <HugeiconsIcon
-                        icon={item.icon}
-                        strokeWidth={1.35}
-                        className="h-3.5 w-3.5 shrink-0 opacity-80"
-                      />
+                        <HugeiconsIcon
+                          icon={item.icon}
+                          strokeWidth={1.35}
+                          className="h-3.5 w-3.5 shrink-0 opacity-80"
+                        />
                       ) : (
-                        (() => {
-                          const TablerIcon =
-                            resolvedTheme === "dark" && item.darkIcon
-                              ? item.darkIcon
-                              : item.icon
-                          return (
-                            <TablerIcon
-                              className="h-3.5 w-3.5 shrink-0 opacity-80"
-                              stroke={1.5}
-                            />
-                          )
-                        })()
+                        <item.icon className="h-3.5 w-3.5 shrink-0 opacity-80" stroke={1.5} />
                       )}
                       <span>{item.title}</span>
                     </SidebarMenuButton>
@@ -5243,11 +5225,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   className="h-7"
                   render={<Link href="/my-data" />}
                 >
-                  {resolvedTheme === "dark" ? (
-                    <IconDatabaseFilled className="h-3.5 w-3.5 shrink-0 opacity-80" stroke={1.6} />
-                  ) : (
-                    <IconDatabase className="h-3.5 w-3.5 shrink-0 opacity-80" stroke={1.6} />
-                  )}
+                  <IconDatabase className="h-3.5 w-3.5 shrink-0 opacity-80" stroke={1.6} />
                   <span>My Data</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -5588,16 +5566,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </SheetTrigger>
               <SheetContent
                 side="right"
-                className="rounded-2xl border border-border p-0 data-[side=right]:!inset-y-auto data-[side=right]:!top-1/2 data-[side=right]:!right-1/2 data-[side=right]:!h-[min(78vh,720px)] data-[side=right]:!w-[min(980px,92vw)] data-[side=right]:!max-w-none data-[side=right]:!translate-x-1/2 data-[side=right]:!-translate-y-1/2"
+                className="rounded-2xl border border-border p-0 data-[side=right]:!inset-y-auto data-[side=right]:!top-1/2 data-[side=right]:!right-1/2 data-[side=right]:!h-[min(78vh,720px)] data-[side=right]:!max-h-[min(92svh,760px)] data-[side=right]:!w-[min(980px,92vw)] data-[side=right]:!max-w-none data-[side=right]:!translate-x-1/2 data-[side=right]:!-translate-y-1/2"
               >
                 <div className="flex h-full min-h-0 overflow-hidden rounded-2xl">
-                  <aside className="w-64 border-r border-sidebar-border bg-sidebar">
+                  <aside className="flex h-full min-h-0 w-64 flex-col border-r border-sidebar-border bg-sidebar">
                     <div className="px-4 py-3">
                       <p className="text-sm font-semibold text-sidebar-foreground">
                         Settings
                       </p>
                     </div>
-                    <nav className="space-y-3 px-2 pt-4">
+                    <nav className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-2 pb-4 pt-4">
                       <div className="space-y-1">
                         {baseSettingsSections.map((section) =>
                           renderSettingsSectionButton(section)
@@ -5623,7 +5601,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       </SheetTitle>
                     </SheetHeader>
                     <div
-                      className="min-h-0 flex-1 overflow-auto p-4"
+                      className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-4"
                       data-settings-scope="true"
                     >
                       {activeSettingsSection === "Account" ? (

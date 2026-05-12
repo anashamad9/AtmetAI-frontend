@@ -76,6 +76,8 @@ type WorkflowEdge = {
   id: string
   sourceId: string
   targetId: string
+  sourceHandle?: AnchorSide
+  targetHandle?: AnchorSide
 }
 
 type EdgeGeometry = WorkflowEdge & {
@@ -93,6 +95,8 @@ type WorkflowSnapshot = {
   edges: WorkflowEdge[]
   selectedNodeId: string
 }
+
+type AnchorSide = "top" | "right" | "bottom" | "left"
 
 const NODE_WIDTH = 392
 const DEFAULT_NODE_HEIGHT = 176
@@ -137,13 +141,51 @@ function snapCanvasCoord(value: number) {
   return Math.max(CANVAS_GRID_STEP, snapToGrid(value, CANVAS_GRID_STEP))
 }
 
+function getHandleVector(side: AnchorSide) {
+  if (side === "top") return { dx: 0, dy: -1 }
+  if (side === "bottom") return { dx: 0, dy: 1 }
+  if (side === "left") return { dx: -1, dy: 0 }
+  return { dx: 1, dy: 0 }
+}
+
+function getEdgeSourceHandle(edge: WorkflowEdge): AnchorSide {
+  return edge.sourceHandle ?? "bottom"
+}
+
+function getEdgeTargetHandle(edge: WorkflowEdge): AnchorSide {
+  return edge.targetHandle ?? "top"
+}
+
+function getNodeAnchorPoint(
+  node: WorkflowNode,
+  nodeHeight: number,
+  side: AnchorSide
+) {
+  if (side === "top") {
+    return { x: node.x + NODE_WIDTH / 2, y: node.y }
+  }
+  if (side === "bottom") {
+    return { x: node.x + NODE_WIDTH / 2, y: node.y + nodeHeight }
+  }
+  if (side === "left") {
+    return { x: node.x, y: node.y + nodeHeight / 2 }
+  }
+  return { x: node.x + NODE_WIDTH, y: node.y + nodeHeight / 2 }
+}
+
 function getOrthogonalWirePath(
   fromX: number,
   fromY: number,
+  fromSide: AnchorSide,
   toX: number,
-  toY: number
+  toY: number,
+  toSide: AnchorSide
 ) {
-  if (fromX === toX) {
+  const fromVector = getHandleVector(fromSide)
+  const toVector = getHandleVector(toSide)
+
+  // Keep perfectly aligned vertical/horizontal links fully straight.
+  if (fromVector.dx === 0 && toVector.dx === 0 && Math.abs(fromX - toX) < 0.01) {
     const topY = Math.min(fromY, toY)
     const bottomY = Math.max(fromY, toY)
     return {
@@ -152,53 +194,92 @@ function getOrthogonalWirePath(
       midY: (topY + bottomY) / 2,
     }
   }
-
-  const verticalDirection = toY >= fromY ? 1 : -1
-  const horizontalDirection =
-    toX > fromX
-      ? 1
-      : -1
-
-  const exitY = snapToGrid(fromY + verticalDirection * WIRE_GRID_STEP, WIRE_GRID_STEP)
-  let entryY = snapToGrid(toY - verticalDirection * WIRE_GRID_STEP, WIRE_GRID_STEP)
-  if (Math.abs(entryY - exitY) < WIRE_GRID_STEP) {
-    entryY = snapToGrid(entryY - verticalDirection * WIRE_GRID_STEP, WIRE_GRID_STEP)
+  if (fromVector.dy === 0 && toVector.dy === 0 && Math.abs(fromY - toY) < 0.01) {
+    const leftX = Math.min(fromX, toX)
+    const rightX = Math.max(fromX, toX)
+    return {
+      path: `M ${leftX} ${fromY} L ${rightX} ${fromY}`,
+      midX: (leftX + rightX) / 2,
+      midY: fromY,
+    }
   }
 
-  const laneBaseX =
-    (fromX + toX) / 2 + horizontalDirection * WIRE_GRID_STEP
-  const laneX = snapToGrid(laneBaseX, WIRE_GRID_STEP)
+  const startStub = {
+    x:
+      fromVector.dx === 0
+        ? fromX
+        : snapToGrid(fromX + fromVector.dx * WIRE_GRID_STEP, WIRE_GRID_STEP),
+    y:
+      fromVector.dy === 0
+        ? fromY
+        : snapToGrid(fromY + fromVector.dy * WIRE_GRID_STEP, WIRE_GRID_STEP),
+  }
+  const endStub = {
+    x:
+      toVector.dx === 0
+        ? toX
+        : snapToGrid(toX + toVector.dx * WIRE_GRID_STEP, WIRE_GRID_STEP),
+    y:
+      toVector.dy === 0
+        ? toY
+        : snapToGrid(toY + toVector.dy * WIRE_GRID_STEP, WIRE_GRID_STEP),
+  }
 
   const points: Array<{ x: number; y: number }> = [
     { x: fromX, y: fromY },
-    { x: fromX, y: exitY },
-    { x: laneX, y: exitY },
-    { x: laneX, y: entryY },
-    { x: toX, y: entryY },
+    startStub,
+    ...(fromSide === "left" || fromSide === "right"
+      ? [
+          {
+            x: snapToGrid((startStub.x + endStub.x) / 2, WIRE_GRID_STEP),
+            y: startStub.y,
+          },
+          {
+            x: snapToGrid((startStub.x + endStub.x) / 2, WIRE_GRID_STEP),
+            y: endStub.y,
+          },
+        ]
+      : [
+          {
+            x: startStub.x,
+            y: snapToGrid((startStub.y + endStub.y) / 2, WIRE_GRID_STEP),
+          },
+          {
+            x: endStub.x,
+            y: snapToGrid((startStub.y + endStub.y) / 2, WIRE_GRID_STEP),
+          },
+        ]),
+    endStub,
     { x: toX, y: toY },
   ]
 
-  const path = points
+  const dedupedPoints = points.filter((point, index, collection) => {
+    if (index === 0) return true
+    const previous = collection[index - 1]
+    return previous.x !== point.x || previous.y !== point.y
+  })
+
+  const path = dedupedPoints
     .map((point, index) =>
       `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`
     )
     .join(" ")
 
-  const segmentLengths = points.slice(0, -1).map((point, index) => {
-    const next = points[index + 1]
+  const segmentLengths = dedupedPoints.slice(0, -1).map((point, index) => {
+    const next = dedupedPoints[index + 1]
     return Math.abs(next.x - point.x) + Math.abs(next.y - point.y)
   })
   const total = segmentLengths.reduce((sum, length) => sum + length, 0)
   const half = total / 2
 
-  let midX = points[0]?.x ?? fromX
-  let midY = points[0]?.y ?? fromY
+  let midX = dedupedPoints[0]?.x ?? fromX
+  let midY = dedupedPoints[0]?.y ?? fromY
   let traversed = 0
 
   for (let i = 0; i < segmentLengths.length; i += 1) {
     const length = segmentLengths[i] ?? 0
-    const start = points[i]
-    const end = points[i + 1]
+    const start = dedupedPoints[i]
+    const end = dedupedPoints[i + 1]
     if (!start || !end) continue
 
     if (traversed + length >= half) {
@@ -292,7 +373,9 @@ export default function WorkflowProjectPage() {
   const [edges, setEdges] = useState<WorkflowEdge[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string>("")
   const [connectingSourceId, setConnectingSourceId] = useState<string | null>(null)
+  const [connectingSourceHandle, setConnectingSourceHandle] = useState<AnchorSide | null>(null)
   const [wireCursor, setWireCursor] = useState<{ x: number; y: number } | null>(null)
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null)
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null)
   const [filesDialogOpen, setFilesDialogOpen] = useState(false)
   const [executionLogOpen, setExecutionLogOpen] = useState(false)
@@ -357,15 +440,19 @@ export default function WorkflowProjectPage() {
     if (!project) return
     const initialNodes = buildNodes(project)
     const initialEdges = initialNodes.slice(0, -1).map((node, index) => ({
-      id: `${node.id}->${initialNodes[index + 1]?.id}`,
+      id: `${node.id}:bottom->${initialNodes[index + 1]?.id}:top`,
       sourceId: node.id,
       targetId: initialNodes[index + 1]?.id ?? "",
+      sourceHandle: "bottom" as AnchorSide,
+      targetHandle: "top" as AnchorSide,
     }))
     setNodes(initialNodes)
     setEdges(initialEdges.filter((edge) => edge.targetId.length > 0))
     setSelectedNodeId(initialNodes[0]?.id ?? "")
     setConnectingSourceId(null)
+    setConnectingSourceHandle(null)
     setWireCursor(null)
+    setHoveredNodeId(null)
     setHoveredEdgeId(null)
     setFilesDialogOpen(false)
     setExecutionLogOpen(false)
@@ -592,7 +679,9 @@ export default function WorkflowProjectPage() {
     setEdges(next.edges)
     setSelectedNodeId(next.selectedNodeId)
     setConnectingSourceId(null)
+    setConnectingSourceHandle(null)
     setWireCursor(null)
+    setHoveredNodeId(null)
     setHoveredEdgeId(null)
     setEditingTitleNodeId(null)
     setTitleDraft("")
@@ -632,30 +721,42 @@ export default function WorkflowProjectPage() {
         const targetNode = nodeMap.get(edge.targetId)
         if (!sourceNode || !targetNode) return null
         const sourceHeight = nodeHeights[sourceNode.id] ?? DEFAULT_NODE_HEIGHT
+        const targetHeight = nodeHeights[targetNode.id] ?? DEFAULT_NODE_HEIGHT
+        const sourceHandle = getEdgeSourceHandle(edge)
+        const targetHandle = getEdgeTargetHandle(edge)
+        const from = getNodeAnchorPoint(sourceNode, sourceHeight, sourceHandle)
+        const to = getNodeAnchorPoint(targetNode, targetHeight, targetHandle)
+        const { path, midX, midY } = getOrthogonalWirePath(
+          from.x,
+          from.y,
+          sourceHandle,
+          to.x,
+          to.y,
+          targetHandle
+        )
 
-        const fromX = sourceNode.x + NODE_WIDTH / 2
-        const fromY = sourceNode.y + sourceHeight
-        const toX = targetNode.x + NODE_WIDTH / 2
-        const toY = targetNode.y
-        const { path, midX, midY } = getOrthogonalWirePath(fromX, fromY, toX, toY)
-
-        return { ...edge, path, fromX, fromY, toX, toY, midX, midY }
+        return { ...edge, path, fromX: from.x, fromY: from.y, toX: to.x, toY: to.y, midX, midY }
       })
       .filter((edge): edge is EdgeGeometry => edge !== null)
   }, [edges, nodeHeights, nodeMap])
 
   const draftWirePath = useMemo(() => {
-    if (!connectingSourceId || !wireCursor) return null
+    if (!connectingSourceId || !connectingSourceHandle || !wireCursor) return null
     const sourceNode = nodeMap.get(connectingSourceId)
     if (!sourceNode) return null
     const sourceHeight = nodeHeights[sourceNode.id] ?? DEFAULT_NODE_HEIGHT
-
-    const fromX = sourceNode.x + NODE_WIDTH / 2
-    const fromY = sourceNode.y + sourceHeight
+    const from = getNodeAnchorPoint(sourceNode, sourceHeight, connectingSourceHandle)
     const toX = wireCursor.x
     const toY = wireCursor.y
-    return getOrthogonalWirePath(fromX, fromY, toX, toY).path
-  }, [connectingSourceId, nodeHeights, nodeMap, wireCursor])
+    return getOrthogonalWirePath(
+      from.x,
+      from.y,
+      connectingSourceHandle,
+      toX,
+      toY,
+      "top"
+    ).path
+  }, [connectingSourceHandle, connectingSourceId, nodeHeights, nodeMap, wireCursor])
 
   const handleRunWorkflow = useCallback(() => {
     if (isRunningWorkflow) return
@@ -741,13 +842,22 @@ export default function WorkflowProjectPage() {
     }, 900)
   }, [isPublishingWorkflow])
 
-  const toggleConnection = (sourceId: string, targetId: string) => {
+  const toggleConnection = (
+    sourceId: string,
+    targetId: string,
+    sourceHandle: AnchorSide = "bottom",
+    targetHandle: AnchorSide = "top"
+  ) => {
     if (!sourceId || !targetId || sourceId === targetId) return
     pushHistorySnapshot()
     markProjectChanged()
     setEdges((previous) => {
       const existing = previous.find(
-        (edge) => edge.sourceId === sourceId && edge.targetId === targetId
+        (edge) =>
+          edge.sourceId === sourceId &&
+          edge.targetId === targetId &&
+          getEdgeSourceHandle(edge) === sourceHandle &&
+          getEdgeTargetHandle(edge) === targetHandle
       )
       if (existing) {
         return previous.filter((edge) => edge.id !== existing.id)
@@ -755,26 +865,31 @@ export default function WorkflowProjectPage() {
       return [
         ...previous,
         {
-          id: `${sourceId}->${targetId}`,
+          id: `${sourceId}:${sourceHandle}->${targetId}:${targetHandle}`,
           sourceId,
           targetId,
+          sourceHandle,
+          targetHandle,
         },
       ]
     })
   }
 
   const getCanvasPoint = (clientX: number, clientY: number) => {
-    const canvas = canvasRef.current
-    if (!canvas) return null
-    const canvasRect = canvas.getBoundingClientRect()
+    const viewport = viewportRef.current
+    if (!viewport) return null
+    const viewportRect = viewport.getBoundingClientRect()
+    const pointerX = clientX - viewportRect.left
+    const pointerY = clientY - viewportRect.top
     return {
-      x: Math.round((clientX - canvasRect.left) / zoom),
-      y: Math.round((clientY - canvasRect.top) / zoom),
+      x: Math.round((viewport.scrollLeft + pointerX) / zoom),
+      y: Math.round((viewport.scrollTop + pointerY) / zoom),
     }
   }
 
   const clearWireDraft = () => {
     setConnectingSourceId(null)
+    setConnectingSourceHandle(null)
     setWireCursor(null)
   }
 
@@ -811,6 +926,7 @@ export default function WorkflowProjectPage() {
   const addNodeNextTo = (sourceNodeId: string) => {
     const source = nodes.find((node) => node.id === sourceNodeId)
     if (!source) return
+    const sourceHeight = nodeHeights[source.id] ?? DEFAULT_NODE_HEIGHT
     const projectKey = project?.id ?? "workflow"
     const newId = `${projectKey}-node-${Date.now().toString(36)}-${Math.random()
       .toString(36)
@@ -830,8 +946,8 @@ export default function WorkflowProjectPage() {
       usedApps: [source.provider],
       usedSkills: ["Action Planner"],
       files: [],
-      x: snapCanvasCoord(source.x + NODE_WIDTH + 52),
-      y: snapCanvasCoord(source.y),
+      x: snapCanvasCoord(source.x),
+      y: snapCanvasCoord(source.y + sourceHeight + 72),
     }
 
     pushHistorySnapshot()
@@ -847,7 +963,13 @@ export default function WorkflowProjectPage() {
     })
     setEdges((previous) => [
       ...previous,
-      { id: `${sourceNodeId}->${newId}`, sourceId: sourceNodeId, targetId: newId },
+      {
+        id: `${sourceNodeId}:bottom->${newId}:top`,
+        sourceId: sourceNodeId,
+        targetId: newId,
+        sourceHandle: "bottom",
+        targetHandle: "top",
+      },
     ])
     setSelectedNodeId(newId)
     setEditingTitleNodeId(newId)
@@ -1102,19 +1224,22 @@ export default function WorkflowProjectPage() {
     }, 120)
   }
 
-  const handleStartConnectionMode = (nodeId: string) => {
+  const handleStartConnectionMode = (nodeId: string, handle: AnchorSide) => {
     setSelectedNodeId(nodeId)
-    setConnectingSourceId((previous) => (previous === nodeId ? null : nodeId))
+    if (connectingSourceId === nodeId && connectingSourceHandle === handle) {
+      clearWireDraft()
+      return
+    }
+    setConnectingSourceId(nodeId)
+    setConnectingSourceHandle(handle)
     const sourceNode = nodeMap.get(nodeId)
     if (!sourceNode) {
       setWireCursor(null)
       return
     }
     const sourceHeight = nodeHeights[sourceNode.id] ?? DEFAULT_NODE_HEIGHT
-    setWireCursor({
-      x: sourceNode.x + NODE_WIDTH / 2,
-      y: sourceNode.y + sourceHeight,
-    })
+    const point = getNodeAnchorPoint(sourceNode, sourceHeight, handle)
+    setWireCursor(point)
   }
 
   const handleNodePointerDown = (
@@ -1122,7 +1247,6 @@ export default function WorkflowProjectPage() {
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
     if (connectingSourceId) {
-      event.preventDefault()
       return
     }
     if (isSpacePressed || isPanning) {
@@ -1620,7 +1744,7 @@ export default function WorkflowProjectPage() {
         style={{
           backgroundColor: "var(--background)",
           backgroundImage:
-            "radial-gradient(color-mix(in srgb, var(--border) 70%, transparent) 0.75px, transparent 0.75px)",
+            "radial-gradient(color-mix(in srgb, var(--border) 82%, transparent) 0.85px, transparent 0.85px)",
           backgroundSize: `${CANVAS_GRID_STEP}px ${CANVAS_GRID_STEP}px`,
           backgroundPosition: "0 0",
         }}
@@ -1759,7 +1883,32 @@ export default function WorkflowProjectPage() {
 
             {nodes.map((node) => {
               const isSelected = node.id === selectedNodeId
+              const isHovered = node.id === hoveredNodeId
+              const shouldShowHandles =
+                isSelected || isHovered || connectingSourceId === node.id
               const executionState = EXECUTION_STATUS_META[node.executionStatus]
+              const handleConfig: Array<{ side: AnchorSide; className: string }> = [
+                {
+                  side: "top",
+                  className:
+                    "absolute -top-2 left-1/2 -translate-x-1/2 inline-flex h-4 w-4 items-center justify-center rounded-full border shadow-sm",
+                },
+                {
+                  side: "right",
+                  className:
+                    "absolute -right-2 top-1/2 -translate-y-1/2 inline-flex h-4 w-4 items-center justify-center rounded-full border shadow-sm",
+                },
+                {
+                  side: "bottom",
+                  className:
+                    "absolute -bottom-2 left-1/2 -translate-x-1/2 inline-flex h-4 w-4 items-center justify-center rounded-full border shadow-sm",
+                },
+                {
+                  side: "left",
+                  className:
+                    "absolute -left-2 top-1/2 -translate-y-1/2 inline-flex h-4 w-4 items-center justify-center rounded-full border shadow-sm",
+                },
+              ]
 
               return (
                 <div
@@ -1773,12 +1922,23 @@ export default function WorkflowProjectPage() {
                     if (point) setContextMenuPoint(point)
                     setSelectedNodeId(node.id)
                   }}
+                  onPointerEnter={() => setHoveredNodeId(node.id)}
+                  onPointerLeave={() =>
+                    setHoveredNodeId((previous) =>
+                      previous === node.id ? null : previous
+                    )
+                  }
                   onPointerDown={(event) => handleNodePointerDown(node.id, event)}
                   onClick={(event) => {
                     event.stopPropagation()
                     if (connectingSourceId) {
                       if (connectingSourceId !== node.id) {
-                        toggleConnection(connectingSourceId, node.id)
+                        toggleConnection(
+                          connectingSourceId,
+                          node.id,
+                          connectingSourceHandle ?? "bottom",
+                          "top"
+                        )
                       }
                       clearWireDraft()
                       return
@@ -1792,7 +1952,7 @@ export default function WorkflowProjectPage() {
                     }
                   }}
                   className={cn(
-                    "absolute select-none !rounded-[16px] border bg-card p-2.5 text-left transition-colors touch-none",
+                    "absolute select-none !rounded-[12px] border bg-card p-2.5 text-left transition-colors touch-none",
                     executionState.borderClass,
                     "hover:border-border",
                     connectingSourceId &&
@@ -1802,44 +1962,63 @@ export default function WorkflowProjectPage() {
                   )}
                   style={{ left: node.x, top: node.y, width: NODE_WIDTH }}
                 >
-                  <button
-                    type="button"
-                    onPointerDown={(event) => {
-                      event.stopPropagation()
-                    }}
-                    className={cn(
-                      "absolute -top-2 left-1/2 inline-flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full border shadow-sm",
-                      "border-border bg-background text-muted-foreground",
-                      edges.some((edge) => edge.targetId === node.id) &&
-                        "border-border text-foreground/75",
-                      connectingSourceId &&
-                        connectingSourceId !== node.id &&
-                        "border-border bg-muted text-foreground"
-                    )}
-                    aria-label={`Connect into ${node.stepName}`}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      handleStartConnectionMode(node.id)
-                    }}
-                    className={cn(
-                      "absolute -bottom-2 left-1/2 inline-flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full border shadow-sm",
-                      "border-border bg-background text-muted-foreground",
-                      edges.some((edge) => edge.sourceId === node.id) &&
-                        "border-border text-foreground/75",
-                      connectingSourceId === node.id &&
-                        "border-border bg-muted text-foreground"
-                    )}
-                    aria-label={`Connect out from ${node.stepName}`}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                  </button>
+                  {shouldShowHandles &&
+                    handleConfig.map((handle) => {
+                      const hasWire = edges.some((edge) => {
+                        if (edge.sourceId === node.id) {
+                          return getEdgeSourceHandle(edge) === handle.side
+                        }
+                        if (edge.targetId === node.id) {
+                          return getEdgeTargetHandle(edge) === handle.side
+                        }
+                        return false
+                      })
+                      const isCurrentSourceHandle =
+                        connectingSourceId === node.id &&
+                        connectingSourceHandle === handle.side
+                      return (
+                        <button
+                          key={`${node.id}-${handle.side}`}
+                          type="button"
+                          onPointerDown={(event) => event.stopPropagation()}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            if (connectingSourceId && connectingSourceHandle) {
+                              if (
+                                connectingSourceId === node.id &&
+                                connectingSourceHandle === handle.side
+                              ) {
+                                clearWireDraft()
+                                return
+                              }
+                              toggleConnection(
+                                connectingSourceId,
+                                node.id,
+                                connectingSourceHandle,
+                                handle.side
+                              )
+                              clearWireDraft()
+                              return
+                            }
+                            handleStartConnectionMode(node.id, handle.side)
+                          }}
+                          className={cn(
+                            handle.className,
+                            "border-border bg-background text-muted-foreground",
+                            hasWire && "border-border text-foreground/75",
+                            isCurrentSourceHandle &&
+                              "border-border bg-muted text-foreground"
+                          )}
+                          aria-label={`Connect ${handle.side} of ${node.stepName}`}
+                        >
+                          {hasWire ? (
+                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                          ) : (
+                            <Plus className="h-2.5 w-2.5" />
+                          )}
+                        </button>
+                      )
+                    })}
 
                   <DropdownMenu>
                     <DropdownMenuTrigger
@@ -1911,7 +2090,7 @@ export default function WorkflowProjectPage() {
                                 setTitleDraft("")
                               }
                             }}
-                            className="h-6 rounded-lg border-input bg-transparent px-2 text-sm font-semibold focus-visible:border-ring"
+                            className="h-6 rounded-md border-input bg-transparent px-2 text-sm font-semibold focus-visible:border-ring"
                             autoFocus
                           />
                           <button
@@ -1932,7 +2111,13 @@ export default function WorkflowProjectPage() {
                           </button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1">
+                        <div
+                          className="flex items-center gap-1"
+                          onDoubleClick={(event) => {
+                            event.stopPropagation()
+                            startTitleEdit(node)
+                          }}
+                        >
                           <p className="line-clamp-1 text-base leading-none font-semibold text-foreground">
                             {node.stepName}
                           </p>
@@ -1941,24 +2126,12 @@ export default function WorkflowProjectPage() {
                             title={`Status: ${executionState.label}`}
                             aria-label={`Status: ${executionState.label}`}
                           />
-                          <button
-                            type="button"
-                            onPointerDown={(event) => event.stopPropagation()}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              startTitleEdit(node)
-                            }}
-                            className="inline-flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                            aria-label={`Edit title for ${node.stepName}`}
-                          >
-                            <PenSquare className="h-3 w-3" />
-                          </button>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="mt-1.5 !rounded-[12px] border border-border/80 bg-muted/40 p-2">
+                  <div className="mt-1.5 !rounded-[8px] border border-border/80 bg-muted/40 p-2">
                     <p className="line-clamp-4 text-[13px] leading-[1.45] text-muted-foreground">
                       {node.prompt}
                     </p>

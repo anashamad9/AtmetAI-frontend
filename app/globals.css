@@ -198,7 +198,7 @@
     border-radius: var(--control-radius) !important;
   }
   :where([data-workflow-node-card="true"]) {
-    border-radius: 16px !important;
+    border-radius: 12px !important;
   }
   :where(
     [data-slot="input"]:not([type="search"]),
@@ -391,8 +391,8 @@
     border-color: var(--color-border) !important;
   }
 
-  .ui-badge {
-    @apply inline-flex items-center justify-center gap-1 whitespace-nowrap border-0 px-2 py-0.5 text-[11px] font-medium;
+  .ui-badge:not(:where([data-chatbot-scope="true"] *)) {
+    @apply inline-flex items-center justify-center gap-1 whitespace-nowrap border-0 font-medium leading-none;
     border-radius: var(--control-radius) !important;
   }
 
@@ -401,7 +401,8 @@
   }
 
   .ui-badge-blue {
-    @apply bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300;
+    background-color: #e6f4fe !important;
+    color: #0085ef !important;
   }
 
   .ui-badge-green {

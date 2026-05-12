@@ -2489,7 +2489,7 @@ export default function AI_Prompt({
                     <span>Send</span>
                     <Kbd
                       className={cn(
-                        "h-4 rounded-[min(var(--radius-md),12px)] border-transparent bg-primary-foreground/15 px-1 text-[10px]",
+                        "h-4 rounded-[calc(min(var(--radius-md),12px)*4/7)] border-transparent bg-primary-foreground/15 px-1 text-[10px]",
                         value.trim() ? "text-primary-foreground" : "text-primary-foreground/70"
                       )}
                     >
