@@ -32,7 +32,7 @@ import {
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
@@ -155,6 +155,7 @@ type AIPromptProps = {
   persistChatListEntry?: boolean;
   hideGreeting?: boolean;
   dockComposerToBottom?: boolean;
+  glassComposer?: boolean;
   fixedCommandBadge?: string;
   onConversationStart?: () => void;
   onAutomationConversationStart?: () => void;
@@ -186,6 +187,7 @@ export default function AI_Prompt({
   persistChatListEntry = true,
   hideGreeting = false,
   dockComposerToBottom = false,
+  glassComposer = false,
   fixedCommandBadge,
   onConversationStart,
   onAutomationConversationStart,
@@ -214,7 +216,9 @@ export default function AI_Prompt({
   const [heroTypingLine, setHeroTypingLine] = useState<0 | 1>(0);
   const [commandMenu, setCommandMenu] = useState<CommandMenuState | null>(null);
   const [highlightedCommandIndex, setHighlightedCommandIndex] = useState(0);
-  const fileInputId = "ai-upload-input";
+  const instanceId = useId().replace(/:/g, "");
+  const fileInputId = `ai-upload-input-${instanceId}`;
+  const textareaId = `ai-input-${instanceId}`;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachedFilesRef = useRef<AttachmentDraft[]>([]);
   const messagesRef = useRef<ChatMessage[]>([]);
@@ -1872,6 +1876,11 @@ export default function AI_Prompt({
 
   const hasConversation = messages.length > 0 || isResponding;
   const showGreeting = !hideGreeting && messages.length === 0 && !isResponding;
+  const glassLayerBack =
+    "bg-background/20 backdrop-blur-xl supports-[backdrop-filter]:bg-background/15";
+  const glassLayerFront =
+    "bg-background/20 backdrop-blur-xl supports-[backdrop-filter]:bg-background/10";
+  const glassBorder = "border-border/50";
 
   return (
     <div
@@ -1902,9 +1911,31 @@ export default function AI_Prompt({
         )}
         {hasConversation ? (
           <div
+            className={cn(
+              glassComposer && "relative mb-0 overflow-hidden rounded-t-2xl"
+            )}
+          >
+          {glassComposer && (
+            <div
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute inset-0 rounded-t-2xl border-x border-t border-b-0",
+                glassBorder,
+                glassLayerBack
+              )}
+            />
+          )}
+          <div
             ref={messagesViewportRef}
             className={cn(
-              "mb-4 space-y-3",
+              "space-y-3",
+              glassComposer
+                ? cn(
+                    "relative z-10 max-h-[32vh] min-h-[9rem] overflow-y-auto rounded-t-2xl border-x border-t border-b-0 px-3 pt-3 pb-5",
+                    glassBorder,
+                    glassLayerFront
+                  )
+                : "mb-4",
               dockComposerToBottom && "min-h-0 flex-1 overflow-y-auto pr-1"
             )}
           >
@@ -2172,6 +2203,7 @@ export default function AI_Prompt({
           )}
           <div ref={messagesEndRef} />
           </div>
+          </div>
         ) : (
           dockComposerToBottom && <div className="flex-1" />
         )}
@@ -2209,7 +2241,8 @@ export default function AI_Prompt({
         <div
           className={cn(
             "relative transition-transform duration-300 ease-out",
-            attachedFiles.length > 0 && "translate-y-[-10px]"
+            attachedFiles.length > 0 && "translate-y-[-10px]",
+            glassComposer && hasConversation && "-mt-2"
           )}
         >
           <div
@@ -2265,9 +2298,29 @@ export default function AI_Prompt({
           </div>
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-xl border border-sidebar-border bg-sidebar"
+            className={cn(
+              "pointer-events-none absolute inset-0 border",
+              glassComposer
+                ? hasConversation
+                  ? cn("rounded-b-2xl border-x border-b border-t-0", glassBorder, glassLayerBack)
+                  : cn("rounded-xl border", glassBorder, glassLayerBack)
+                : "rounded-xl border border-sidebar-border bg-sidebar"
+            )}
           />
-          <div className="relative z-10 flex flex-col overflow-hidden rounded-xl border border-sidebar-border bg-sidebar">
+          <div
+            className={cn(
+              "relative z-10 flex flex-col overflow-hidden border",
+              glassComposer
+                ? hasConversation
+                  ? cn(
+                      "rounded-b-2xl border-x border-b border-t-0",
+                      glassBorder,
+                      glassLayerFront
+                    )
+                  : cn("rounded-xl border", glassBorder, glassLayerFront)
+                : "rounded-xl border border-sidebar-border bg-sidebar"
+            )}
+          >
             <div className="relative overflow-y-auto" style={{ maxHeight: "400px" }}>
               <div
                 aria-hidden="true"
@@ -2289,7 +2342,7 @@ export default function AI_Prompt({
                   "pt-3",
                   "min-h-[72px]"
                 )}
-                id="ai-input-15"
+                id={textareaId}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 onSelect={handleComposerSelection}
@@ -2300,7 +2353,7 @@ export default function AI_Prompt({
               />
             </div>
 
-            <div className="flex h-11 items-center bg-sidebar">
+            <div className={cn("flex h-11 items-center", glassComposer ? "bg-transparent" : "bg-sidebar")}>
               <div className="absolute inset-x-2 bottom-1.5 flex items-center justify-between">
                 <div className="flex min-w-0 items-center gap-1 overflow-x-auto pr-2">
                   <DropdownMenu>

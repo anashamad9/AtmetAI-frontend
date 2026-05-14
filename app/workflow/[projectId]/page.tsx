@@ -12,7 +12,6 @@ import {
 } from "react"
 import { useParams } from "next/navigation"
 import AIPrompt from "@/components/kokonutui/ai-prompt"
-import { Kbd } from "@/components/kbd"
 import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
@@ -44,7 +43,6 @@ import {
 import {
   Check,
   Files,
-  PenSquare,
   PlayCircle,
   Plus,
   Trash2,
@@ -106,7 +104,6 @@ const WORKSPACE_WIDTH = 10000
 const WORKSPACE_HEIGHT = 7000
 const WORKSPACE_OFFSET_X = 2200
 const WORKSPACE_OFFSET_Y = 1400
-const OPEN_MANAGE_CHAT_USERS_EVENT = "open-manage-chat-users"
 const EXECUTION_STATUS_META: Record<
   WorkflowNode["executionStatus"],
   { label: string; dotClass: string; borderClass: string }
@@ -154,6 +151,13 @@ function getEdgeSourceHandle(edge: WorkflowEdge): AnchorSide {
 
 function getEdgeTargetHandle(edge: WorkflowEdge): AnchorSide {
   return edge.targetHandle ?? "top"
+}
+
+function getOppositeHandle(side: AnchorSide): AnchorSide {
+  if (side === "top") return "bottom"
+  if (side === "bottom") return "top"
+  if (side === "left") return "right"
+  return "left"
 }
 
 function getNodeAnchorPoint(
@@ -396,8 +400,9 @@ export default function WorkflowProjectPage() {
   const [publishState, setPublishState] = useState<"Draft" | "Published">("Draft")
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false)
   const [lastExecutionLabel, setLastExecutionLabel] = useState("Not run yet")
-  const [chatPanelNodeId, setChatPanelNodeId] = useState<string | null>(null)
-  const [isNodeChatPanelOpen, setIsNodeChatPanelOpen] = useState(false)
+  const [activeChatNodeId, setActiveChatNodeId] = useState<string>("")
+  const [mountedChatNodeIds, setMountedChatNodeIds] = useState<string[]>([])
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const [runSchedule, setRunSchedule] = useState<WorkflowRunSchedule>({
     mode: "off",
   })
@@ -413,6 +418,7 @@ export default function WorkflowProjectPage() {
   const nodesRef = useRef<WorkflowNode[]>([])
   const edgesRef = useRef<WorkflowEdge[]>([])
   const selectedNodeIdRef = useRef("")
+  const chatContainerRef = useRef<HTMLDivElement>(null)
   const panStateRef = useRef<{
     startClientX: number
     startClientY: number
@@ -470,8 +476,9 @@ export default function WorkflowProjectPage() {
     setPublishState("Draft")
     setHasUnpublishedChanges(false)
     setLastExecutionLabel("Not run yet")
-    setChatPanelNodeId(null)
-    setIsNodeChatPanelOpen(false)
+    setActiveChatNodeId(initialNodes[0]?.id ?? "")
+    setMountedChatNodeIds(initialNodes[0] ? [initialNodes[0].id] : [])
+    setIsChatOpen(Boolean(initialNodes[0]))
     setRunSchedule({ mode: "off" })
 
     window.requestAnimationFrame(() => {
@@ -498,9 +505,9 @@ export default function WorkflowProjectPage() {
     () => nodes.find((node) => node.id === selectedNodeId),
     [nodes, selectedNodeId]
   )
-  const panelNode = useMemo(
-    () => nodes.find((node) => node.id === chatPanelNodeId) ?? null,
-    [chatPanelNodeId, nodes]
+  const activeChatNode = useMemo(
+    () => nodes.find((node) => node.id === activeChatNodeId) ?? null,
+    [activeChatNodeId, nodes]
   )
   const hasSelectedNode = Boolean(selectedNode)
   const canPaste = Boolean(copiedNode)
@@ -508,14 +515,18 @@ export default function WorkflowProjectPage() {
   const canRedo = historyFuture.length > 0
 
   useEffect(() => {
-    if (isNodeChatPanelOpen || selectedNode) return
+    if (!isChatOpen) return
 
-    const timeoutId = window.setTimeout(() => {
-      setChatPanelNodeId(null)
-    }, 300)
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (chatContainerRef.current?.contains(target)) return
+      setIsChatOpen(false)
+    }
 
-    return () => window.clearTimeout(timeoutId)
-  }, [isNodeChatPanelOpen, selectedNode])
+    window.addEventListener("pointerdown", handlePointerDown, true)
+    return () => window.removeEventListener("pointerdown", handlePointerDown, true)
+  }, [isChatOpen])
 
   const doneSteps = useMemo(
     () => nodes.filter((node) => node.status === "Done").length,
@@ -899,10 +910,17 @@ export default function WorkflowProjectPage() {
     setTitleDraft(node.stepName)
   }
 
+  const activateNodeChat = (nodeId: string) => {
+    setActiveChatNodeId(nodeId)
+    setIsChatOpen(true)
+    setMountedChatNodeIds((previous) =>
+      previous.includes(nodeId) ? previous : [...previous, nodeId]
+    )
+  }
+
   const openNodeChatPanel = (node: WorkflowNode) => {
     setSelectedNodeId(node.id)
-    setChatPanelNodeId(node.id)
-    setIsNodeChatPanelOpen(true)
+    activateNodeChat(node.id)
   }
 
   const commitTitleEdit = (nodeId: string) => {
@@ -972,6 +990,7 @@ export default function WorkflowProjectPage() {
       },
     ])
     setSelectedNodeId(newId)
+    activateNodeChat(newId)
     setEditingTitleNodeId(newId)
     setTitleDraft("New Step")
     clearWireDraft()
@@ -991,6 +1010,16 @@ export default function WorkflowProjectPage() {
       if (previous !== nodeId) return previous
       return remainingNodes[0]?.id ?? ""
     })
+    setActiveChatNodeId((previous) => {
+      if (previous !== nodeId) return previous
+      return remainingNodes[0]?.id ?? ""
+    })
+    setIsChatOpen((previous) => {
+      if (!previous) return previous
+      if (remainingNodes.length > 0) return previous
+      return false
+    })
+    setMountedChatNodeIds((previous) => previous.filter((id) => id !== nodeId))
     setConnectingSourceId((previous) => (previous === nodeId ? null : previous))
     setHoveredEdgeId(null)
     setFilesDialogOpen(false)
@@ -1044,9 +1073,11 @@ export default function WorkflowProjectPage() {
     markProjectChanged()
     setNodes((previous) => [...previous, newNode])
     setSelectedNodeId(newId)
+    activateNodeChat(newId)
     setEditingTitleNodeId(newId)
     setTitleDraft(newNode.stepName)
     clearWireDraft()
+    return newId
   }
 
   const addNodeFromContextMenu = () => {
@@ -1790,7 +1821,30 @@ export default function WorkflowProjectPage() {
                   setSelectedNodeId("")
                 }
               }}
-              onClick={() => {
+              onClick={(event) => {
+                if (isPanning) return
+                if (connectingSourceId && connectingSourceHandle) {
+                  const point =
+                    getCanvasPoint(event.clientX, event.clientY) ??
+                    pointerCanvasPointRef.current
+                  if (point) {
+                    const newNodeId = addNodeAtPosition(
+                      Math.max(16, Math.round(point.x - NODE_WIDTH / 2)),
+                      Math.max(16, Math.round(point.y - 120))
+                    )
+                    setEdges((previous) => [
+                      ...previous,
+                      {
+                        id: `${connectingSourceId}:${connectingSourceHandle}->${newNodeId}:${getOppositeHandle(connectingSourceHandle)}`,
+                        sourceId: connectingSourceId,
+                        targetId: newNodeId,
+                        sourceHandle: connectingSourceHandle,
+                        targetHandle: getOppositeHandle(connectingSourceHandle),
+                      },
+                    ])
+                    return
+                  }
+                }
                 if (connectingSourceId) clearWireDraft()
                 setSelectedNodeId("")
               }}
@@ -1921,6 +1975,7 @@ export default function WorkflowProjectPage() {
                     const point = getCanvasPoint(event.clientX, event.clientY)
                     if (point) setContextMenuPoint(point)
                     setSelectedNodeId(node.id)
+                    activateNodeChat(node.id)
                   }}
                   onPointerEnter={() => setHoveredNodeId(node.id)}
                   onPointerLeave={() =>
@@ -1944,11 +1999,13 @@ export default function WorkflowProjectPage() {
                       return
                     }
                     setSelectedNodeId(node.id)
+                    activateNodeChat(node.id)
                   }}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault()
                       setSelectedNodeId(node.id)
+                      activateNodeChat(node.id)
                     }
                   }}
                   className={cn(
@@ -2138,38 +2195,33 @@ export default function WorkflowProjectPage() {
                   </div>
 
                   {isSelected && (
-                    <div className="absolute top-1/2 left-[calc(100%+12px)] z-10 flex -translate-y-1/2 flex-col gap-1.5">
+                    <div className="absolute -top-[40px] right-0 z-10 flex items-center gap-1.5">
                       <button
                         type="button"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+                        className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
                         onClick={() => addNodeNextTo(node.id)}
                         aria-label="Add node"
                       >
                         <Plus className="h-3 w-3" />
+                        Add
                       </button>
                       <button
                         type="button"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
-                        onClick={() => openNodeChatPanel(node)}
-                        aria-label="Open node chat"
-                      >
-                        <PenSquare className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+                        className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
                         onClick={() => setFilesDialogOpen(true)}
                         aria-label="Open node files"
                       >
                         <Files className="h-3 w-3" />
+                        Files
                       </button>
                       <button
                         type="button"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-destructive/25 bg-card text-destructive transition-colors hover:bg-destructive/10"
+                        className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-destructive/30 bg-background px-2 text-[11px] font-medium text-destructive shadow-sm transition-colors hover:bg-destructive/10"
                         onClick={() => deleteNode(node.id)}
                         aria-label="Delete node"
                       >
                         <Trash2 className="h-3 w-3" />
+                        Delete
                       </button>
                     </div>
                   )}
@@ -2179,82 +2231,53 @@ export default function WorkflowProjectPage() {
             })}
             </div>
           </ContextMenu5Wrapper>
-          <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
-            <div className="inline-flex items-center gap-4 rounded-[10px] border border-border bg-card/95 px-4 py-2 text-xs text-muted-foreground shadow-lg backdrop-blur">
-              <div className="inline-flex items-center gap-1.5">
-                <span>Reset view</span>
-                <Kbd keys={["cmd"]} className="text-muted-foreground" listenToKeyboard />
-                <span>+</span>
-                <Kbd keys={["0"]} className="text-muted-foreground" listenToKeyboard />
-              </div>
-              <div className="inline-flex items-center gap-1.5">
-                <span>Pan</span>
-                <Kbd keys={["space"]} className="text-muted-foreground" listenToKeyboard />
-                <span>+</span>
-                <span>Drag</span>
-              </div>
-            </div>
-          </div>
         </section>
-        <aside
-          className={cn(
-            "hidden h-full min-w-0 shrink-0 overflow-hidden bg-transparent transition-[width,padding] duration-300 ease-out lg:flex lg:flex-col",
-            isNodeChatPanelOpen && panelNode
-              ? "w-[min(42vw,620px)] p-3 pl-2"
-              : "w-0 p-0"
-          )}
-        >
-          <div
-            className={cn(
-              "flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/95 backdrop-blur-sm transition-all duration-300 ease-out",
-              isNodeChatPanelOpen && panelNode
-                ? "translate-x-0 opacity-100"
-                : "pointer-events-none translate-x-8 opacity-0"
-            )}
-          >
-            <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
-              <div className="min-w-0">
-                <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                  Node Chat
-                </p>
-                <p className="truncate text-sm font-medium text-foreground">
-                  {panelNode?.stepName ?? ""}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsNodeChatPanelOpen(false)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Close node chat"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-2">
-              {panelNode && (
-                <div className="relative flex h-full min-h-0 w-full items-stretch justify-center">
-                  <AIPrompt
-                    key={`workflow-node-chat-${panelNode.id}`}
-                    chatId={
-                      projectId
-                        ? `workflow-node-chat-${projectId}-${panelNode.id}`
-                        : `workflow-node-chat-${panelNode.id}`
-                    }
-                    persistChatListEntry={false}
-                    hideGreeting
-                    dockComposerToBottom
-                    userFullName={panelNode.owner}
-                    onAddUserToChat={() => {
-                      window.dispatchEvent(new CustomEvent(OPEN_MANAGE_CHAT_USERS_EVENT))
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </aside>
-
       </div>
+      {isChatOpen && activeChatNode && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+          <div
+            ref={chatContainerRef}
+            className="pointer-events-auto w-[min(760px,calc(100vw-1.5rem))]"
+          >
+            {mountedChatNodeIds.map((nodeId) => {
+              const chatNode = nodes.find((node) => node.id === nodeId)
+              if (!chatNode) return null
+              return (
+                <div key={nodeId} className={nodeId === activeChatNodeId ? "block" : "hidden"}>
+                  <div className="relative">
+                    <div className="pointer-events-none absolute inset-x-3 top-2 z-20 flex items-center justify-between text-xs text-foreground">
+                      <span className="truncate">
+                        Chatting with <span className="font-medium">{chatNode.stepName}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsChatOpen(false)}
+                        className="pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/40 hover:text-foreground"
+                        aria-label="Close chat"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="pt-5">
+                      <AIPrompt
+                        chatId={
+                          projectId
+                            ? `workflow-node-chat-${projectId}-${nodeId}`
+                            : `workflow-node-chat-${nodeId}`
+                        }
+                        persistChatListEntry={false}
+                        hideGreeting
+                        glassComposer
+                        userFullName={chatNode.owner}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <Dialog open={filesDialogOpen} onOpenChange={setFilesDialogOpen}>
         <DialogContent className="max-w-lg p-0">
