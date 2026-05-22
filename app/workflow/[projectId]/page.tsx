@@ -2195,32 +2195,32 @@ export default function WorkflowProjectPage() {
                   </div>
 
                   {isSelected && (
-                    <div className="absolute -top-[40px] right-0 z-10 flex items-center gap-1.5">
+                    <div className="absolute -top-[36px] right-0 z-10 flex items-center gap-1">
                       <button
                         type="button"
-                        className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
+                        className="inline-flex h-6 items-center justify-center gap-1 rounded-md border border-border bg-background px-1.5 text-[10px] font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
                         onClick={() => addNodeNextTo(node.id)}
                         aria-label="Add node"
                       >
-                        <Plus className="h-3 w-3" />
+                        <Plus className="h-2.5 w-2.5" />
                         Add
                       </button>
                       <button
                         type="button"
-                        className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
+                        className="inline-flex h-6 items-center justify-center gap-1 rounded-md border border-border bg-background px-1.5 text-[10px] font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
                         onClick={() => setFilesDialogOpen(true)}
                         aria-label="Open node files"
                       >
-                        <Files className="h-3 w-3" />
+                        <Files className="h-2.5 w-2.5" />
                         Files
                       </button>
                       <button
                         type="button"
-                        className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-destructive/30 bg-background px-2 text-[11px] font-medium text-destructive shadow-sm transition-colors hover:bg-destructive/10"
+                        className="inline-flex h-6 items-center justify-center gap-1 rounded-md border border-destructive/30 bg-background px-1.5 text-[10px] font-medium text-destructive shadow-sm transition-colors hover:bg-destructive/10"
                         onClick={() => deleteNode(node.id)}
                         aria-label="Delete node"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-2.5 w-2.5" />
                         Delete
                       </button>
                     </div>

@@ -14,16 +14,20 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import {
   AtSign,
-  BellRing,
   Check,
   CheckCheck,
   ChevronDown,
   Clock3,
-  Filter,
+  CreditCard,
+  Database,
   Inbox,
   MoreHorizontal,
   Search,
+  Shield,
   Trash2,
+  UserPlus,
+  Zap,
+  Puzzle,
 } from "lucide-react"
 import {
   categoryBadgeVariant,
@@ -47,6 +51,27 @@ const CATEGORY_OPTIONS: ReadonlyArray<NotificationCategory | "all"> = [
   "Security",
   "Billing",
 ]
+
+const categoryIcon: Record<
+  NotificationCategory,
+  React.ComponentType<{ className?: string }>
+> = {
+  Workflow: Zap,
+  Apps: Puzzle,
+  Data: Database,
+  Members: UserPlus,
+  Security: Shield,
+  Billing: CreditCard,
+}
+
+const categoryIconStyle: Record<NotificationCategory, string> = {
+  Workflow: "text-violet-600 bg-violet-100 dark:bg-violet-950/40",
+  Apps: "text-blue-600 bg-blue-100 dark:bg-blue-950/40",
+  Data: "text-cyan-600 bg-cyan-100 dark:bg-cyan-950/40",
+  Members: "text-emerald-600 bg-emerald-100 dark:bg-emerald-950/40",
+  Security: "text-red-600 bg-red-100 dark:bg-red-950/40",
+  Billing: "text-amber-600 bg-amber-100 dark:bg-amber-950/40",
+}
 
 function bucketByDate(
   dateIso: string,
@@ -154,14 +179,17 @@ export default function NotificationsPage() {
           ? "Last 7 days"
           : "Last 30 days"
 
+  const categoryFilterLabel =
+    categoryFilter === "all" ? "All" : categoryFilter
+
   return (
     <div className="flex min-h-[calc(100vh-2.5rem)] flex-1 flex-col bg-background">
       <section
         data-filter-bar-scope="true"
-        className="sticky top-10 z-30 border-b border-border bg-background/95 px-3 py-2 backdrop-blur supports-backdrop-filter:backdrop-blur"
+        className="sticky top-10 z-30 flex h-10 shrink-0 items-center border-b border-border bg-background px-3"
       >
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2">
-          <div className="relative h-7 min-w-[17rem] grow">
+        <div className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto">
+          <div className="relative h-7 min-w-56 shrink-0">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
@@ -171,12 +199,12 @@ export default function NotificationsPage() {
             />
           </div>
 
-          <div className="inline-flex h-7 items-center rounded-lg border border-border/60 bg-background p-0.5">
+          <div className="inline-flex h-7 shrink-0 items-center rounded-lg border border-border/60 bg-background p-0.5">
             {(
               [
-                { key: "all", label: "All", count: allCount, icon: Inbox },
-                { key: "unread", label: "Unread", count: unreadCount, icon: BellRing },
-                { key: "mentions", label: "Mentions", count: mentionsCount, icon: AtSign },
+                { key: "all", label: "All", count: allCount },
+                { key: "unread", label: "Unread", count: unreadCount },
+                { key: "mentions", label: "Mentions", count: mentionsCount },
               ] as const
             ).map((item) => (
               <Button
@@ -186,17 +214,21 @@ export default function NotificationsPage() {
                 size="sm"
                 onClick={() => setView(item.key)}
                 className={cn(
-                  "h-6 gap-1 rounded-md px-2 text-xs",
+                  "h-6 gap-1.5 rounded-md px-2 text-xs",
                   view === item.key
                     ? "bg-sidebar text-foreground"
                     : "text-muted-foreground"
                 )}
               >
-                <item.icon className="h-3.5 w-3.5" />
                 <span>{item.label}</span>
-                <Badge variant="neutral" size="sm">
+                <span className={cn(
+                  "tabular-nums inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium leading-none",
+                  view === item.key
+                    ? "bg-foreground/10 text-foreground"
+                    : "bg-muted text-muted-foreground"
+                )}>
                   {item.count}
-                </Badge>
+                </span>
               </Button>
             ))}
           </div>
@@ -207,12 +239,12 @@ export default function NotificationsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="surface-filter-field h-7 gap-1.5 rounded-lg px-2.5 text-xs"
+                  className="surface-filter-field h-7 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
                 />
               }
             >
-              <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>{categoryFilter === "all" ? "All categories" : categoryFilter}</span>
+              <span className="text-muted-foreground">Category:</span>
+              <span>{categoryFilterLabel}</span>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-44 rounded-xl p-1">
@@ -233,11 +265,12 @@ export default function NotificationsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="surface-filter-field h-7 gap-1.5 rounded-lg px-2.5 text-xs"
+                  className="surface-filter-field h-7 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
                 />
               }
             >
               <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">Date:</span>
               <span>{rangeLabel}</span>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </DropdownMenuTrigger>
@@ -257,12 +290,12 @@ export default function NotificationsPage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center">
             <Button
               type="button"
               size="sm"
-              variant="outline"
-              className="h-7 gap-1.5 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
+              variant="ghost"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
               onClick={markAllAsRead}
               disabled={unreadCount === 0}
             >
@@ -274,10 +307,10 @@ export default function NotificationsPage() {
       </section>
 
       <section className="flex-1 px-3 py-4">
-        <div className="mx-auto w-full max-w-6xl">
+        <div className="mx-auto w-full max-w-3xl">
           {hasNoMatches ? (
-            <div className="flex h-52 flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-card">
-              <Inbox className="h-6 w-6 text-muted-foreground" />
+            <div className="flex h-52 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border">
+              <Inbox className="h-5 w-5 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
                 No notifications match the current filters.
               </p>
@@ -289,90 +322,139 @@ export default function NotificationsPage() {
                 if (!groupItems || groupItems.length === 0) return null
 
                 return (
-                  <section
-                    key={groupKey}
-                    className="overflow-hidden rounded-2xl border border-border bg-card"
-                  >
-                    <div className="flex items-center justify-between border-b border-border/70 px-4 py-2.5">
-                      <h2 className="text-sm font-semibold text-foreground">{groupKey}</h2>
-                      <Badge variant="neutral">{groupItems.length}</Badge>
+                  <section key={groupKey}>
+                    <div className="mb-2 flex items-center justify-between px-1">
+                      <h2 className="text-xs font-medium text-muted-foreground">
+                        {groupKey}
+                      </h2>
+                      <span className="tabular-nums text-xs text-muted-foreground">
+                        {groupItems.length}
+                      </span>
                     </div>
-                    <div className="divide-y divide-border/70">
-                      {groupItems.map((item) => (
-                        <article
-                          key={item.id}
-                          className={cn(
-                            "flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/20",
-                            item.unread && "bg-muted/20"
-                          )}
-                        >
-                          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background">
-                            <BellRing className="h-4 w-4 text-muted-foreground" />
-                          </div>
 
-                          <div className="min-w-0 flex-1">
-                            <div className="mb-1 flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-medium text-foreground">
-                                {item.title}
-                              </p>
-                              {item.unread ? (
-                                <span className="h-2 w-2 rounded-full bg-blue-500" />
-                              ) : null}
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {item.description}
-                            </p>
-                            <div className="mt-2 flex flex-wrap items-center gap-2">
-                              <Badge variant={categoryBadgeVariant[item.category]}>
-                                {item.category}
-                              </Badge>
-                              <Badge variant={priorityBadgeVariant[item.priority]}>
-                                {item.priority}
-                              </Badge>
-                              {item.mentioned ? (
-                                <Badge variant="purple">Mention</Badge>
-                              ) : null}
-                            </div>
-                          </div>
+                    <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
+                      {groupItems.map((item, index) => {
+                        const CategoryIcon = categoryIcon[item.category]
+                        const iconStyle = categoryIconStyle[item.category]
 
-                          <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                            <span className="text-xs text-muted-foreground">
-                              {item.relativeTime}
-                            </span>
-                            <Button
-                              render={<Link href={`/notifications/${item.id}`} />}
-                              variant="outline"
-                              size="sm"
-                              className="h-7 rounded-lg border-border/60 bg-transparent px-2.5 text-xs"
-                            >
-                              Open
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                render={
-                                  <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    className="h-7 w-7 rounded-lg border-0 bg-transparent text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground aria-expanded:bg-transparent"
-                                  />
-                                }
+                        return (
+                          <article
+                            key={item.id}
+                            className={cn(
+                              "flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/20",
+                              item.unread && "bg-muted/10",
+                              index !== groupItems.length - 1 &&
+                                "border-b border-border/60"
+                            )}
+                          >
+                            <div className="relative mt-0.5 shrink-0">
+                              <div
+                                className={cn(
+                                  "flex h-8 w-8 items-center justify-center rounded-lg",
+                                  iconStyle
+                                )}
                               >
-                                <MoreHorizontal className="h-3.5 w-3.5" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="min-w-40 rounded-xl p-1">
-                                <DropdownMenuItem onClick={() => toggleReadState(item.id)}>
-                                  <Check className="h-3.5 w-3.5" />
-                                  {item.unread ? "Mark as read" : "Mark as unread"}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => removeNotification(item.id)}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                  Remove
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </article>
-                      ))}
+                                <CategoryIcon className="h-3.5 w-3.5" />
+                              </div>
+                              {item.unread && (
+                                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-blue-500 ring-1 ring-background" />
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <p
+                                    className={cn(
+                                      "text-sm text-foreground",
+                                      item.unread
+                                        ? "font-semibold"
+                                        : "font-medium"
+                                    )}
+                                  >
+                                    {item.title}
+                                  </p>
+                                  <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                                    {item.description}
+                                  </p>
+                                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                    <Badge
+                                      variant={categoryBadgeVariant[item.category]}
+                                      size="sm"
+                                    >
+                                      {item.category}
+                                    </Badge>
+                                    <Badge
+                                      variant={priorityBadgeVariant[item.priority]}
+                                      size="sm"
+                                    >
+                                      {item.priority}
+                                    </Badge>
+                                    {item.mentioned ? (
+                                      <Badge variant="purple" size="sm">
+                                        <AtSign className="h-2.5 w-2.5" />
+                                        Mention
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+                                </div>
+
+                                <div className="flex shrink-0 flex-col items-end gap-2">
+                                  <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+                                    {item.relativeTime}
+                                  </span>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      render={
+                                        <Link href={`/notifications/${item.id}`} />
+                                      }
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-6 rounded-md border-border/60 bg-transparent px-2 text-xs"
+                                    >
+                                      Open
+                                    </Button>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger
+                                        render={
+                                          <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            className="h-6 w-6 rounded-md border-0 bg-transparent text-muted-foreground shadow-none hover:bg-muted hover:text-foreground aria-expanded:bg-muted"
+                                          />
+                                        }
+                                      >
+                                        <MoreHorizontal className="h-3.5 w-3.5" />
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent
+                                        align="end"
+                                        className="min-w-40 rounded-xl p-1"
+                                      >
+                                        <DropdownMenuItem
+                                          onClick={() => toggleReadState(item.id)}
+                                        >
+                                          <Check className="h-3.5 w-3.5" />
+                                          {item.unread
+                                            ? "Mark as read"
+                                            : "Mark as unread"}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() =>
+                                            removeNotification(item.id)
+                                          }
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                          Remove
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </article>
+                        )
+                      })}
                     </div>
                   </section>
                 )
