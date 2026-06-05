@@ -69,22 +69,34 @@ import {
   IconBell,
   IconBulb,
   IconBuilding,
+  IconCalendar,
   IconChartBar,
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
   IconChevronUp,
+  IconCopy,
   IconCreditCard,
   IconDatabase,
+  IconDownload,
+  IconDots,
   IconFileText,
   IconHelpCircle,
+  IconKey,
+  IconLayoutDashboard,
+  IconListDetails,
+  IconLock,
   IconLogout2,
   IconMoon,
   IconPlus,
+  IconPlug,
+  IconSearch,
   IconSettings,
   IconShield,
+  IconShieldCheck,
   IconSun,
   IconUser,
+  IconUserPlus,
   IconUsers,
   IconX,
 } from "@tabler/icons-react"
@@ -168,17 +180,32 @@ const baseSettingsSections = [
   "Help Docs",
   "Contact Support",
 ] as const
-const adminSettingsSections = [
-  "Admin overview",
-  "Access policies",
-  "Audit logs",
-] as const
-const settingsSections = [
-  ...baseSettingsSections,
-  ...adminSettingsSections,
-] as const
+const settingsSections = baseSettingsSections
 type SettingsSection = (typeof settingsSections)[number]
-type AdminSettingsSection = (typeof adminSettingsSections)[number]
+const adminConsoleGroups = [
+  {
+    label: "Overview",
+    sections: ["Admin overview"],
+  },
+  {
+    label: "Members & access",
+    sections: ["Members", "Roles & permissions", "Access policies"],
+  },
+  {
+    label: "Workspace",
+    sections: ["Workspace settings", "Data controls", "Notifications config"],
+  },
+  {
+    label: "Integrations & billing",
+    sections: ["Integrations management", "Billing & plan", "API keys"],
+  },
+  {
+    label: "Logs",
+    sections: ["Audit logs", "Usage & limits"],
+  },
+] as const
+type AdminConsoleGroup = (typeof adminConsoleGroups)[number]
+type AdminConsoleSection = AdminConsoleGroup["sections"][number]
 const currentUser = {
   name: "Amir Haddad",
   role: "Operations Manager",
@@ -479,17 +506,6 @@ const settingsContent: Record<SettingsSection, string[]> = {
   Billing: ["Payment methods", "Invoices", "Billing history"],
   "Help Docs": ["Help center", "Guides", "API references"],
   "Contact Support": ["Support contact", "Live chat", "Report a bug"],
-  "Admin overview": [
-    "Platform health",
-    "Workspace activity",
-    "Pending approvals",
-  ],
-  "Access policies": [
-    "Global access guards",
-    "Invite controls",
-    "Provisioning defaults",
-  ],
-  "Audit logs": ["Admin actions", "Security events", "Export logs"],
 }
 
 const PersonalizationIcon = ({ className }: { className?: string }) => (
@@ -514,9 +530,51 @@ const settingsSectionIcons: Record<
   Billing: IconCreditCard,
   "Help Docs": IconFileText,
   "Contact Support": IconHelpCircle,
-  "Admin overview": IconSettings,
-  "Access policies": IconShield,
-  "Audit logs": IconFileText,
+}
+
+const adminConsoleSectionIcons: Record<
+  AdminConsoleSection,
+  React.ComponentType<{ className?: string }>
+> = {
+  "Admin overview": IconLayoutDashboard,
+  Members: IconUsers,
+  "Roles & permissions": IconShield,
+  "Access policies": IconLock,
+  "Workspace settings": IconSettings,
+  "Data controls": IconDatabase,
+  "Notifications config": IconBell,
+  "Integrations management": IconPlug,
+  "Billing & plan": IconCreditCard,
+  "API keys": IconKey,
+  "Audit logs": IconListDetails,
+  "Usage & limits": IconChartBar,
+}
+
+const adminConsoleDescriptions: Record<AdminConsoleSection, string> = {
+  "Admin overview":
+    "Monitor workspace health, recent activity, and common admin actions.",
+  Members:
+    "Manage workspace membership, invitations, roles, and account status.",
+  "Roles & permissions":
+    "Review role capabilities and adjust editable workspace permissions.",
+  "Access policies":
+    "Configure authentication, domain, session, and network access rules.",
+  "Workspace settings":
+    "Update workspace identity, localization, branding, and destructive actions.",
+  "Data controls":
+    "Control retention, deletion, export, and privacy request workflows.",
+  "Notifications config":
+    "Set workspace alert thresholds, digests, recipients, and Slack delivery.",
+  "Integrations management":
+    "Administer connected apps, scopes, status, and workspace-wide enforcement.",
+  "Billing & plan":
+    "Review plan details, usage limits, payment method, and invoices.",
+  "API keys":
+    "Create, monitor, and revoke workspace API credentials.",
+  "Audit logs":
+    "Search and export security, workspace, member, and system events.",
+  "Usage & limits":
+    "Track usage by resource and member, then adjust workspace limits.",
 }
 const usageRangeStats = {
   "This week": {
@@ -3844,677 +3902,1291 @@ function BillingSettingsContent({
   )
 }
 
-function AdminOverviewSettingsContent() {
-  const overviewCards = [
-    {
-      label: "Managed workspaces",
-      value: "24",
-      note: "+3 this month",
-    },
-    {
-      label: "Active admins",
-      value: "9",
-      note: "2 Super Admin",
-    },
-    {
-      label: "Pending approvals",
-      value: "5",
-      note: "Requires review",
-    },
-    {
-      label: "Security incidents",
-      value: "0",
-      note: "Last 30 days",
-    },
+type AdminBadgeTone = "default" | "success" | "info" | "danger" | "warning" | "secondary"
+
+const adminBadgeVariants: Record<AdminBadgeTone, BadgeVariant> = {
+  default: "neutral",
+  success: "green",
+  info: "blue",
+  danger: "red",
+  warning: "amber",
+  secondary: "neutral",
+}
+
+const adminActivityRows = [
+  {
+    timestamp: "Today, 10:42 AM",
+    actor: "Amir Haddad",
+    initials: "AH",
+    type: "Login",
+    tone: "info" as const,
+    description: "Signed in from Amman office network.",
+  },
+  {
+    timestamp: "Today, 10:18 AM",
+    actor: "Lina Saad",
+    initials: "LS",
+    type: "Workflow run",
+    tone: "success" as const,
+    description: "Ran customer renewal summary workflow.",
+  },
+  {
+    timestamp: "Today, 09:56 AM",
+    actor: "System",
+    initials: "SY",
+    type: "Error",
+    tone: "danger" as const,
+    description: "Slack delivery failed for workflow error alert.",
+  },
+  {
+    timestamp: "Today, 09:21 AM",
+    actor: "Fadi Mourad",
+    initials: "FM",
+    type: "Settings changed",
+    tone: "warning" as const,
+    description: "Updated workflow publishing permission for members.",
+  },
+  {
+    timestamp: "Yesterday, 06:44 PM",
+    actor: "Yara Nasser",
+    initials: "YN",
+    type: "File uploaded",
+    tone: "default" as const,
+    description: "Uploaded Q2 campaign budget spreadsheet.",
+  },
+  {
+    timestamp: "Yesterday, 05:12 PM",
+    actor: "Omar Khaled",
+    initials: "OK",
+    type: "Workflow run",
+    tone: "success" as const,
+    description: "Generated weekly support handoff report.",
+  },
+  {
+    timestamp: "Yesterday, 04:30 PM",
+    actor: "Amir Haddad",
+    initials: "AH",
+    type: "Member invited",
+    tone: "info" as const,
+    description: "Invited dina.saleh@atmet.ai as Viewer.",
+  },
+  {
+    timestamp: "Yesterday, 01:05 PM",
+    actor: "Lina Saad",
+    initials: "LS",
+    type: "File uploaded",
+    tone: "default" as const,
+    description: "Added product feedback import data.",
+  },
+  {
+    timestamp: "Mar 24, 2026",
+    actor: "System",
+    initials: "SY",
+    type: "Error",
+    tone: "danger" as const,
+    description: "API key request exceeded monthly workspace cap.",
+  },
+  {
+    timestamp: "Mar 24, 2026",
+    actor: "Amir Haddad",
+    initials: "AH",
+    type: "Settings changed",
+    tone: "warning" as const,
+    description: "Changed session timeout from 24 hours to 8 hours.",
+  },
+] as const
+
+const adminMembers = [
+  {
+    id: "adm_mem_001",
+    name: "Amir Haddad",
+    email: "amir.haddad@atmet.ai",
+    role: "Admin",
+    status: "Active",
+    lastActive: "Today, 10:42 AM",
+    initials: "AH",
+    avatarUrl: accountProfile.avatarUrl,
+  },
+  {
+    id: "adm_mem_002",
+    name: "Lina Saad",
+    email: "lina.saad@atmet.ai",
+    role: "Admin",
+    status: "Active",
+    lastActive: "Today, 09:15 AM",
+    initials: "LS",
+    avatarUrl:
+      "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=120&q=80",
+  },
+  {
+    id: "adm_mem_003",
+    name: "Omar Khaled",
+    email: "omar.khaled@atmet.ai",
+    role: "Member",
+    status: "Active",
+    lastActive: "Yesterday, 07:40 PM",
+    initials: "OK",
+    avatarUrl:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80",
+  },
+  {
+    id: "adm_mem_004",
+    name: "Yara Nasser",
+    email: "yara.nasser@atmet.ai",
+    role: "Member",
+    status: "Invited",
+    lastActive: "Pending invite",
+    initials: "YN",
+    avatarUrl:
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80",
+  },
+  {
+    id: "adm_mem_005",
+    name: "Fadi Mourad",
+    email: "fadi.mourad@atmet.ai",
+    role: "Viewer",
+    status: "Suspended",
+    lastActive: "Mar 24, 2026",
+    initials: "FM",
+    avatarUrl:
+      "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=120&q=80",
+  },
+] as const
+
+const adminIntegrationRows = [
+  {
+    app: "Slack",
+    connectedBy: "Amir Haddad",
+    status: "Connected",
+    tone: "success" as const,
+    scope: "Messages, channels",
+    lastUsed: "Today",
+    forced: true,
+  },
+  {
+    app: "Google Drive",
+    connectedBy: "Lina Saad",
+    status: "Connected",
+    tone: "success" as const,
+    scope: "Files, folders",
+    lastUsed: "Yesterday",
+    forced: false,
+  },
+  {
+    app: "Zendesk",
+    connectedBy: "Omar Khaled",
+    status: "Error",
+    tone: "danger" as const,
+    scope: "Tickets, users",
+    lastUsed: "Mar 24, 2026",
+    forced: false,
+  },
+  {
+    app: "Salesforce",
+    connectedBy: "Not connected",
+    status: "Not configured",
+    tone: "secondary" as const,
+    scope: "Accounts, deals",
+    lastUsed: "Never",
+    forced: false,
+  },
+] as const
+
+const adminAuditRows = [
+  {
+    id: "audit_001",
+    timestamp: "Today, 10:42 AM",
+    actor: "Amir Haddad",
+    initials: "AH",
+    eventType: "Login",
+    tone: "info" as const,
+    target: "Admin console",
+    ip: "10.14.20.19",
+    details: { method: "password", mfa: true, region: "Amman" },
+  },
+  {
+    id: "audit_002",
+    timestamp: "Today, 10:18 AM",
+    actor: "Lina Saad",
+    initials: "LS",
+    eventType: "Workflow run",
+    tone: "success" as const,
+    target: "Renewal summary",
+    ip: "10.14.21.33",
+    details: { workflowId: "wf_renewal_42", status: "completed" },
+  },
+  {
+    id: "audit_003",
+    timestamp: "Today, 09:56 AM",
+    actor: "System",
+    initials: "SY",
+    eventType: "Error",
+    tone: "danger" as const,
+    target: "Slack alert",
+    ip: "127.0.0.1",
+    details: { code: "slack_webhook_failed", retries: 3 },
+  },
+  {
+    id: "audit_004",
+    timestamp: "Yesterday, 04:30 PM",
+    actor: "Amir Haddad",
+    initials: "AH",
+    eventType: "Member invited",
+    tone: "info" as const,
+    target: "dina.saleh@atmet.ai",
+    ip: "10.14.20.19",
+    details: { role: "Viewer", inviteId: "inv_8831" },
+  },
+] as const
+
+function AdminPage({
+  section,
+  actions,
+  children,
+}: {
+  section: AdminConsoleSection
+  actions?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex flex-col gap-2 px-1 pb-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-0.5">
+          <h2 className="text-base font-medium text-foreground">{section}</h2>
+          <p className="text-[13px] text-muted-foreground">
+            {adminConsoleDescriptions[section]}
+          </p>
+        </div>
+        {actions ? <div className="flex shrink-0 flex-wrap gap-1.5">{actions}</div> : null}
+      </div>
+      <div className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-1 pb-1">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function AdminSelect({
+  label,
+  value,
+  options,
+  onChange,
+  className,
+}: {
+  label?: string
+  value: string
+  options: readonly string[]
+  onChange: (value: string) => void
+  className?: string
+}) {
+  return (
+    <label className={cn("space-y-1 text-[13px] text-muted-foreground", className)}>
+      {label ? <span>{label}</span> : null}
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="surface-sidebar-field h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm text-foreground outline-none focus-visible:border-ring"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function AdminToggle({
+  checked,
+  disabled,
+  onChange,
+}: {
+  checked: boolean
+  disabled?: boolean
+  onChange?: (checked: boolean) => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-pressed={checked}
+      onClick={() => onChange?.(!checked)}
+      className={cn(
+        "inline-flex h-6 w-11 shrink-0 items-center overflow-hidden rounded-[999px] border-[0.5px] border-border bg-muted px-0.5 transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+        checked && "bg-primary"
+      )}
+    >
+      <span
+        className={cn(
+          "block size-5 rounded-[999px] bg-background transition-transform",
+          checked && "translate-x-5"
+        )}
+      />
+    </button>
+  )
+}
+
+function AdminSaveBar({
+  children = "Save",
+  onClick,
+}: {
+  children?: React.ReactNode
+  onClick?: () => void
+}) {
+  return (
+    <div className="sticky bottom-0 -mx-1 flex justify-end border-t border-border bg-background/95 px-1 pt-3">
+      <Button type="button" size="sm" onClick={onClick}>
+        {children}
+      </Button>
+    </div>
+  )
+}
+
+function AdminEmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  description: string
+  action?: React.ReactNode
+}) {
+  return (
+    <div className="flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background px-4 py-8 text-center">
+      <Icon className="h-6 w-6 text-muted-foreground" />
+      <p className="mt-2 text-sm font-medium text-foreground">{title}</p>
+      <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
+        {description}
+      </p>
+      {action ? <div className="mt-3">{action}</div> : null}
+    </div>
+  )
+}
+
+function AdminAvatar({ initials, name }: { initials: string; name: string }) {
+  return (
+    <Avatar className="size-7 !rounded-full">
+      <AvatarFallback className="!rounded-full text-[10px] font-medium">
+        {initials}
+      </AvatarFallback>
+      <span className="sr-only">{name}</span>
+    </Avatar>
+  )
+}
+
+function AdminOverviewConsoleContent() {
+  const stats = [
+    { label: "Active users", value: "128" },
+    { label: "Workflow runs today", value: "1,842" },
+    { label: "Errors today", value: "7" },
+    { label: "Storage used", value: "42 GB" },
   ] as const
 
   return (
-    <div className="space-y-3 pb-1">
-      <section className="rounded-xl border border-border bg-background px-4 py-3.5">
-        <div className="space-y-0.5">
-          <p className="text-sm font-semibold text-foreground">Platform admin</p>
-          <p className="text-sm text-muted-foreground">
-            Cross-workspace controls and oversight for platform administrators.
-          </p>
-        </div>
-      </section>
-
+    <AdminPage
+      section="Admin overview"
+      actions={
+        <>
+          <Button type="button" size="sm">
+            <IconUserPlus className="h-3.5 w-3.5" />
+            Invite member
+          </Button>
+          <Button type="button" variant="outline" size="sm">
+            <IconListDetails className="h-3.5 w-3.5" />
+            View audit log
+          </Button>
+          <Button type="button" variant="outline" size="sm">
+            <IconDownload className="h-3.5 w-3.5" />
+            Export usage
+          </Button>
+        </>
+      }
+    >
       <section className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-        {overviewCards.map((item) => (
-          <div
-            key={item.label}
-            className="rounded-xl border border-border bg-background px-3 py-2.5"
-          >
-            <p className="text-[11px] text-muted-foreground">{item.label}</p>
-            <p className="text-sm font-semibold text-foreground">{item.value}</p>
-            <p className="text-[11px] text-muted-foreground">{item.note}</p>
+        {stats.map((stat) => (
+          <div key={stat.label} className="rounded-lg bg-muted px-3 py-3">
+            <p className="text-[13px] text-muted-foreground">{stat.label}</p>
+            <p className="mt-1 text-2xl font-medium tabular-nums text-foreground">
+              {stat.value}
+            </p>
           </div>
         ))}
       </section>
 
-      <section className="rounded-xl border border-border bg-background">
-        <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
-          <div className="space-y-0.5">
-            <p className="text-sm font-semibold text-foreground">
-              Pending admin actions
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Approval queue that impacts multiple workspaces.
-            </p>
-          </div>
-          <Button type="button" size="sm">
-            Review queue
-          </Button>
+      <section className="overflow-hidden rounded-xl border border-border bg-background">
+        <div className="border-b border-border px-3 py-2.5">
+          <p className="text-sm font-medium text-foreground">Recent activity</p>
         </div>
         <div className="divide-y divide-border">
-          {[
-            "Approve SSO enforcement for Product workspace",
-            "Review enterprise export request from Operations",
-            "Confirm elevated API rate limit request",
-          ].map((item) => (
+          {adminActivityRows.map((row) => (
             <div
-              key={item}
-              className="flex items-center justify-between gap-2 px-3 py-2.5"
+              key={`${row.timestamp}-${row.actor}-${row.description}`}
+              className="grid gap-2 px-3 py-2.5 text-sm sm:grid-cols-[120px_160px_120px_1fr] sm:items-center"
             >
-              <p className="text-sm text-foreground">{item}</p>
-              <Button type="button" variant="outline" size="sm">
-                Open
-              </Button>
+              <span className="text-[13px] text-muted-foreground">{row.timestamp}</span>
+              <span className="flex items-center gap-2 text-foreground">
+                <AdminAvatar initials={row.initials} name={row.actor} />
+                {row.actor}
+              </span>
+              <Badge variant={adminBadgeVariants[row.tone]}>{row.type}</Badge>
+              <span className="text-[13px] text-muted-foreground">{row.description}</span>
             </div>
           ))}
         </div>
       </section>
-    </div>
+    </AdminPage>
   )
 }
 
-function AccessPoliciesSettingsContent() {
-  const [requireMfaForAdmins, setRequireMfaForAdmins] = React.useState(true)
-  const [inviteApprovalRequired, setInviteApprovalRequired] =
-    React.useState(true)
-  const [autoProvisionByDomain, setAutoProvisionByDomain] =
-    React.useState(false)
-
-  return (
-    <div className="space-y-3 pb-1">
-      <section className="rounded-xl border border-border bg-background px-4 py-3.5">
-        <div className="space-y-0.5">
-          <p className="text-sm font-semibold text-foreground">Access policies</p>
-          <p className="text-sm text-muted-foreground">
-            Configure default security and permission rules across the platform.
-          </p>
-        </div>
-      </section>
-
-      <section className="space-y-2 rounded-xl border border-border bg-background px-3 py-2.5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-0.5">
-            <p className="text-sm font-medium text-foreground">
-              Require MFA for admin roles
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Enforce multi-factor auth for Admin and Super Admin accounts.
-            </p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant={requireMfaForAdmins ? "default" : "outline"}
-            onClick={() => setRequireMfaForAdmins((previous) => !previous)}
-          >
-            {requireMfaForAdmins ? "Enabled" : "Disabled"}
-          </Button>
-        </div>
-
-        <div className="flex flex-col gap-2 border-t border-border pt-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-0.5">
-            <p className="text-sm font-medium text-foreground">
-              Require invite approval
-            </p>
-            <p className="text-sm text-muted-foreground">
-              New workspace invitations require admin approval before sending.
-            </p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant={inviteApprovalRequired ? "default" : "outline"}
-            onClick={() => setInviteApprovalRequired((previous) => !previous)}
-          >
-            {inviteApprovalRequired ? "Enabled" : "Disabled"}
-          </Button>
-        </div>
-
-        <div className="flex flex-col gap-2 border-t border-border pt-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-0.5">
-            <p className="text-sm font-medium text-foreground">
-              Auto-provision by approved domain
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Automatically create member accounts for verified company domains.
-            </p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant={autoProvisionByDomain ? "default" : "outline"}
-            onClick={() => setAutoProvisionByDomain((previous) => !previous)}
-          >
-            {autoProvisionByDomain ? "Enabled" : "Disabled"}
-          </Button>
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-border bg-background px-3 py-2.5">
-        <div className="space-y-0.5">
-          <p className="text-sm font-semibold text-foreground">
-            Global admin contacts
-          </p>
-          <p className="text-sm text-muted-foreground">
-            These contacts receive high-priority policy and security alerts.
-          </p>
-        </div>
-        <div className="mt-2.5 flex flex-wrap items-center gap-2">
-          {["security@atmet.ai", "ops-admin@atmet.ai", "compliance@atmet.ai"].map(
-            (email) => (
-              <Badge key={email} variant="blue">
-                {email}
-              </Badge>
-            )
-          )}
-        </div>
-      </section>
-    </div>
-  )
-}
-
-function AuditLogsSettingsContent() {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [severityFilter, setSeverityFilter] = React.useState<
-    "all" | "high" | "medium" | "low"
-  >("all")
-  const [eventTypeFilter, setEventTypeFilter] = React.useState<
-    | "all"
-    | "auth"
-    | "policy"
-    | "integration"
-    | "data"
-    | "workspace"
-    | "navigation"
-  >("all")
-  const [statusFilter, setStatusFilter] = React.useState<
-    "all" | "success" | "blocked" | "failed"
-  >("all")
-  const [workspaceFilter, setWorkspaceFilter] = React.useState("all")
-
-  const auditLogRows = React.useMemo(
-    () =>
-      [
-        {
-          id: "evt_001",
-          actor: "Rana Kamel",
-          actorRole: "Member",
-          action: 'Opened "New Chat" and submitted 3 prompts',
-          scope: "User activity",
-          workspace: "Documentation",
-          severity: "high" as const,
-          eventType: "navigation" as const,
-          status: "success" as const,
-          timestamp: "Apr 18, 2026 • 13:42",
-          ipAddress: "10.14.20.19",
-          location: "Amman, JO",
-          requestId: "req_911be31a",
-          changedFields: ["page_click:new-chat", "chat_count:+3", "credits:+94"],
-        },
-        {
-          id: "evt_003",
-          actor: "Samer Odeh",
-          actorRole: "Member",
-          action: "Triggered workflow run: Contract Risk Review",
-          scope: "Workflow execution",
-          workspace: "Operations",
-          severity: "medium" as const,
-          eventType: "data" as const,
-          status: "success" as const,
-          timestamp: "Apr 18, 2026 • 13:11",
-          ipAddress: "10.14.22.41",
-          location: "Riyadh, SA",
-          requestId: "req_a125d6ce",
-          changedFields: ["workflow_runs:+1", "credits:+62", "api_requests:+411"],
-        },
-        {
-          id: "evt_004",
-          actor: "System",
-          actorRole: "Security monitor",
-          action: "Blocked suspicious login from unknown device",
-          scope: "Authentication guard",
-          workspace: "Platform",
-          severity: "high" as const,
-          eventType: "auth" as const,
-          status: "blocked" as const,
-          timestamp: "Apr 18, 2026 • 12:53",
-          ipAddress: "185.77.212.90",
-          location: "Frankfurt, DE",
-          requestId: "req_aa812d6f",
-          changedFields: ["session_blocked", "risk_score"],
-        },
-        {
-          id: "evt_005",
-          actor: "Noah Karim",
-          actorRole: "Admin",
-          action: "Updated default invite policy",
-          scope: "Workspace governance",
-          workspace: "Product",
-          severity: "low" as const,
-          eventType: "workspace" as const,
-          status: "success" as const,
-          timestamp: "Apr 17, 2026 • 16:28",
-          ipAddress: "10.14.22.3",
-          location: "Riyadh, SA",
-          requestId: "req_6e03bd35",
-          changedFields: ["invite_requires_approval", "allowed_domains"],
-        },
-        {
-          id: "evt_006",
-          actor: "System",
-          actorRole: "Integration service",
-          action: "Slack force-policy sync failed for 2 users",
-          scope: "Apps policy",
-          workspace: "Documentation",
-          severity: "medium" as const,
-          eventType: "integration" as const,
-          status: "failed" as const,
-          timestamp: "Apr 17, 2026 • 14:03",
-          ipAddress: "internal",
-          location: "Region eu-central",
-          requestId: "req_9a10ceef",
-          changedFields: ["sync_attempts", "failed_targets"],
-        },
-        {
-          id: "evt_007",
-          actor: "Maya Nassar",
-          actorRole: "Member",
-          action: 'Visited pages: Workflow, Skills, My Data',
-          scope: "User navigation",
-          workspace: "Product",
-          severity: "low" as const,
-          eventType: "navigation" as const,
-          status: "success" as const,
-          timestamp: "Apr 17, 2026 • 11:32",
-          ipAddress: "10.14.11.54",
-          location: "Cairo, EG",
-          requestId: "req_2d9b4bb7",
-          changedFields: ["page_click:workflow", "page_click:skills", "page_click:my-data"],
-        },
-        {
-          id: "evt_008",
-          actor: "Lina Saad",
-          actorRole: "Admin",
-          action: "Approved workspace export request",
-          scope: "Compliance export",
-          workspace: "Operations",
-          severity: "medium" as const,
-          eventType: "policy" as const,
-          status: "success" as const,
-          timestamp: "Apr 17, 2026 • 09:21",
-          ipAddress: "10.14.21.11",
-          location: "Dubai, AE",
-          requestId: "req_41ca8bd2",
-          changedFields: ["export_status", "approval_state"],
-        },
-      ] as const,
-    []
-  )
-
-  const userActivityRows = React.useMemo(
-    () => [
-      {
-        id: "usr_01",
-        name: "Amir Haddad",
-        role: "Super Admin",
-        workspace: "Documentation",
-        chats: 86,
-        usageCredits: 2480,
-      },
-      {
-        id: "usr_02",
-        name: "Lina Saad",
-        role: "Admin",
-        workspace: "Operations",
-        chats: 59,
-        usageCredits: 1810,
-      },
-      {
-        id: "usr_03",
-        name: "Rana Kamel",
-        role: "Member",
-        workspace: "Documentation",
-        chats: 44,
-        usageCredits: 1360,
-      },
-      {
-        id: "usr_04",
-        name: "Maya Nassar",
-        role: "Member",
-        workspace: "Product",
-        chats: 32,
-        usageCredits: 980,
-      },
-      {
-        id: "usr_05",
-        name: "Samer Odeh",
-        role: "Member",
-        workspace: "Operations",
-        chats: 51,
-        usageCredits: 1540,
-      },
-    ],
-    []
-  )
-
-  const [workspaceControls, setWorkspaceControls] = React.useState<
-    Record<string, { paused: boolean; capCredits: number }>
-  >({
-    Documentation: { paused: false, capCredits: 16000 },
-    Operations: { paused: false, capCredits: 18000 },
-    Product: { paused: false, capCredits: 14000 },
-    Marketing: { paused: true, capCredits: 10000 },
+function MembersConsoleContent() {
+  const [query, setQuery] = React.useState("")
+  const [roleFilter, setRoleFilter] = React.useState("All roles")
+  const [statusFilter, setStatusFilter] = React.useState("All")
+  const [selectedRows, setSelectedRows] = React.useState<string[]>([])
+  const [inviteOpen, setInviteOpen] = React.useState(false)
+  const [inviteEmail, setInviteEmail] = React.useState("")
+  const [inviteRole, setInviteRole] = React.useState("Member")
+  const statusTones: Record<string, AdminBadgeTone> = {
+    Active: "success",
+    Invited: "info",
+    Suspended: "warning",
+  }
+  const filteredMembers = adminMembers.filter((member) => {
+    const matchesQuery =
+      query.trim().length === 0 ||
+      member.name.toLowerCase().includes(query.toLowerCase()) ||
+      member.email.toLowerCase().includes(query.toLowerCase())
+    const matchesRole = roleFilter === "All roles" || member.role === roleFilter
+    const matchesStatus = statusFilter === "All" || member.status === statusFilter
+    return matchesQuery && matchesRole && matchesStatus
   })
-
-  const workspaceUsageRows = React.useMemo(
-    () => [
-      {
-        workspace: "Documentation",
-        activeUsers: 8,
-        chats: 214,
-        usageCredits: 6920,
-        pageClicks: 3160,
-      },
-      {
-        workspace: "Operations",
-        activeUsers: 6,
-        chats: 178,
-        usageCredits: 5740,
-        pageClicks: 2410,
-      },
-      {
-        workspace: "Product",
-        activeUsers: 5,
-        chats: 121,
-        usageCredits: 3980,
-        pageClicks: 1960,
-      },
-      {
-        workspace: "Marketing",
-        activeUsers: 3,
-        chats: 77,
-        usageCredits: 2140,
-        pageClicks: 1330,
-      },
-    ],
-    []
-  )
-
-  const pageClickRows = React.useMemo(
-    () => [
-      { page: "New Chat", clicks: 2640 },
-      { page: "Workflow", clicks: 2320 },
-      { page: "Skills", clicks: 1860 },
-      { page: "Apps", clicks: 1490 },
-      { page: "My Data", clicks: 1210 },
-      { page: "Notifications", clicks: 780 },
-    ],
-    []
-  )
-
-  const workspaceOptions = React.useMemo(
-    () =>
-      Array.from(new Set(auditLogRows.map((row) => row.workspace))).sort(),
-    [auditLogRows]
-  )
-
-  const filteredRows = React.useMemo(() => {
-    const loweredQuery = searchQuery.trim().toLowerCase()
-    return auditLogRows.filter((row) => {
-      const matchesQuery =
-        loweredQuery.length === 0 ||
-        row.actor.toLowerCase().includes(loweredQuery) ||
-        row.action.toLowerCase().includes(loweredQuery) ||
-        row.scope.toLowerCase().includes(loweredQuery) ||
-        row.requestId.toLowerCase().includes(loweredQuery) ||
-        row.ipAddress.toLowerCase().includes(loweredQuery)
-      const matchesSeverity =
-        severityFilter === "all" || row.severity === severityFilter
-      const matchesEventType =
-        eventTypeFilter === "all" || row.eventType === eventTypeFilter
-      const matchesStatus = statusFilter === "all" || row.status === statusFilter
-      const matchesWorkspace =
-        workspaceFilter === "all" || row.workspace === workspaceFilter
-      return (
-        matchesQuery &&
-        matchesSeverity &&
-        matchesEventType &&
-        matchesStatus &&
-        matchesWorkspace
-      )
-    })
-  }, [
-    auditLogRows,
-    eventTypeFilter,
-    searchQuery,
-    severityFilter,
-    statusFilter,
-    workspaceFilter,
-  ])
-
-  const severityLabel =
-    severityFilter === "all"
-      ? "All severities"
-      : severityFilter === "high"
-        ? "High"
-        : severityFilter === "medium"
-          ? "Medium"
-          : "Low"
-  const eventTypeLabel =
-    eventTypeFilter === "all"
-      ? "All event types"
-      : eventTypeFilter === "auth"
-        ? "Auth"
-        : eventTypeFilter === "policy"
-          ? "Policy"
-          : eventTypeFilter === "integration"
-            ? "Integration"
-          : eventTypeFilter === "data"
-            ? "Data"
-            : eventTypeFilter === "navigation"
-              ? "Navigation"
-              : "Workspace"
-  const statusLabel =
-    statusFilter === "all"
-      ? "All statuses"
-      : statusFilter === "success"
-        ? "Success"
-        : statusFilter === "blocked"
-          ? "Blocked"
-          : "Failed"
-  const workspaceLabel =
-    workspaceFilter === "all" ? "All workspaces" : workspaceFilter
-
-  const detailedStats = React.useMemo(() => {
-    const highEvents = auditLogRows.filter((row) => row.severity === "high").length
-    const blockedEvents = auditLogRows.filter((row) => row.status === "blocked").length
-    const failedEvents = auditLogRows.filter((row) => row.status === "failed").length
-    const topPage = pageClickRows[0]?.page ?? "-"
-    const topPageClicks = pageClickRows[0]?.clicks ?? 0
-    const avgChatsPerUser = Math.round(
-      userActivityRows.reduce((sum, row) => sum + row.chats, 0) /
-        Math.max(userActivityRows.length, 1)
-    )
-    const avgUsagePerUser = Math.round(
-      userActivityRows.reduce((sum, row) => sum + row.usageCredits, 0) /
-        Math.max(userActivityRows.length, 1)
-    )
-    const avgUsagePerWorkspace = Math.round(
-      workspaceUsageRows.reduce((sum, row) => sum + row.usageCredits, 0) /
-        Math.max(workspaceUsageRows.length, 1)
-    )
-    return {
-      total: auditLogRows.length,
-      highEvents,
-      blockedEvents,
-      failedEvents,
-      topPage,
-      topPageClicks,
-      avgChatsPerUser,
-      avgUsagePerUser,
-      avgUsagePerWorkspace,
-    }
-  }, [auditLogRows, pageClickRows, userActivityRows, workspaceUsageRows])
+  const allFilteredSelected =
+    filteredMembers.length > 0 &&
+    filteredMembers.every((member) => selectedRows.includes(member.id))
 
   return (
-    <div className="space-y-3 pb-1">
-      <section className="rounded-xl border border-border bg-background px-4 py-3.5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-0.5">
-            <p className="text-sm font-semibold text-foreground">
-              Platform activity and control
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Track all users/workspaces activity, usage, and controls in one place.
-            </p>
+    <AdminPage section="Members">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by name or email"
+              className="h-8 pl-8"
+            />
           </div>
-          <Button type="button" variant="outline" size="sm">
-            Export CSV
+          <AdminSelect
+            value={roleFilter}
+            options={["All roles", "Admin", "Member", "Viewer"]}
+            onChange={setRoleFilter}
+            className="sm:w-36"
+          />
+          <AdminSelect
+            value={statusFilter}
+            options={["All", "Active", "Invited", "Suspended"]}
+            onChange={setStatusFilter}
+            className="sm:w-36"
+          />
+        </div>
+        <Button type="button" size="sm" onClick={() => setInviteOpen(true)}>
+          <IconUserPlus className="h-3.5 w-3.5" />
+          Invite member
+        </Button>
+      </div>
+
+      {selectedRows.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2">
+          <p className="text-[13px] text-muted-foreground">
+            {selectedRows.length} selected
+          </p>
+          <div className="flex gap-1.5">
+            <Button type="button" size="xs" variant="outline">Suspend selected</Button>
+            <Button type="button" size="xs" variant="destructive">Remove selected</Button>
+          </div>
+        </div>
+      ) : null}
+
+      {inviteOpen ? (
+        <section className="rounded-xl border border-border bg-background p-3">
+          <div className="grid gap-2 sm:grid-cols-[1fr_160px_auto] sm:items-end">
+            <label className="space-y-1 text-[13px] text-muted-foreground">
+              Email address
+              <Input
+                value={inviteEmail}
+                onChange={(event) => setInviteEmail(event.target.value)}
+                placeholder="member@company.com"
+                className="h-8"
+              />
+            </label>
+            <AdminSelect
+              label="Role"
+              value={inviteRole}
+              options={["Admin", "Member", "Viewer"]}
+              onChange={setInviteRole}
+            />
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setInviteOpen(false)
+                setInviteEmail("")
+                setInviteRole("Member")
+              }}
+            >
+              Send invite
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
+      {filteredMembers.length === 0 ? (
+        <AdminEmptyState
+          icon={IconUsers}
+          title="No members found"
+          description="No workspace members match the current search and filters."
+          action={
+            <Button type="button" size="sm" onClick={() => setInviteOpen(true)}>
+              Invite your first member
+            </Button>
+          }
+        />
+      ) : (
+        <section className="overflow-hidden rounded-xl border border-border bg-background">
+          <table className="w-full table-fixed border-collapse text-[0.8rem]">
+            <thead>
+              <tr className="border-b border-border text-muted-foreground">
+                <th className="w-8 px-2 py-1.5 text-left font-medium">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={(event) =>
+                      setSelectedRows(
+                        event.target.checked
+                          ? filteredMembers.map((member) => member.id)
+                          : []
+                      )
+                    }
+                    className="accent-primary"
+                    aria-label="Select all members"
+                  />
+                </th>
+                <th className="w-[22%] px-2.5 py-1.5 text-left font-medium">Name</th>
+                <th className="w-[25%] px-2.5 py-1.5 text-left font-medium">Email</th>
+                <th className="w-[13%] px-2.5 py-1.5 text-left font-medium">Role</th>
+                <th className="w-[13%] px-2.5 py-1.5 text-left font-medium">Status</th>
+                <th className="w-[18%] px-2.5 py-1.5 text-left font-medium">Last active</th>
+                <th className="w-[9%] px-2.5 py-1.5 text-right font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredMembers.map((member) => (
+                <tr key={member.id} className="border-b border-border/70 last:border-b-0">
+                  <td className="px-2 py-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedRows.includes(member.id)}
+                      onChange={(event) =>
+                        setSelectedRows((previous) =>
+                          event.target.checked
+                            ? [...previous, member.id]
+                            : previous.filter((id) => id !== member.id)
+                        )
+                      }
+                      className="accent-primary"
+                      aria-label={`Select ${member.name}`}
+                    />
+                  </td>
+                  <td className="px-2.5 py-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <AdminAvatar initials={member.initials} name={member.name} />
+                      <span className="truncate font-medium text-foreground">{member.name}</span>
+                    </div>
+                  </td>
+                  <td className="truncate px-2.5 py-2 text-muted-foreground">{member.email}</td>
+                  <td className="px-2.5 py-2 text-foreground">{member.role}</td>
+                  <td className="px-2.5 py-2">
+                    <Badge variant={adminBadgeVariants[statusTones[member.status]]}>
+                      {member.status}
+                    </Badge>
+                  </td>
+                  <td className="px-2.5 py-2 text-muted-foreground">{member.lastActive}</td>
+                  <td className="px-2.5 py-2 text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={<Button type="button" variant="ghost" size="icon-xs" aria-label={`${member.name} actions`} />}
+                      >
+                        <IconDots className="h-3.5 w-3.5" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-36">
+                        <DropdownMenuItem>Change role</DropdownMenuItem>
+                        <DropdownMenuItem>Suspend</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem variant="destructive">Remove</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+    </AdminPage>
+  )
+}
+
+function RolesPermissionsConsoleContent() {
+  const roles = ["Admin", "Member", "Viewer"] as const
+  const permissions = [
+    ["aiChatAccess", "AI chat access", "Use workspace AI chat and model routing."],
+    ["workflowCreation", "Workflow creation", "Create workflow drafts and internal automations."],
+    ["workflowPublishing", "Workflow publishing", "Publish workflow versions for team use."],
+    ["skillCreation", "Skill creation", "Create reusable skills and prompt tools."],
+    ["fileUpload", "File upload", "Upload workspace documents and business data."],
+    ["appConnections", "App connections", "Connect and authorize external applications."],
+    ["adminConsoleAccess", "Admin console access", "Open and manage admin console pages."],
+    ["apiKeyAccess", "API key access", "Create and revoke workspace API keys."],
+    ["billingAccess", "Billing access", "View plan, invoices, and payment method."],
+  ] as const
+  type PermissionKey = (typeof permissions)[number][0]
+  const adminDefaults = Object.fromEntries(
+    permissions.map(([key]) => [key, true])
+  ) as Record<PermissionKey, boolean>
+  const [selectedRole, setSelectedRole] =
+    React.useState<(typeof roles)[number]>("Admin")
+  const [rolePermissions, setRolePermissions] = React.useState<
+    Record<"Member" | "Viewer", Record<PermissionKey, boolean>>
+  >({
+    Member: {
+      ...adminDefaults,
+      adminConsoleAccess: false,
+      apiKeyAccess: false,
+      billingAccess: false,
+    },
+    Viewer: {
+      ...adminDefaults,
+      workflowCreation: false,
+      workflowPublishing: false,
+      skillCreation: false,
+      fileUpload: false,
+      appConnections: false,
+      adminConsoleAccess: false,
+      apiKeyAccess: false,
+      billingAccess: false,
+    },
+  })
+  const selectedPermissions =
+    selectedRole === "Admin" ? adminDefaults : rolePermissions[selectedRole]
+
+  return (
+    <AdminPage section="Roles & permissions">
+      <div className="grid min-h-0 gap-3 lg:grid-cols-[220px_1fr]">
+        <section className="rounded-xl border border-border bg-background p-2">
+          <div className="space-y-1">
+            {roles.map((role) => (
+              <button
+                key={role}
+                type="button"
+                onClick={() => setSelectedRole(role)}
+                className={cn(
+                  "flex h-8 w-full items-center justify-between rounded-md px-2 text-left text-sm transition-colors",
+                  selectedRole === role
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )}
+              >
+                {role}
+                <IconChevronRight className="h-3.5 w-3.5" />
+              </button>
+            ))}
+          </div>
+          <Button type="button" variant="outline" size="sm" className="mt-3 w-full">
+            <IconPlus className="h-3.5 w-3.5" />
+            Create custom role
+          </Button>
+        </section>
+
+        <section className="overflow-hidden rounded-xl border border-border bg-background">
+          <div className="border-b border-border px-3 py-2.5">
+            <p className="text-sm font-medium text-foreground">{selectedRole} permissions</p>
+            {selectedRole === "Admin" ? (
+              <p className="text-[13px] text-muted-foreground">Admin permissions are locked.</p>
+            ) : null}
+          </div>
+          <div className="divide-y divide-border">
+            {permissions.map(([key, name, description]) => (
+              <div key={key} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{name}</p>
+                  <p className="text-[13px] text-muted-foreground">{description}</p>
+                </div>
+                <AdminToggle
+                  checked={selectedPermissions[key]}
+                  disabled={selectedRole === "Admin"}
+                  onChange={(checked) => {
+                    if (selectedRole === "Admin") return
+                    setRolePermissions((previous) => ({
+                      ...previous,
+                      [selectedRole]: {
+                        ...previous[selectedRole],
+                        [key]: checked,
+                      },
+                    }))
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+      <AdminSaveBar />
+    </AdminPage>
+  )
+}
+
+function AccessPoliciesConsoleContent() {
+  const [ssoEnabled, setSsoEnabled] = React.useState(false)
+  const [domainInput, setDomainInput] = React.useState("")
+  const [domains, setDomains] = React.useState(["atmet.ai", "atmet.com"])
+  const [mfaMode, setMfaMode] = React.useState("Optional")
+  const [sessionTimeout, setSessionTimeout] = React.useState("8 hours")
+  const [ipEnabled, setIpEnabled] = React.useState(false)
+
+  return (
+    <AdminPage section="Access policies">
+      <section className="space-y-3 rounded-xl border border-border bg-background p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">SSO configuration</p>
+            <p className="text-[13px] text-muted-foreground">Require users to authenticate through an identity provider.</p>
+          </div>
+          <AdminToggle checked={ssoEnabled} onChange={setSsoEnabled} />
+        </div>
+        {ssoEnabled ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="space-y-1 text-[13px] text-muted-foreground">
+              IdP URL
+              <Input className="h-8" placeholder="https://idp.company.com/saml" />
+            </label>
+            <label className="space-y-1 text-[13px] text-muted-foreground">
+              Certificate
+              <Textarea className="min-h-24" placeholder="Paste certificate" />
+            </label>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="rounded-xl border border-border bg-background p-3">
+        <p className="text-sm font-medium text-foreground">Allowed email domains</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {domains.map((domain) => (
+            <Badge key={domain} variant="neutral" className="gap-1">
+              {domain}
+              <button
+                type="button"
+                onClick={() => setDomains((previous) => previous.filter((item) => item !== domain))}
+                aria-label={`Remove ${domain}`}
+              >
+                <IconX className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Input
+            value={domainInput}
+            onChange={(event) => setDomainInput(event.target.value)}
+            placeholder="company.com"
+            className="h-8"
+          />
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => {
+              const nextDomain = domainInput.trim()
+              if (!nextDomain) return
+              setDomains((previous) => Array.from(new Set([...previous, nextDomain])))
+              setDomainInput("")
+            }}
+          >
+            Add
           </Button>
         </div>
       </section>
 
-      <section className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-border bg-background px-3 py-2.5">
-          <p className="text-[11px] text-muted-foreground">Most clicked page</p>
-          <p className="text-sm font-semibold text-foreground">
-            {detailedStats.topPage}
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            {detailedStats.topPageClicks.toLocaleString()} clicks
-          </p>
+      <section className="grid gap-3 rounded-xl border border-border bg-background p-3 sm:grid-cols-2">
+        <div>
+          <p className="mb-1 text-sm font-medium text-foreground">MFA enforcement</p>
+          <div className="inline-flex rounded-lg bg-muted p-0.5">
+            {["Off", "Optional", "Required"].map((mode) => (
+              <Button
+                key={mode}
+                type="button"
+                size="xs"
+                variant={mfaMode === mode ? "default" : "ghost"}
+                onClick={() => setMfaMode(mode)}
+              >
+                {mode}
+              </Button>
+            ))}
+          </div>
         </div>
-        <div className="rounded-xl border border-border bg-background px-3 py-2.5">
-          <p className="text-[11px] text-muted-foreground">Avg chats per user</p>
-          <p className="text-sm font-semibold text-foreground">
-            {detailedStats.avgChatsPerUser}
-          </p>
-          <p className="text-[11px] text-muted-foreground">last 30 days</p>
+        <AdminSelect
+          label="Session timeout"
+          value={sessionTimeout}
+          options={["1 hour", "8 hours", "24 hours", "7 days"]}
+          onChange={setSessionTimeout}
+        />
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-border bg-background p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">IP allowlist</p>
+            <p className="text-[13px] text-muted-foreground">Restrict access to trusted CIDR ranges.</p>
+          </div>
+          <AdminToggle checked={ipEnabled} onChange={setIpEnabled} />
         </div>
-        <div className="rounded-xl border border-border bg-background px-3 py-2.5">
-          <p className="text-[11px] text-muted-foreground">Avg usage per user</p>
-          <p className="text-sm font-semibold text-foreground">
-            {detailedStats.avgUsagePerUser.toLocaleString()} credits
-          </p>
-          <p className="text-[11px] text-muted-foreground">last 30 days</p>
+        {ipEnabled ? <Textarea className="min-h-28" placeholder={"10.0.0.0/8\n192.168.0.0/16"} /> : null}
+      </section>
+      <AdminSaveBar />
+    </AdminPage>
+  )
+}
+
+function WorkspaceSettingsConsoleContent() {
+  const [workspaceName, setWorkspaceName] = React.useState("Documentation")
+  const [slug, setSlug] = React.useState("documentation")
+  const [timezone, setTimezone] = React.useState("Asia/Amman")
+  const [language, setLanguage] = React.useState("English")
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
+  const [deleteText, setDeleteText] = React.useState("")
+
+  return (
+    <AdminPage section="Workspace settings">
+      <section className="grid gap-3 rounded-xl border border-border bg-background p-3 sm:grid-cols-2">
+        <label className="space-y-1 text-[13px] text-muted-foreground">
+          Workspace name
+          <Input value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} className="h-8" />
+        </label>
+        <label className="space-y-1 text-[13px] text-muted-foreground">
+          Workspace URL/slug
+          <div className="flex h-8 items-center rounded-lg border border-input bg-transparent">
+            <span className="px-2 text-sm text-muted-foreground">atmet.ai/</span>
+            <input
+              value={slug}
+              onChange={(event) => setSlug(event.target.value)}
+              className="min-w-0 flex-1 bg-transparent px-1 text-sm text-foreground outline-none"
+            />
+          </div>
+          <span className="block text-[12px] text-muted-foreground">https://atmet.ai/{slug || "workspace"}</span>
+        </label>
+        <AdminSelect label="Timezone" value={timezone} options={["Asia/Amman", "UTC", "Europe/London", "America/New_York"]} onChange={setTimezone} />
+        <AdminSelect label="Default language" value={language} options={["English", "Arabic", "French", "Spanish"]} onChange={setLanguage} />
+      </section>
+
+      <section className="rounded-xl border border-border bg-background p-3">
+        <p className="text-sm font-medium text-foreground">Logo</p>
+        <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex size-16 items-center justify-center rounded-lg bg-muted text-sm font-medium text-foreground">AT</div>
+          <Button type="button" variant="outline" size="sm">Upload new logo</Button>
+          <div className="flex min-h-16 flex-1 items-center justify-center rounded-lg border border-dashed border-border px-3 text-[13px] text-muted-foreground">
+            Drag and drop a square logo
+          </div>
         </div>
-        <div className="rounded-xl border border-border bg-background px-3 py-2.5">
-          <p className="text-[11px] text-muted-foreground">Avg usage per workspace</p>
-          <p className="text-sm font-semibold text-foreground">
-            {detailedStats.avgUsagePerWorkspace.toLocaleString()} credits
+      </section>
+
+      <section className="rounded-xl border border-destructive/40 bg-destructive/10 p-3">
+        <p className="text-sm font-medium text-destructive">Danger zone</p>
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-lg text-[13px] text-muted-foreground">
+            Permanently delete this workspace and all its data. This cannot be undone.
           </p>
-          <p className="text-[11px] text-muted-foreground">last 30 days</p>
+          <Button type="button" variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+            Delete workspace
+          </Button>
         </div>
+      </section>
+      <AdminSaveBar />
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete workspace</DialogTitle>
+            <DialogDescription>
+              Type {workspaceName} to confirm permanent deletion.
+            </DialogDescription>
+          </DialogHeader>
+          <Input value={deleteText} onChange={(event) => setDeleteText(event.target.value)} className="h-8" />
+          <DialogFooter>
+            <Button type="button" variant="outline" size="sm" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button type="button" variant="destructive" size="sm" disabled={deleteText !== workspaceName}>Delete workspace</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </AdminPage>
+  )
+}
+
+function DataControlsConsoleContent() {
+  const [retention, setRetention] = React.useState("90 days")
+  const [autoDelete, setAutoDelete] = React.useState(false)
+  const [trainingOptOut, setTrainingOptOut] = React.useState(true)
+  const [exportConfirmOpen, setExportConfirmOpen] = React.useState(false)
+
+  return (
+    <AdminPage section="Data controls">
+      <section className="grid gap-3 rounded-xl border border-border bg-background p-3 sm:grid-cols-2">
+        <AdminSelect label="Conversation history retention" value={retention} options={["30 days", "90 days", "1 year", "Forever"]} onChange={setRetention} />
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">File auto-deletion</p>
+              <p className="text-[13px] text-muted-foreground">Remove files after a set number of days.</p>
+            </div>
+            <AdminToggle checked={autoDelete} onChange={setAutoDelete} />
+          </div>
+          {autoDelete ? <Input type="number" defaultValue="180" className="h-8" /> : null}
+        </div>
+      </section>
+
+      <section className="flex items-start justify-between gap-3 rounded-xl border border-border bg-background p-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">Do not use workspace data to train AI models</p>
+          <p className="text-[13px] text-muted-foreground">Opt this workspace out of model training usage.</p>
+        </div>
+        <AdminToggle checked={trainingOptOut} onChange={setTrainingOptOut} />
+      </section>
+
+      <section className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-foreground">Export workspace data</p>
+          <p className="text-[13px] text-muted-foreground">Download a full archive of all workspace files, conversations, and workflow data.</p>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={() => setExportConfirmOpen(true)}>
+          Export all data
+        </Button>
+      </section>
+
+      <section className="rounded-xl border border-border bg-background p-3">
+        <p className="text-sm font-medium text-foreground">GDPR right to erasure</p>
+        <p className="text-[13px] text-muted-foreground">Submit a request to remove data associated with a user email after verification.</p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <Input placeholder="person@company.com" className="h-8" />
+          <Button type="button" size="sm">Submit erasure request</Button>
+        </div>
+      </section>
+      <AdminSaveBar />
+
+      <Dialog open={exportConfirmOpen} onOpenChange={setExportConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Export workspace data?</DialogTitle>
+            <DialogDescription>This prepares a downloadable archive for the current workspace.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" size="sm" onClick={() => setExportConfirmOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                const blob = new Blob(["Atmet workspace export"], { type: "text/plain" })
+                const url = URL.createObjectURL(blob)
+                const link = document.createElement("a")
+                link.href = url
+                link.download = "atmet-workspace-export.txt"
+                link.click()
+                URL.revokeObjectURL(url)
+                setExportConfirmOpen(false)
+              }}
+            >
+              Download
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </AdminPage>
+  )
+}
+
+function NotificationsConfigConsoleContent() {
+  const [workflowAlerts, setWorkflowAlerts] = React.useState(true)
+  const [usageAlerts, setUsageAlerts] = React.useState(true)
+  const [digest, setDigest] = React.useState("Daily")
+  const [slackEnabled, setSlackEnabled] = React.useState(false)
+  const [emailInput, setEmailInput] = React.useState("")
+  const [emails, setEmails] = React.useState(["ops@atmet.ai", "security@atmet.ai"])
+
+  return (
+    <AdminPage section="Notifications config">
+      <section className="space-y-3 rounded-xl border border-border bg-background p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Workflow error alerts</p>
+            <p className="text-[13px] text-muted-foreground">Notify admins when workflows fail repeatedly.</p>
+          </div>
+          <AdminToggle checked={workflowAlerts} onChange={setWorkflowAlerts} />
+        </div>
+        {workflowAlerts ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Input type="number" defaultValue="5" className="h-8" aria-label="Alert after errors" />
+            <Input type="number" defaultValue="30" className="h-8" aria-label="Within minutes" />
+          </div>
+        ) : null}
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-border bg-background p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Usage alerts</p>
+            <p className="text-[13px] text-muted-foreground">Alert when workspace usage approaches monthly limits.</p>
+          </div>
+          <AdminToggle checked={usageAlerts} onChange={setUsageAlerts} />
+        </div>
+        {usageAlerts ? <Input type="number" defaultValue="80" className="h-8" aria-label="Monthly limit percentage" /> : null}
+      </section>
+
+      <section className="rounded-xl border border-border bg-background p-3">
+        <p className="text-sm font-medium text-foreground">Digest emails</p>
+        <div className="mt-2 inline-flex rounded-lg bg-muted p-0.5">
+          {["Off", "Daily", "Weekly"].map((option) => (
+            <Button key={option} type="button" size="xs" variant={digest === option ? "default" : "ghost"} onClick={() => setDigest(option)}>
+              {option}
+            </Button>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-background p-3">
+        <p className="text-sm font-medium text-foreground">Alert recipients</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {emails.map((email) => (
+            <Badge key={email} variant="blue" className="gap-1">
+              {email}
+              <button type="button" onClick={() => setEmails((previous) => previous.filter((item) => item !== email))} aria-label={`Remove ${email}`}>
+                <IconX className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Input value={emailInput} onChange={(event) => setEmailInput(event.target.value)} placeholder="alerts@company.com" className="h-8" />
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => {
+              const email = emailInput.trim()
+              if (!email) return
+              setEmails((previous) => Array.from(new Set([...previous, email])))
+              setEmailInput("")
+            }}
+          >
+            Add
+          </Button>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-border bg-background p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Slack webhook</p>
+            <p className="text-[13px] text-muted-foreground">Send workspace alerts into a Slack channel.</p>
+          </div>
+          <AdminToggle checked={slackEnabled} onChange={setSlackEnabled} />
+        </div>
+        {slackEnabled ? <Input placeholder="https://hooks.slack.com/services/..." className="h-8" /> : null}
+      </section>
+      <AdminSaveBar />
+    </AdminPage>
+  )
+}
+
+function IntegrationsManagementConsoleContent() {
+  const integrationRows: readonly (typeof adminIntegrationRows)[number][] =
+    adminIntegrationRows
+
+  return (
+    <AdminPage
+      section="Integrations management"
+      actions={<Button type="button" size="sm"><IconPlus className="h-3.5 w-3.5" />Add integration</Button>}
+    >
+      {integrationRows.length === 0 ? (
+        <AdminEmptyState icon={IconPlug} title="No integrations connected" description="No workspace apps are connected yet." action={<Button type="button" size="sm">Add your first integration</Button>} />
+      ) : (
+        <section className="overflow-hidden rounded-xl border border-border bg-background">
+          <table className="w-full table-fixed border-collapse text-[0.8rem]">
+            <thead>
+              <tr className="border-b border-border text-muted-foreground">
+                <th className="w-[23%] px-2.5 py-1.5 text-left font-medium">App</th>
+                <th className="w-[18%] px-2.5 py-1.5 text-left font-medium">Connected by</th>
+                <th className="w-[15%] px-2.5 py-1.5 text-left font-medium">Status</th>
+                <th className="w-[22%] px-2.5 py-1.5 text-left font-medium">Scope</th>
+                <th className="w-[13%] px-2.5 py-1.5 text-left font-medium">Last used</th>
+                <th className="w-[9%] px-2.5 py-1.5 text-right font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {integrationRows.map((row) => (
+                <tr key={row.app} className={cn("border-b border-border/70 last:border-b-0", row.status === "Error" && "bg-destructive/10")}>
+                  <td className="px-2.5 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex size-6 items-center justify-center rounded-md bg-muted text-[10px] font-medium text-foreground">{row.app.slice(0, 1)}</span>
+                      <span className="font-medium text-foreground">{row.app}</span>
+                      {row.forced ? <Badge variant="blue">Force-enabled</Badge> : null}
+                    </div>
+                  </td>
+                  <td className="truncate px-2.5 py-2 text-muted-foreground">{row.connectedBy}</td>
+                  <td className="px-2.5 py-2"><Badge variant={adminBadgeVariants[row.tone]}>{row.status}</Badge></td>
+                  <td className="truncate px-2.5 py-2 text-muted-foreground">{row.scope}</td>
+                  <td className="px-2.5 py-2 text-muted-foreground">{row.lastUsed}</td>
+                  <td className="px-2.5 py-2 text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label={`${row.app} actions`} />}>
+                        <IconDots className="h-3.5 w-3.5" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-48">
+                        <DropdownMenuItem>Revoke access</DropdownMenuItem>
+                        <DropdownMenuItem>Force-enable for all members</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem variant="destructive">Disconnect</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+    </AdminPage>
+  )
+}
+
+function BillingPlanConsoleContent() {
+  const usageBars = [
+    ["Seats used", 8, 12],
+    ["Storage used", 42, 120],
+    ["API calls this month", 486000, 1200000],
+  ] as const
+  const invoices = [
+    ["Mar 01, 2026", "$480.00", "Paid"],
+    ["Feb 01, 2026", "$480.00", "Paid"],
+    ["Jan 01, 2026", "$420.00", "Pending"],
+  ] as const
+
+  return (
+    <AdminPage section="Billing & plan">
+      <section className="rounded-xl border border-border bg-background p-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-foreground">Team plan</p>
+            <p className="text-[13px] text-muted-foreground">Monthly billing · renews Apr 01, 2026 · 8 seats · $60 per seat</p>
+          </div>
+          <Button type="button" size="sm">Upgrade or downgrade</Button>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-border bg-background p-3">
+        <p className="text-sm font-medium text-foreground">Usage vs. limits</p>
+        {usageBars.map(([label, used, limit]) => {
+          const progress = Math.min(100, (used / limit) * 100)
+          return (
+            <div key={label} className="space-y-1">
+              <div className="flex justify-between text-[13px]">
+                <span className="text-foreground">{label}</span>
+                <span className="text-muted-foreground">{used.toLocaleString()} of {limit.toLocaleString()} used</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} />
+              </div>
+            </div>
+          )
+        })}
+      </section>
+
+      <section className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <IconCreditCard className="h-5 w-5 text-muted-foreground" />
+          <p className="text-sm text-foreground">Visa ending in 4242 · expires 08/28</p>
+        </div>
+        <Button type="button" variant="outline" size="sm">Change payment method</Button>
       </section>
 
       <section className="overflow-hidden rounded-xl border border-border bg-background">
-        <div className="border-b border-border px-3 py-2.5">
-          <p className="text-sm font-semibold text-foreground">
-            Workspace usage and controls
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Monitor each workspace and apply control actions instantly.
-          </p>
-        </div>
         <table className="w-full table-fixed border-collapse text-[0.8rem]">
           <thead>
             <tr className="border-b border-border text-muted-foreground">
-              <th className="w-[24%] px-2.5 py-1.5 text-left font-medium">
-                Workspace
-              </th>
-              <th className="w-[10%] px-2.5 py-1.5 text-left font-medium">
-                Users
-              </th>
-              <th className="w-[12%] px-2.5 py-1.5 text-left font-medium">
-                Chats
-              </th>
-              <th className="w-[16%] px-2.5 py-1.5 text-left font-medium">
-                Usage
-              </th>
-              <th className="w-[14%] px-2.5 py-1.5 text-left font-medium">
-                Clicks
-              </th>
-              <th className="w-[24%] px-2.5 py-1.5 text-left font-medium">
-                Controls
-              </th>
+              <th className="px-2.5 py-1.5 text-left font-medium">Date</th>
+              <th className="px-2.5 py-1.5 text-left font-medium">Amount</th>
+              <th className="px-2.5 py-1.5 text-left font-medium">Status</th>
+              <th className="px-2.5 py-1.5 text-right font-medium">Download</th>
             </tr>
           </thead>
           <tbody>
-            {workspaceUsageRows.map((row) => {
-              const controls = workspaceControls[row.workspace] ?? {
-                paused: false,
-                capCredits: 0,
-              }
+            {invoices.map(([date, amount, status]) => (
+              <tr key={date} className="border-b border-border/70 last:border-b-0">
+                <td className="px-2.5 py-2 text-foreground">{date}</td>
+                <td className="px-2.5 py-2 text-muted-foreground">{amount}</td>
+                <td className="px-2.5 py-2"><Badge variant={status === "Paid" ? "green" : "amber"}>{status}</Badge></td>
+                <td className="px-2.5 py-2 text-right"><Button type="button" variant="ghost" size="xs"><IconFileText className="h-3.5 w-3.5" />PDF</Button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="rounded-xl border border-destructive/40 bg-destructive/10 p-3">
+        <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive">Cancel plan</Button>
+        <p className="mt-1 text-[13px] text-muted-foreground">Stop renewal for the current paid subscription.</p>
+      </section>
+    </AdminPage>
+  )
+}
+
+function ApiKeysConsoleContent() {
+  const [createOpen, setCreateOpen] = React.useState(false)
+  const [createdKey, setCreatedKey] = React.useState("")
+  const [keyName, setKeyName] = React.useState("")
+  const [revokedKeys, setRevokedKeys] = React.useState<string[]>(["key_003"])
+  const keys = [
+    { id: "key_001", name: "Workflow runner", prefix: "ak_live_", scopes: "Chat, workflows", createdBy: "Amir Haddad", lastUsed: "Today", status: "Active" },
+    { id: "key_002", name: "Finance export", prefix: "ak_fin_", scopes: "Files, billing", createdBy: "Lina Saad", lastUsed: "Yesterday", status: "Active" },
+    { id: "key_003", name: "Legacy import", prefix: "ak_old_", scopes: "Files", createdBy: "Fadi Mourad", lastUsed: "Mar 01, 2026", status: "Revoked" },
+  ] as const
+
+  return (
+    <AdminPage section="API keys" actions={<Button type="button" size="sm" onClick={() => setCreateOpen(true)}><IconKey className="h-3.5 w-3.5" />Create API key</Button>}>
+      <section className="overflow-hidden rounded-xl border border-border bg-background">
+        <table className="w-full table-fixed border-collapse text-[0.8rem]">
+          <thead>
+            <tr className="border-b border-border text-muted-foreground">
+              <th className="w-[18%] px-2.5 py-1.5 text-left font-medium">Name</th>
+              <th className="w-[16%] px-2.5 py-1.5 text-left font-medium">Key prefix</th>
+              <th className="w-[22%] px-2.5 py-1.5 text-left font-medium">Scopes</th>
+              <th className="w-[17%] px-2.5 py-1.5 text-left font-medium">Created by</th>
+              <th className="w-[12%] px-2.5 py-1.5 text-left font-medium">Last used</th>
+              <th className="w-[10%] px-2.5 py-1.5 text-left font-medium">Status</th>
+              <th className="w-[5%] px-2.5 py-1.5 text-right font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {keys.map((key) => {
+              const revoked = revokedKeys.includes(key.id) || key.status === "Revoked"
               return (
-                <tr key={row.workspace} className="border-b border-border/70 last:border-b-0">
-                  <td className="px-2.5 py-1.5 font-medium text-foreground">
-                    {row.workspace}
-                  </td>
-                  <td className="px-2.5 py-1.5 text-muted-foreground">
-                    {row.activeUsers}
-                  </td>
-                  <td className="px-2.5 py-1.5 text-muted-foreground">
-                    {row.chats}
-                  </td>
-                  <td className="px-2.5 py-1.5 text-muted-foreground">
-                    {row.usageCredits.toLocaleString()} credits
-                    <p className="text-[11px] text-muted-foreground">
-                      cap {controls.capCredits.toLocaleString()}
-                    </p>
-                  </td>
-                  <td className="px-2.5 py-1.5 text-muted-foreground">
-                    {row.pageClicks.toLocaleString()}
-                  </td>
-                  <td className="px-2.5 py-1.5">
-                    <div className="flex flex-wrap gap-1.5">
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="outline"
-                        onClick={() =>
-                          setWorkspaceControls((previous) => ({
-                            ...previous,
-                            [row.workspace]: {
-                              ...controls,
-                              paused: !controls.paused,
-                            },
-                          }))
-                        }
-                      >
-                        {controls.paused ? "Resume" : "Pause"}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="outline"
-                        onClick={() =>
-                          setWorkspaceControls((previous) => ({
-                            ...previous,
-                            [row.workspace]: {
-                              ...controls,
-                              capCredits: controls.capCredits + 1000,
-                            },
-                          }))
-                        }
-                      >
-                        +1k cap
-                      </Button>
-                    </div>
+                <tr key={key.id} className="border-b border-border/70 last:border-b-0">
+                  <td className={cn("px-2.5 py-2 font-medium text-foreground", revoked && "text-muted-foreground line-through")}>{key.name}</td>
+                  <td className="px-2.5 py-2 font-mono text-muted-foreground">{key.prefix}••</td>
+                  <td className="truncate px-2.5 py-2 text-muted-foreground">{key.scopes}</td>
+                  <td className="px-2.5 py-2 text-muted-foreground">{key.createdBy}</td>
+                  <td className="px-2.5 py-2 text-muted-foreground">{key.lastUsed}</td>
+                  <td className="px-2.5 py-2"><Badge variant={revoked ? "neutral" : "green"}>{revoked ? "Revoked" : "Active"}</Badge></td>
+                  <td className="px-2.5 py-2 text-right">
+                    {!revoked ? <Button type="button" variant="ghost" size="xs" onClick={() => setRevokedKeys((previous) => [...previous, key.id])}>Revoke</Button> : null}
                   </td>
                 </tr>
               )
@@ -4523,297 +5195,235 @@ function AuditLogsSettingsContent() {
         </table>
       </section>
 
-      <section className="overflow-hidden rounded-xl border border-border bg-background">
-        <div className="border-b border-border px-3 py-2.5">
-          <p className="text-sm font-semibold text-foreground">
-            User productivity and usage
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Compare average chats and credit usage by user.
-          </p>
-        </div>
-        <table className="w-full table-fixed border-collapse text-[0.8rem]">
-          <thead>
-            <tr className="border-b border-border text-muted-foreground">
-              <th className="w-[30%] px-2.5 py-1.5 text-left font-medium">User</th>
-              <th className="w-[20%] px-2.5 py-1.5 text-left font-medium">Role</th>
-              <th className="w-[20%] px-2.5 py-1.5 text-left font-medium">Workspace</th>
-              <th className="w-[14%] px-2.5 py-1.5 text-left font-medium">Chats</th>
-              <th className="w-[16%] px-2.5 py-1.5 text-left font-medium">Usage</th>
-            </tr>
-          </thead>
-          <tbody>
-            {userActivityRows.map((row) => (
-              <tr key={row.id} className="border-b border-border/70 last:border-b-0">
-                <td className="px-2.5 py-1.5 font-medium text-foreground">{row.name}</td>
-                <td className="px-2.5 py-1.5 text-muted-foreground">{row.role}</td>
-                <td className="px-2.5 py-1.5 text-muted-foreground">{row.workspace}</td>
-                <td className="px-2.5 py-1.5 text-muted-foreground">{row.chats}</td>
-                <td className="px-2.5 py-1.5 text-muted-foreground">
-                  {row.usageCredits.toLocaleString()} credits
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="relative w-full sm:max-w-sm">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search actor, action, request ID, or IP"
-            className="h-7 pl-8"
-          />
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 justify-between rounded-lg border-input bg-transparent px-2.5 text-[0.8rem] font-normal sm:min-w-40"
-              />
-            }
-          >
-            <span>{severityLabel}</span>
-            <IconChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-40 rounded-lg p-1">
-            <DropdownMenuItem onClick={() => setSeverityFilter("all")}>
-              All severities
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSeverityFilter("high")}>
-              High
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSeverityFilter("medium")}>
-              Medium
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSeverityFilter("low")}>
-              Low
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 justify-between rounded-lg border-input bg-transparent px-2.5 text-[0.8rem] font-normal sm:min-w-40"
-              />
-            }
-          >
-            <span>{eventTypeLabel}</span>
-            <IconChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-40 rounded-lg p-1">
-            <DropdownMenuItem onClick={() => setEventTypeFilter("all")}>
-              All event types
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setEventTypeFilter("auth")}>
-              Auth
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setEventTypeFilter("policy")}>
-              Policy
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setEventTypeFilter("integration")}>
-              Integration
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setEventTypeFilter("data")}>
-              Data
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setEventTypeFilter("workspace")}>
-              Workspace
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setEventTypeFilter("navigation")}>
-              Navigation
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 justify-between rounded-lg border-input bg-transparent px-2.5 text-[0.8rem] font-normal sm:min-w-40"
-              />
-            }
-          >
-            <span>{statusLabel}</span>
-            <IconChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-40 rounded-lg p-1">
-            <DropdownMenuItem onClick={() => setStatusFilter("all")}>
-              All statuses
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter("success")}>
-              Success
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter("blocked")}>
-              Blocked
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter("failed")}>
-              Failed
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 justify-between rounded-lg border-input bg-transparent px-2.5 text-[0.8rem] font-normal sm:min-w-40"
-              />
-            }
-          >
-            <span>{workspaceLabel}</span>
-            <IconChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-40 rounded-lg p-1">
-            <DropdownMenuItem onClick={() => setWorkspaceFilter("all")}>
-              All workspaces
-            </DropdownMenuItem>
-            {workspaceOptions.map((workspace) => (
-              <DropdownMenuItem
-                key={workspace}
-                onClick={() => setWorkspaceFilter(workspace)}
-              >
-                {workspace}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <section className="overflow-hidden rounded-xl border border-border bg-background">
-        <table className="w-full table-fixed border-collapse text-[0.8rem]">
-          <thead>
-            <tr className="border-b border-border text-muted-foreground">
-              <th className="w-[25%] px-2.5 py-1.5 text-left font-medium">Event</th>
-              <th className="w-[17%] px-2.5 py-1.5 text-left font-medium">Actor</th>
-              <th className="w-[18%] px-2.5 py-1.5 text-left font-medium">
-                Workspace
-              </th>
-              <th className="w-[18%] px-2.5 py-1.5 text-left font-medium">
-                Context
-              </th>
-              <th className="w-[12%] px-2.5 py-1.5 text-left font-medium">Time</th>
-              <th className="w-[10%] px-2.5 py-1.5 text-left font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-2.5 py-6 text-center text-sm text-muted-foreground"
-                >
-                  No audit logs match current filters.
-                </td>
-              </tr>
-            ) : (
-              filteredRows.map((row) => (
-                <tr key={row.id} className="border-b border-border/70 last:border-b-0">
-                  <td className="px-2.5 py-1.5 align-top">
-                    <p className="text-foreground">{row.action}</p>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      <Badge
-                        variant={
-                          row.eventType === "auth"
-                            ? "blue"
-                            : row.eventType === "policy"
-                              ? "violet"
-                              : row.eventType === "integration"
-                                ? "green"
-                                : row.eventType === "data"
-                                  ? "cyan"
-                                  : "neutral"
-                        }
-                      >
-                        {row.eventType}
-                      </Badge>
-                      <Badge
-                        variant={
-                          row.severity === "high"
-                            ? "red"
-                            : row.severity === "medium"
-                              ? "amber"
-                              : "neutral"
-                        }
-                      >
-                        {row.severity}
-                      </Badge>
-                      <span className="text-[11px] text-muted-foreground">{row.id}</span>
-                    </div>
-                  </td>
-                  <td className="px-2.5 py-1.5 align-top">
-                    <p className="text-foreground">{row.actor}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {row.actorRole} • {row.ipAddress}
-                    </p>
-                  </td>
-                  <td className="px-2.5 py-1.5 align-top">
-                    <p className="text-foreground">{row.workspace}</p>
-                    {row.workspace in workspaceControls ? (
-                      <p className="text-[11px] text-muted-foreground">
-                        {workspaceControls[row.workspace]?.paused
-                          ? "Paused"
-                          : "Active"}{" "}
-                        • cap{" "}
-                        {workspaceControls[row.workspace]?.capCredits.toLocaleString()}
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-muted-foreground">Global scope</p>
-                    )}
-                  </td>
-                  <td className="px-2.5 py-1.5 align-top">
-                    <p className="text-muted-foreground">{row.scope}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      Request: {row.requestId}
-                    </p>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {row.changedFields.slice(0, 2).map((field) => (
-                        <Badge key={`${row.id}-${field}`} variant="neutral">
-                          {field}
-                        </Badge>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-2.5 py-1.5 align-top">
-                    <p className="text-[11px] text-muted-foreground">{row.timestamp}</p>
-                  </td>
-                  <td className="px-2.5 py-1.5 align-top">
-                    <Badge
-                      variant={
-                        row.status === "success"
-                          ? "green"
-                          : row.status === "blocked"
-                            ? "amber"
-                            : "red"
-                      }
-                    >
-                      {row.status}
-                    </Badge>
-                    <p className="mt-1 text-[11px] text-muted-foreground">{row.location}</p>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </section>
-    </div>
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create API key</DialogTitle>
+            <DialogDescription>Choose scopes and expiration for a new workspace key.</DialogDescription>
+          </DialogHeader>
+          {createdKey ? (
+            <div className="rounded-lg border border-border bg-muted p-3">
+              <p className="text-[13px] text-muted-foreground">This key will not be shown again.</p>
+              <div className="mt-2 flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded-md bg-background px-2 py-1.5 text-xs text-foreground">{createdKey}</code>
+                <Button type="button" size="sm" variant="outline" onClick={() => navigator.clipboard?.writeText(createdKey)}>
+                  <IconCopy className="h-3.5 w-3.5" />
+                  Copy
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <label className="space-y-1 text-[13px] text-muted-foreground">
+                Name
+                <Input value={keyName} onChange={(event) => setKeyName(event.target.value)} className="h-8" />
+              </label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {["Chat", "Workflows", "Files", "Skills", "Members", "Billing"].map((scope) => (
+                  <label key={scope} className="flex items-center gap-2 text-sm text-foreground">
+                    <input type="checkbox" defaultChecked={scope !== "Billing"} className="accent-primary" />
+                    {scope}
+                  </label>
+                ))}
+              </div>
+              <AdminSelect label="Expiry" value="Never" options={["Never", "30 days", "90 days", "1 year"]} onChange={() => undefined} />
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" size="sm" onClick={() => { setCreateOpen(false); setCreatedKey(""); setKeyName("") }}>Close</Button>
+            {!createdKey ? (
+              <Button type="button" size="sm" onClick={() => setCreatedKey(`ak_live_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`)}>
+                Create key
+              </Button>
+            ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </AdminPage>
   )
+}
+
+function AuditLogsConsoleContent() {
+  const [expandedRow, setExpandedRow] = React.useState<string | null>(null)
+  const [actorQuery, setActorQuery] = React.useState("")
+  const filteredRows = adminAuditRows.filter((row) =>
+    row.actor.toLowerCase().includes(actorQuery.toLowerCase())
+  )
+
+  return (
+    <AdminPage section="Audit logs" actions={<Button type="button" variant="outline" size="sm"><IconDownload className="h-3.5 w-3.5" />Export CSV</Button>}>
+      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+        <label className="relative">
+          <IconCalendar className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input type="date" className="h-8 pl-8" />
+        </label>
+        <Input type="date" className="h-8" />
+        <AdminSelect value="All event types" options={["All event types", "Login", "Workflow run", "Error", "Settings changed"]} onChange={() => undefined} />
+        <Input value={actorQuery} onChange={(event) => setActorQuery(event.target.value)} placeholder="Search actor" className="h-8" />
+      </div>
+      {filteredRows.length === 0 ? (
+        <AdminEmptyState icon={IconListDetails} title="No audit logs found" description="No events match the current filters." action={<Button type="button" size="sm" variant="outline" onClick={() => setActorQuery("")}>Reset filters</Button>} />
+      ) : (
+        <section className="overflow-hidden rounded-xl border border-border bg-background">
+          <table className="w-full table-fixed border-collapse text-[0.8rem]">
+            <thead>
+              <tr className="border-b border-border text-muted-foreground">
+                <th className="w-[17%] px-2.5 py-1.5 text-left font-medium">Timestamp</th>
+                <th className="w-[18%] px-2.5 py-1.5 text-left font-medium">Actor</th>
+                <th className="w-[16%] px-2.5 py-1.5 text-left font-medium">Event type</th>
+                <th className="w-[19%] px-2.5 py-1.5 text-left font-medium">Target</th>
+                <th className="w-[15%] px-2.5 py-1.5 text-left font-medium">IP address</th>
+                <th className="w-[15%] px-2.5 py-1.5 text-left font-medium">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRows.map((row) => (
+                <React.Fragment key={row.id}>
+                  <tr className="cursor-pointer border-b border-border/70" onClick={() => setExpandedRow((previous) => previous === row.id ? null : row.id)}>
+                    <td className="px-2.5 py-2 text-muted-foreground">{row.timestamp}</td>
+                    <td className="px-2.5 py-2">
+                      <div className="flex items-center gap-2"><AdminAvatar initials={row.initials} name={row.actor} /><span className="text-foreground">{row.actor}</span></div>
+                    </td>
+                    <td className="px-2.5 py-2"><Badge variant={adminBadgeVariants[row.tone]}>{row.eventType}</Badge></td>
+                    <td className="px-2.5 py-2 text-muted-foreground">{row.target}</td>
+                    <td className="px-2.5 py-2 text-muted-foreground">{row.ip}</td>
+                    <td className="px-2.5 py-2 text-muted-foreground">View payload</td>
+                  </tr>
+                  {expandedRow === row.id ? (
+                    <tr className="border-b border-border/70">
+                      <td colSpan={6} className="px-2.5 py-2">
+                        <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-xs text-foreground">{JSON.stringify(row.details, null, 2)}</pre>
+                      </td>
+                    </tr>
+                  ) : null}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+          <div className="flex items-center justify-between border-t border-border px-3 py-2">
+            <Button type="button" variant="outline" size="xs">Previous</Button>
+            <span className="text-[13px] text-muted-foreground">Page 1 of 1</span>
+            <Button type="button" variant="outline" size="xs">Next</Button>
+          </div>
+        </section>
+      )}
+    </AdminPage>
+  )
+}
+
+function UsageLimitsConsoleContent() {
+  const [sortKey, setSortKey] = React.useState<"name" | "tokens" | "runs" | "files" | "lastActive">("tokens")
+  const usageRows = adminMembers.map((member, index) => ({
+    ...member,
+    tokens: [3120, 2710, 1840, 1390, 920][index] ?? 500,
+    runs: [86, 72, 44, 31, 18][index] ?? 10,
+    files: [24, 18, 9, 15, 4][index] ?? 2,
+  }))
+  const sortedUsageRows = [...usageRows].sort((a, b) => {
+    if (sortKey === "name") return a.name.localeCompare(b.name)
+    if (sortKey === "lastActive") return a.lastActive.localeCompare(b.lastActive)
+    return b[sortKey] - a[sortKey]
+  })
+  const chartData = [
+    "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "D14",
+  ].map((label, index) => ({ label, value: 1200 + index * 120 + (index % 3) * 180 }))
+
+  return (
+    <AdminPage section="Usage & limits" actions={<Button type="button" variant="outline" size="sm"><IconDownload className="h-3.5 w-3.5" />Export usage CSV</Button>}>
+      <section className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ["Tokens this month", "486K"],
+          ["Workflow runs", "1,842"],
+          ["Storage used", "42 GB"],
+          ["API calls", "486K"],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-lg bg-muted px-3 py-3">
+            <p className="text-[13px] text-muted-foreground">{label}</p>
+            <p className="mt-1 text-2xl font-medium tabular-nums text-foreground">{value}</p>
+          </div>
+        ))}
+      </section>
+
+      <section className="overflow-hidden rounded-xl border border-border bg-background">
+        <table className="w-full table-fixed border-collapse text-[0.8rem]">
+          <thead>
+            <tr className="border-b border-border text-muted-foreground">
+              {[
+                ["name", "Name"],
+                ["tokens", "Tokens used"],
+                ["runs", "Workflow runs"],
+                ["files", "Files uploaded"],
+                ["lastActive", "Last active"],
+              ].map(([key, label]) => (
+                <th key={key} className="px-2.5 py-1.5 text-left font-medium">
+                  <button type="button" onClick={() => setSortKey(key as typeof sortKey)} className="inline-flex items-center gap-1 hover:text-foreground">
+                    {label}
+                    <IconChevronDown className="h-3 w-3" />
+                  </button>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sortedUsageRows.map((row) => (
+              <tr key={row.id} className="border-b border-border/70 last:border-b-0">
+                <td className="px-2.5 py-2">
+                  <div className="flex items-center gap-2"><AdminAvatar initials={row.initials} name={row.name} /><span className="font-medium text-foreground">{row.name}</span></div>
+                </td>
+                <td className="px-2.5 py-2 text-muted-foreground">{row.tokens.toLocaleString()}</td>
+                <td className="px-2.5 py-2 text-muted-foreground">{row.runs}</td>
+                <td className="px-2.5 py-2 text-muted-foreground">{row.files}</td>
+                <td className="px-2.5 py-2 text-muted-foreground">{row.lastActive}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="rounded-xl border border-border bg-background p-3">
+        <p className="text-sm font-medium text-foreground">Daily token usage</p>
+        <BarInteractive data={chartData} className="mt-2" />
+      </section>
+
+      <section className="grid gap-3 rounded-xl border border-border bg-background p-3 sm:grid-cols-3">
+        <label className="space-y-1 text-[13px] text-muted-foreground">Token cap per user per month<Input type="number" defaultValue="50000" className="h-8" /></label>
+        <label className="space-y-1 text-[13px] text-muted-foreground">Max file size<div className="flex gap-2"><Input type="number" defaultValue="250" className="h-8" /><AdminSelect value="MB" options={["MB", "GB"]} onChange={() => undefined} className="w-24" /></div></label>
+        <label className="space-y-1 text-[13px] text-muted-foreground">Max files per workspace<Input type="number" defaultValue="10000" className="h-8" /></label>
+        <div className="sm:col-span-3 sm:text-right">
+          <Button type="button" size="sm">Save limits</Button>
+        </div>
+      </section>
+    </AdminPage>
+  )
+}
+
+function renderAdminConsoleContent(section: AdminConsoleSection) {
+  switch (section) {
+    case "Admin overview":
+      return <AdminOverviewConsoleContent />
+    case "Members":
+      return <MembersConsoleContent />
+    case "Roles & permissions":
+      return <RolesPermissionsConsoleContent />
+    case "Access policies":
+      return <AccessPoliciesConsoleContent />
+    case "Workspace settings":
+      return <WorkspaceSettingsConsoleContent />
+    case "Data controls":
+      return <DataControlsConsoleContent />
+    case "Notifications config":
+      return <NotificationsConfigConsoleContent />
+    case "Integrations management":
+      return <IntegrationsManagementConsoleContent />
+    case "Billing & plan":
+      return <BillingPlanConsoleContent />
+    case "API keys":
+      return <ApiKeysConsoleContent />
+    case "Audit logs":
+      return <AuditLogsConsoleContent />
+    case "Usage & limits":
+      return <UsageLimitsConsoleContent />
+  }
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -4832,20 +5442,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isPlatformAdmin =
     currentWorkspaceMember?.role === "Super Admin" ||
     currentWorkspaceMember?.role === "Admin"
-  const visibleSettingsSections = React.useMemo<readonly SettingsSection[]>(
-    () =>
-      isPlatformAdmin
-        ? settingsSections
-        : baseSettingsSections,
-    [isPlatformAdmin]
-  )
   const [settingsOpen, setSettingsOpen] = React.useState(false)
+  const [adminConsoleOpen, setAdminConsoleOpen] = React.useState(false)
   const [isSettingsCloseConfirmOpen, setIsSettingsCloseConfirmOpen] =
     React.useState(false)
   const [hasGeneralUnsavedChanges, setHasGeneralUnsavedChanges] =
     React.useState(false)
   const [activeSettingsSection, setActiveSettingsSection] =
     React.useState<SettingsSection>("Account")
+  const [activeAdminConsoleSection, setActiveAdminConsoleSection] =
+    React.useState<AdminConsoleSection>("Admin overview")
   const [workspaceRecords, setWorkspaceRecords] =
     React.useState<WorkspaceProfile[]>(initialWorkspaces)
   const [selectedWorkspaceId, setSelectedWorkspaceId] = React.useState(
@@ -5081,17 +5687,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [readStoredChats])
 
   React.useEffect(() => {
-    if (
-      !isPlatformAdmin &&
-      (adminSettingsSections as readonly SettingsSection[]).includes(
-        activeSettingsSection
-      )
-    ) {
-      setActiveSettingsSection("Account")
-    }
-  }, [activeSettingsSection, isPlatformAdmin])
-
-  React.useEffect(() => {
     const handleOpenSettingsPanel = (event: Event) => {
       const detail = (event as CustomEvent<OpenSettingsPanelDetail>).detail
       const requestedSection = detail?.section
@@ -5101,7 +5696,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       if (
         targetSection &&
-        visibleSettingsSections.includes(targetSection as SettingsSection)
+        (baseSettingsSections as readonly string[]).includes(targetSection)
       ) {
         setActiveSettingsSection(targetSection as SettingsSection)
       }
@@ -5130,7 +5725,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         OPEN_SETTINGS_PANEL_EVENT,
         handleOpenSettingsPanel as EventListener
       )
-  }, [visibleSettingsSections])
+  }, [])
 
   const renderSettingsSectionButton = (section: SettingsSection) => {
     const SectionIcon = settingsSectionIcons[section]
@@ -5162,6 +5757,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <span className="flex items-center gap-2">
           <SectionIcon className="h-3.5 w-3.5 shrink-0 opacity-80" />
           <span>{section}</span>
+        </span>
+        <IconChevronRight className="h-3.5 w-3.5 shrink-0 opacity-70" />
+      </button>
+    )
+  }
+
+  const renderAdminConsoleSectionButton = (section: AdminConsoleSection) => {
+    const SectionIcon = adminConsoleSectionIcons[section]
+    return (
+      <button
+        key={section}
+        type="button"
+        onClick={() => setActiveAdminConsoleSection(section)}
+        className={cn(
+          "flex h-7 w-full items-center justify-between rounded-md px-2 text-left text-sm transition-colors",
+          activeAdminConsoleSection === section
+            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        )}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <SectionIcon className="h-3.5 w-3.5 shrink-0 opacity-80" />
+          <span className="truncate">{section}</span>
         </span>
         <IconChevronRight className="h-3.5 w-3.5 shrink-0 opacity-70" />
       </button>
@@ -5551,6 +6169,71 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <span>chanaloge</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          {isPlatformAdmin ? (
+            <SidebarMenuItem>
+              <Sheet
+                open={adminConsoleOpen}
+                onOpenChange={(nextOpen) => {
+                  if (nextOpen) {
+                    setActiveAdminConsoleSection("Admin overview")
+                  }
+                  setAdminConsoleOpen(nextOpen)
+                }}
+              >
+                <SheetTrigger
+                  render={
+                    <SidebarMenuButton
+                      isActive={adminConsoleOpen}
+                      className="group-data-[collapsible=icon]:justify-center"
+                    />
+                  }
+                >
+                  <IconShieldCheck className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                  <span>Admin console</span>
+                </SheetTrigger>
+                <SheetContent
+                  side="right"
+                  className="rounded-2xl border border-border p-0 data-[side=right]:!inset-y-auto data-[side=right]:!top-1/2 data-[side=right]:!right-1/2 data-[side=right]:!h-[min(78vh,720px)] data-[side=right]:!max-h-[min(92svh,760px)] data-[side=right]:!w-[min(980px,92vw)] data-[side=right]:!max-w-none data-[side=right]:!translate-x-1/2 data-[side=right]:!-translate-y-1/2"
+                >
+                  <div className="flex h-full min-h-0 overflow-hidden rounded-2xl">
+                    <aside className="flex h-full min-h-0 w-64 flex-col border-r border-sidebar-border bg-sidebar">
+                      <div className="px-4 py-3">
+                        <p className="text-sm font-medium text-sidebar-foreground">
+                          Admin console
+                        </p>
+                      </div>
+                      <nav className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-2 pb-4 pt-4">
+                        {adminConsoleGroups.map((group) => (
+                          <div key={group.label} className="space-y-1">
+                            <p className="px-2 text-[11px] font-medium tracking-wide text-sidebar-foreground/55 uppercase">
+                              {group.label}
+                            </p>
+                            {group.sections.map((section) =>
+                              renderAdminConsoleSectionButton(section)
+                            )}
+                          </div>
+                        ))}
+                      </nav>
+                    </aside>
+
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <SheetHeader className="px-5 py-3 pe-10">
+                        <SheetTitle className="text-sm font-medium">
+                          {activeAdminConsoleSection}
+                        </SheetTitle>
+                      </SheetHeader>
+                      <div
+                        className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-4"
+                        data-settings-scope="true"
+                      >
+                        {renderAdminConsoleContent(activeAdminConsoleSection)}
+                      </div>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </SidebarMenuItem>
+          ) : null}
           <SidebarMenuItem>
             <Sheet open={settingsOpen} onOpenChange={handleSettingsOpenChange}>
               <SheetTrigger
@@ -5581,16 +6264,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           renderSettingsSectionButton(section)
                         )}
                       </div>
-                      {isPlatformAdmin && (
-                        <div className="space-y-1 border-t border-sidebar-border pt-3">
-                          <p className="px-2 text-[11px] font-medium tracking-wide text-sidebar-foreground/55 uppercase">
-                            Platform admin
-                          </p>
-                          {(adminSettingsSections as readonly AdminSettingsSection[]).map(
-                            (section) => renderSettingsSectionButton(section)
-                          )}
-                        </div>
-                      )}
                     </nav>
                   </aside>
 
@@ -5639,12 +6312,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <UsageLimitsSettingsContent />
                       ) : activeSettingsSection === "Data controls" ? (
                         <DataControlsSettingsContent />
-                      ) : activeSettingsSection === "Admin overview" ? (
-                        <AdminOverviewSettingsContent />
-                      ) : activeSettingsSection === "Access policies" ? (
-                        <AccessPoliciesSettingsContent />
-                      ) : activeSettingsSection === "Audit logs" ? (
-                        <AuditLogsSettingsContent />
                       ) : activeSettingsSection === "Plans (soon)" ? (
                         <div className="flex min-h-[calc(78vh-9rem)] items-center justify-center rounded-xl bg-primary px-6 py-10">
                           <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
