@@ -1,12 +1,14 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
-import { useState } from "react"
+import Link from "next/link"
+import { AnimatePresence, motion } from "motion/react"
+import { CornerDownLeft, Eye, EyeOff, Loader2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Kbd } from "@/components/ui/kbd"
 import { Label } from "@/components/ui/label"
 
 type SignInErrors = {
@@ -23,11 +25,18 @@ export default function SignInPage() {
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [passwordStepVisible, setPasswordStepVisible] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isResendingVerification, setIsResendingVerification] = useState(false)
   const [errors, setErrors] = useState<SignInErrors>({})
   const [toast, setToast] = useState<string | null>(null)
+  const passwordInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!passwordStepVisible) return
+    passwordInputRef.current?.focus()
+  }, [passwordStepVisible])
 
   const showToast = (message: string) => {
     setToast(message)
@@ -36,7 +45,7 @@ export default function SignInPage() {
     }, 2800)
   }
 
-  const validate = (): SignInErrors => {
+  const validateEmail = (): SignInErrors => {
     const nextErrors: SignInErrors = {}
 
     if (!email.trim()) {
@@ -45,11 +54,25 @@ export default function SignInPage() {
       nextErrors.email = "Please enter a valid email address"
     }
 
+    return nextErrors
+  }
+
+  const validate = (): SignInErrors => {
+    const nextErrors = validateEmail()
+
     if (!password) {
       nextErrors.password = "Password is required"
     }
 
     return nextErrors
+  }
+
+  const handleContinue = () => {
+    const validationErrors = validateEmail()
+    setErrors(validationErrors)
+
+    if (Object.keys(validationErrors).length > 0) return
+    setPasswordStepVisible(true)
   }
 
   const handleResendVerification = async () => {
@@ -145,18 +168,25 @@ export default function SignInPage() {
 
   return (
     <>
-      <div
-        className="rounded-xl border border-border bg-background p-5 shadow-sm"
-        style={{ borderWidth: "0.5px" }}
-      >
-        <h1 className="text-sm font-semibold text-foreground">Welcome back</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Sign in to your workspace</p>
+      <div className="mx-auto w-full max-w-sm">
+        <div className="text-center">
+          <h1 className="text-balance text-2xl font-semibold tracking-tight text-foreground">
+            Welcome back
+          </h1>
+          <p className="mt-2 text-pretty text-sm text-muted-foreground">
+            Sign in to continue to your Atmet workspace.
+          </p>
+        </div>
 
         <form
-          className="mt-4 space-y-3"
+          className="mt-8 space-y-4"
           onSubmit={(event) => {
             event.preventDefault()
-            void handleSubmit()
+            if (passwordStepVisible) {
+              void handleSubmit()
+              return
+            }
+            handleContinue()
           }}
         >
           <div className="space-y-1.5">
@@ -171,8 +201,7 @@ export default function SignInPage() {
                 setEmail(event.target.value)
                 setErrors((previous) => ({ ...previous, email: undefined }))
               }}
-              placeholder="amir@company.com"
-              className="h-7"
+              placeholder="you@company.com"
               disabled={isSubmitting}
             />
             {errors.email ? (
@@ -194,57 +223,78 @@ export default function SignInPage() {
             ) : null}
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="auth-signin-password" className="text-muted-foreground">
-              Password
-            </Label>
-            <div className="relative">
-              <Input
-                id="auth-signin-password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value)
-                  setErrors((previous) => ({ ...previous, password: undefined }))
-                }}
-                placeholder="Enter your password"
-                className="h-7 pr-8"
-                disabled={isSubmitting}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((previous) => !previous)}
-                className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                disabled={isSubmitting}
+          <AnimatePresence initial={false}>
+            {passwordStepVisible ? (
+              <motion.div
+                key="password-step"
+                initial={{ height: 0, opacity: 0, y: -8 }}
+                animate={{ height: "auto", opacity: 1, y: 0 }}
+                exit={{ height: 0, opacity: 0, y: -4 }}
+                transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+                className="overflow-hidden"
               >
-                {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-              </button>
-            </div>
-            <div className="flex justify-end">
-              <Link href="/forgot-password" className="text-xs text-muted-foreground hover:underline">
-                Forgot password?
-              </Link>
-            </div>
-            {errors.password ? <p className="text-xs text-destructive">{errors.password}</p> : null}
-          </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="auth-signin-password" className="text-muted-foreground">
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      ref={passwordInputRef}
+                      id="auth-signin-password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(event) => {
+                        setPassword(event.target.value)
+                        setErrors((previous) => ({ ...previous, password: undefined }))
+                      }}
+                      placeholder="Enter your password"
+                      className="pr-8"
+                      disabled={isSubmitting}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((previous) => !previous)}
+                      className="absolute top-1/2 right-0 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      disabled={isSubmitting}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                  <div className="flex justify-end">
+                    <Link
+                      href="/forgot-password"
+                      className="text-xs text-muted-foreground hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+                  {errors.password ? (
+                    <p className="text-xs text-destructive">{errors.password}</p>
+                  ) : null}
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
           <Button
             type="submit"
             size="sm"
-            className="mt-1 h-7 w-full"
+            data-auth-primary-action="true"
+            className="mt-2 w-full transition-transform active:scale-[0.96]"
             disabled={isSubmitting}
           >
             {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-            Sign in
+            <span>{passwordStepVisible ? "Sign in" : "Continue"}</span>
+            <Kbd className="h-4 rounded-[calc(min(var(--radius-md),12px)*4/7)] border-transparent bg-primary-foreground/15 px-1 text-[10px] text-primary-foreground">
+              <CornerDownLeft className="h-2.5 w-2.5" />
+            </Kbd>
           </Button>
 
-          <p className="text-center text-xs text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/sign-up" className="text-foreground hover:underline">
-              Sign up
-            </Link>
-          </p>
         </form>
       </div>
 

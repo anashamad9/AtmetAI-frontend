@@ -25,7 +25,6 @@ import {
   Palette,
   Puzzle,
   Shield,
-  Sparkles,
   Settings,
   SlidersHorizontal,
   UserPlus,
@@ -65,7 +64,6 @@ const settingsSections = [
   "Integrations",
   "Usage and limits",
   "Data controls",
-  "Plans (soon)",
   "Billing",
   "Help Docs",
   "Contact Support",
@@ -109,34 +107,8 @@ type QuickAction = {
 
 const dataQuickActions: QuickAction[] = [
   {
-    id: "data-manage",
-    level: 0,
-    sector: "Data",
-    label: "Manage Data",
-    description: "Open data workspace and sources.",
-    path: "/my-data",
-    icon: Database,
-    shortcut: {
-      key: "g",
-      primary: true,
-      alt: true,
-      display: "⌥⌘G",
-    },
-  },
-  {
-    id: "data-search",
-    parentId: "data-manage",
-    level: 1,
-    sector: "Data",
-    label: "Search Data",
-    description: "Open files, records, and uploads in My Data.",
-    path: "/my-data",
-    icon: FileSearch,
-  },
-  {
     id: "data-integrations",
-    parentId: "data-manage",
-    level: 1,
+    level: 0,
     sector: "Data",
     label: "Apps",
     description: "Manage connected tools and synced sources.",
@@ -326,28 +298,12 @@ const settingsSectionIcons: Record<
   Integrations: Puzzle,
   "Usage and limits": Gauge,
   "Data controls": Database,
-  "Plans (soon)": Sparkles,
   Billing: CreditCard,
   "Help Docs": BookOpen,
   "Contact Support": LifeBuoy,
 }
 
 const settingsSystemQuickActions: QuickAction[] = [
-  {
-    id: "settings-notification-center",
-    level: 0,
-    sector: "Settings",
-    label: "Notification Center",
-    description: "Open the notifications page.",
-    path: "/notifications",
-    icon: Bell,
-    shortcut: {
-      key: "n",
-      primary: true,
-      alt: true,
-      display: "⌥⌘N",
-    },
-  },
   {
     id: "settings-theme-toggle",
     level: 0,
@@ -559,7 +515,7 @@ const workspaceMemberTargets = [
     id: "mem_003",
     name: "Omar Khaled",
     email: "omar.khaled@atmet.ai",
-    role: "Member",
+    role: "Workspace Admin",
     avatarUrl:
       "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?auto=format&fit=crop&w=128&q=80",
   },
@@ -567,7 +523,7 @@ const workspaceMemberTargets = [
     id: "mem_004",
     name: "Yara Nasser",
     email: "yara.nasser@atmet.ai",
-    role: "Member",
+    role: "Workspace Member",
     avatarUrl:
       "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=128&q=80",
   },
@@ -575,7 +531,7 @@ const workspaceMemberTargets = [
     id: "mem_005",
     name: "Fadi Mourad",
     email: "fadi.mourad@atmet.ai",
-    role: "Admin",
+    role: "Workspace Admin",
     avatarUrl:
       "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=128&q=80",
   },
@@ -728,8 +684,6 @@ const pinnedQuickActions: Array<{ id: string; label: string }> = [
   { id: "users-add", label: "Add user" },
   { id: "data-integrations", label: "Apps & integrations" },
   { id: "settings-section-billing", label: "Subscription" },
-  { id: "data-manage", label: "My data" },
-  { id: "settings-notification-center", label: "Notifications" },
   { id: "projects-new-skill", label: "New skill" },
 ]
 

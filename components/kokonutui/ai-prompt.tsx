@@ -35,6 +35,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/registry/spell-ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1614,7 +1615,7 @@ export default function AI_Prompt({
 
     if (!hasCodeSegment) {
       return (
-        <p className="px-0.5 py-1 text-sm text-foreground whitespace-pre-wrap">
+        <p className="min-w-0 max-w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-0.5 py-1 text-sm text-foreground">
           {renderTextWithAppMentions(content, `assistant-inline-${messageId}`)}
         </p>
       );
@@ -1629,7 +1630,7 @@ export default function AI_Prompt({
             return (
               <p
                 key={`assistant-text-${messageId}-${index}`}
-                className="px-0.5 py-1 text-sm text-foreground whitespace-pre-wrap"
+                className="min-w-0 max-w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-0.5 py-1 text-sm text-foreground"
               >
                 {renderTextWithAppMentions(
                   segment.value,
@@ -1942,21 +1943,21 @@ export default function AI_Prompt({
           {messages.map((message) => (
             <div
               key={message.id}
-              className={cn("flex", {
+              className={cn("flex min-w-0 max-w-full", {
                 "justify-end": message.role === "user",
                 "justify-start": message.role === "assistant",
               })}
             >
               <div
                 className={cn(
-                  "max-w-[82%] flex flex-col",
-                  message.role === "user" ? "ml-auto w-fit items-end" : "w-fit items-start"
+                  "flex min-w-0 max-w-[82%] flex-col",
+                  message.role === "user" ? "ml-auto items-end" : "items-start"
                 )}
               >
                 {message.role === "user" ? (
                   <>
-                    <div className="rounded-xl bg-muted px-3 py-2 text-sm text-foreground">
-                      <p className="origin-center whitespace-pre-wrap">
+                    <div className="min-w-0 max-w-full rounded-xl bg-muted px-3 py-2 text-sm text-foreground">
+                      <p className="origin-center max-w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                         {editingMessageId === message.id
                           ? Array.from(message.content).map((char, index) => {
                               if (char === "\n") {
@@ -2498,7 +2499,7 @@ export default function AI_Prompt({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                       align="end"
-                      className={cn("min-w-[11rem]", "border-border bg-popover")}
+                      className={cn("min-w-[15rem]", "border-border bg-popover")}
                     >
                       <DropdownMenuItem
                         onPointerDown={(e) => {
@@ -2511,9 +2512,21 @@ export default function AI_Prompt({
                         <Upload className="h-4 w-4 opacity-70" />
                         Upload file
                       </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => {}}>
-                        <Monitor className="h-4 w-4 opacity-70" />
-                        Screen record
+                      <DropdownMenuItem
+                        className="justify-between gap-3"
+                        onSelect={() => {}}
+                      >
+                        <span className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+                          <Monitor className="h-4 w-4 opacity-70" />
+                          Screen record
+                        </span>
+                        <Badge
+                          variant="red"
+                          size="sm"
+                          className="pointer-events-none shrink-0"
+                        >
+                          Coming later
+                        </Badge>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem

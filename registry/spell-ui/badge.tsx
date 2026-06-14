@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap border-0 font-medium transition-colors rounded-[var(--control-radius)]",
+  "inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-md border-0 font-medium transition-colors",
   {
     variants: {
       variant: {
@@ -28,10 +28,10 @@ const badgeVariants = cva(
         neutral: "ui-badge ui-badge-neutral",
       },
       size: {
-        xs: "h-3.5 px-0.5 text-[10px] leading-none",
-        sm: "h-4 px-0.625 text-[10px] leading-none",
-        default: "h-4.5 px-0.75 text-[11px] leading-none",
-        lg: "h-5 px-0.875 text-xs leading-none",
+        xs: "h-3.5 px-1.5 text-[10px] leading-none",
+        sm: "h-4 px-1.5 text-[10px] leading-none",
+        default: "h-4.5 px-1.5 text-[11px] leading-none",
+        lg: "h-5 px-2 text-xs leading-none",
       },
     },
     defaultVariants: {

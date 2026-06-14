@@ -64,6 +64,13 @@ import { SidebarLeftIcon } from "@hugeicons/core-free-icons"
 
 const OPEN_MANAGE_CHAT_USERS_EVENT = "open-manage-chat-users"
 const WORKFLOW_PROJECT_PARTICIPANTS_STORAGE_KEY = "workflow-project-participants"
+const AI_CORE_CHATS_STORAGE_KEY = "ai-core-chats"
+const AI_CORE_CHATS_UPDATED_EVENT = "ai-core-chats-updated"
+
+type StoredChatItem = {
+  id: string
+  title: string
+}
 
 type WorkspaceUser = ChatParticipant & {
   email: string
@@ -84,8 +91,6 @@ const routeTitles: Record<string, string> = {
   "/workflow": "Workflow",
   "/automations": "Automations",
   "/skills": "Skills",
-  "/my-data": "My Data",
-  "/notifications": "Notifications",
   "/integrations": "Apps",
   "/settings": "Settings",
   "/dashboard": "Dashboard",
@@ -95,10 +100,6 @@ function getPageTitle(pathname: string) {
   if (pathname.startsWith("/workflow")) {
     return "Workflow"
   }
-  if (pathname.startsWith("/notifications")) {
-    return "Notifications"
-  }
-
   return routeTitles[pathname] ?? "Platform"
 }
 
@@ -184,6 +185,41 @@ export function PlatformNavbar() {
   const { state: sidebarState, toggleSidebar } = useSidebar()
   const userPickerCardRef = useRef<HTMLDivElement>(null)
   const isAiCore = pathname.startsWith("/ai-core")
+  const activeChatId = searchParams.get("chat")
+  const [activeChatTitle, setActiveChatTitle] = useState("New Chat")
+  useEffect(() => {
+    if (!isAiCore || !activeChatId) {
+      setActiveChatTitle("New Chat")
+      return
+    }
+
+    const syncActiveChatTitle = () => {
+      try {
+        const stored = JSON.parse(
+          window.localStorage.getItem(AI_CORE_CHATS_STORAGE_KEY) ?? "[]"
+        ) as StoredChatItem[]
+        setActiveChatTitle(
+          stored.find((chat) => chat.id === activeChatId)?.title ?? "New Chat"
+        )
+      } catch {
+        setActiveChatTitle("New Chat")
+      }
+    }
+
+    syncActiveChatTitle()
+    window.addEventListener(
+      AI_CORE_CHATS_UPDATED_EVENT,
+      syncActiveChatTitle as EventListener
+    )
+    window.addEventListener("storage", syncActiveChatTitle)
+    return () => {
+      window.removeEventListener(
+        AI_CORE_CHATS_UPDATED_EVENT,
+        syncActiveChatTitle as EventListener
+      )
+      window.removeEventListener("storage", syncActiveChatTitle)
+    }
+  }, [activeChatId, isAiCore])
   const workflowProjectId = useMemo(() => {
     if (!pathname.startsWith("/workflow/")) return null
     const segments = pathname.split("/").filter(Boolean)
@@ -620,7 +656,9 @@ export function PlatformNavbar() {
                 </>
               ) : (
                 <BreadcrumbItem>
-                  <BreadcrumbPage>{getPageTitle(pathname)}</BreadcrumbPage>
+                  <BreadcrumbPage>
+                    {isAiCore ? activeChatTitle : getPageTitle(pathname)}
+                  </BreadcrumbPage>
                 </BreadcrumbItem>
               )}
             </BreadcrumbList>

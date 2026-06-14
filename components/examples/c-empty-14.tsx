@@ -115,7 +115,7 @@ export function Pattern() {
           </EmptyMedia>
           <EmptyTitle>No files yet</EmptyTitle>
           <EmptyDescription>
-            Upload files to My Data to start powering workflows and AI answers.
+            Upload files to start powering workflows and AI answers.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>

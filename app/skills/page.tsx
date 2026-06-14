@@ -4,24 +4,18 @@ import { useSearchParams } from "next/navigation"
 import AIPrompt from "@/components/kokonutui/ai-prompt"
 import { Button } from "@/components/ui/button"
 import { Badge, type BadgeVariant } from "@/registry/spell-ui/badge"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { OPEN_NEW_SKILL_DIALOG_EVENT } from "@/lib/skills-events"
 import { cn } from "@/lib/utils"
 import { IconPhoto } from "@tabler/icons-react"
-import {
-  CheckCircle2,
-  ChevronDown,
-  Circle,
-  Search,
-  SlidersHorizontal,
-  X,
-} from "lucide-react"
+import { Search, X } from "lucide-react"
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 
 type SkillCategory = "Reasoning" | "Data" | "Automation" | "Support"
@@ -193,11 +187,12 @@ const statusStyles: Record<SkillStatus, BadgeVariant> = {
 
 function SkillsPageContent() {
   const searchParams = useSearchParams()
-  const [skills, setSkills] = useState<SkillItem[]>(INITIAL_SKILL_ITEMS)
+  const [skills] = useState<SkillItem[]>(INITIAL_SKILL_ITEMS)
   const [nameFilter, setNameFilter] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [createSkillOpen, setCreateSkillOpen] = useState(false)
+  const [selectedSkill, setSelectedSkill] = useState<SkillItem | null>(null)
   const sectionFilterParam = searchParams.get("section")
   const sectionFilter = useMemo<SkillSection | null>(() => {
     if (!sectionFilterParam) return null
@@ -261,98 +256,78 @@ function SkillsPageContent() {
     [filteredSkills]
   )
 
-  const categoryFilterLabel =
-    categoryFilter === "all" ? "All categories" : categoryFilter
-  const statusFilterLabel = statusFilter === "all" ? "All" : statusFilter
-
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-background">
-      <section data-filter-bar-scope="true" className="sticky top-10 z-30 flex h-10 shrink-0 items-center border-b border-border bg-background px-3">
-          <div className="flex w-full flex-nowrap items-center gap-2 overflow-x-auto">
-            <div className="relative h-7 min-w-64 shrink-0">
+    <div className="flex min-h-[calc(100vh-2.5rem)] flex-1 flex-col bg-background">
+      <div className="flex min-h-0 flex-1">
+        <section className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="space-y-5">
+          <header className="space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Skills
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Browse and manage reusable skills available for your workspace.
+            </p>
+          </header>
+
+          <section data-filter-bar-scope="true" className="flex flex-col gap-3">
+            <div className="relative w-full sm:max-w-xs">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={nameFilter}
                 onChange={(event) => setNameFilter(event.target.value)}
-                placeholder="Search by skill name..."
-                className="surface-filter-field h-7 rounded-lg pl-7 text-xs"
+                placeholder="Search skills"
+                className="surface-filter-field h-7 rounded-lg border-transparent pl-7 text-xs"
               />
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="surface-filter-field h-7 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
-                  />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={
+                  categoryFilter === "all" && statusFilter === "all"
+                    ? "secondary"
+                    : "outline"
                 }
+                onClick={() => {
+                  setCategoryFilter("all")
+                  setStatusFilter("all")
+                }}
+                className="h-7 text-xs"
               >
-                <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground">Category:</span>
-                <span>{categoryFilterLabel}</span>
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="min-w-44 rounded-xl p-1"
-              >
-                <DropdownMenuItem onClick={() => setCategoryFilter("all")}>
-                  All categories
-                </DropdownMenuItem>
-                {categoryOptions.map((category) => (
-                  <DropdownMenuItem
-                    key={category}
-                    onClick={() => setCategoryFilter(category)}
-                  >
-                    {category}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                All
+              </Button>
+              {categoryOptions.map((category) => (
+                <Button
+                  key={category}
+                  type="button"
+                  size="sm"
+                  variant={categoryFilter === category ? "secondary" : "outline"}
+                  onClick={() => setCategoryFilter(category)}
+                  className="h-7 text-xs"
+                >
+                  {category}
+                </Button>
+              ))}
+              {(["Active", "Draft"] as SkillStatus[]).map((status) => (
+                <Button
+                  key={status}
+                  type="button"
+                  size="sm"
+                  variant={statusFilter === status ? "secondary" : "outline"}
+                  onClick={() => setStatusFilter(status)}
+                  className="h-7 text-xs"
+                >
+                  {status}
+                </Button>
+              ))}
+            </div>
+          </section>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="surface-filter-field h-7 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
-                  />
-                }
-              >
-                <Circle className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground">Status:</span>
-                <span>{statusFilterLabel}</span>
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="min-w-40 rounded-xl p-1"
-              >
-                <DropdownMenuItem onClick={() => setStatusFilter("all")}>
-                  <Circle className="h-3.5 w-3.5 text-muted-foreground" />
-                  All
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter("Active")}>
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  Active
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter("Draft")}>
-                  <Circle className="h-3.5 w-3.5 text-muted-foreground" />
-                  Draft
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-      </section>
-
-      <div className="flex min-h-0 flex-1">
-      <div className="flex-1 px-3 py-4">
-        <p className="mb-3 text-sm text-muted-foreground">
-          {filteredSkills.length} skills
-        </p>
+          <p className="text-sm text-muted-foreground">
+            {filteredSkills.length} skills
+          </p>
 
         {pinnedSkills.length > 0 && (
           <section className="mb-6">
@@ -364,20 +339,20 @@ function SkillsPageContent() {
                 {pinnedSkills.length} skills
               </span>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <div className="grid grid-cols-[repeat(auto-fill,220px)] gap-3">
               {pinnedSkills.map((skill) => (
                 <article
                   key={skill.id}
-                  className="overflow-hidden rounded-2xl border border-border bg-card"
+                  className="flex aspect-[4/5] flex-col overflow-hidden rounded-2xl border border-border bg-card"
                 >
-                  <div className="flex h-32 items-center justify-center border-b border-border bg-muted/40 text-muted-foreground">
+                  <div className="flex aspect-[40/19] shrink-0 items-center justify-center border-b border-border bg-muted/40 text-muted-foreground">
                     <span className="inline-flex items-center gap-1 text-xs">
                       <IconPhoto className="h-4 w-4" strokeWidth={1.7} />
                       Cover image
                     </span>
                   </div>
 
-                  <div className="p-4">
+                  <div className="flex flex-1 flex-col p-3">
                     <div className="flex items-center justify-between gap-2">
                       <h3 className="truncate text-sm font-semibold text-foreground">
                         {skill.name}
@@ -390,11 +365,11 @@ function SkillsPageContent() {
                       </Badge>
                     </div>
 
-                    <p className="mt-2 text-sm text-muted-foreground">
+                    <p className="mt-1.5 text-xs text-muted-foreground">
                       {skill.description}
                     </p>
 
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <Badge variant="neutral">
                         {skill.category}
                       </Badge>
@@ -408,11 +383,12 @@ function SkillsPageContent() {
                       ))}
                     </div>
 
-                    <div className="mt-4">
+                    <div className="mt-auto pt-2">
                       <Button
                         size="xs"
                         variant="outline"
                         className="px-2 text-xs"
+                        onClick={() => setSelectedSkill(skill)}
                       >
                         Know more
                       </Button>
@@ -435,20 +411,20 @@ function SkillsPageContent() {
                   {group.items.length} skills
                 </span>
               </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <div className="grid grid-cols-[repeat(auto-fill,220px)] gap-3">
                 {group.items.map((skill) => (
                   <article
                     key={skill.id}
-                    className="overflow-hidden rounded-2xl border border-border bg-card"
+                    className="flex aspect-[4/5] flex-col overflow-hidden rounded-2xl border border-border bg-card"
                   >
-                    <div className="flex h-32 items-center justify-center border-b border-border bg-muted/40 text-muted-foreground">
+                    <div className="flex aspect-[40/19] shrink-0 items-center justify-center border-b border-border bg-muted/40 text-muted-foreground">
                       <span className="inline-flex items-center gap-1 text-xs">
                         <IconPhoto className="h-4 w-4" strokeWidth={1.7} />
                         Cover image
                       </span>
                     </div>
 
-                    <div className="p-4">
+                    <div className="flex flex-1 flex-col p-3">
                       <div className="flex items-center justify-between gap-2">
                         <h3 className="truncate text-sm font-semibold text-foreground">
                           {skill.name}
@@ -461,11 +437,11 @@ function SkillsPageContent() {
                         </Badge>
                       </div>
 
-                      <p className="mt-2 text-sm text-muted-foreground">
+                      <p className="mt-1.5 text-xs text-muted-foreground">
                         {skill.description}
                       </p>
 
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <Badge variant="neutral">
                           {skill.category}
                         </Badge>
@@ -479,11 +455,12 @@ function SkillsPageContent() {
                         ))}
                       </div>
 
-                      <div className="mt-4">
+                      <div className="mt-auto pt-2">
                         <Button
                           size="xs"
                           variant="outline"
                           className="px-2 text-xs"
+                          onClick={() => setSelectedSkill(skill)}
                         >
                           Know more
                         </Button>
@@ -495,7 +472,8 @@ function SkillsPageContent() {
             </div>
           ))}
         </section>
-      </div>
+          </div>
+        </section>
       <aside
         className={cn(
           "sticky top-20 z-20 flex h-[calc(100vh-5rem)] min-w-0 shrink-0 self-start flex-col overflow-hidden bg-transparent transition-[width,padding] duration-300 ease-out",
@@ -543,6 +521,92 @@ function SkillsPageContent() {
         </div>
       </aside>
       </div>
+
+      <Dialog
+        open={selectedSkill !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedSkill(null)
+        }}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto p-0 sm:max-w-2xl">
+          {selectedSkill && (
+            <>
+              <div className="flex aspect-[40/19] shrink-0 items-center justify-center border-b border-border bg-muted/40 text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 text-sm">
+                  <IconPhoto className="h-4 w-4" strokeWidth={1.7} />
+                  Cover image
+                </span>
+              </div>
+
+              <div className="space-y-6 p-6">
+                <DialogHeader>
+                  <div className="flex items-center justify-between gap-3 pr-8">
+                    <DialogTitle className="text-xl">
+                      {selectedSkill.name}
+                    </DialogTitle>
+                    <Badge
+                      variant={statusStyles[selectedSkill.status]}
+                      className="shrink-0"
+                    >
+                      {selectedSkill.status}
+                    </Badge>
+                  </div>
+                  <DialogDescription className="sr-only">
+                    Details about {selectedSkill.name}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <section>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Description
+                  </h3>
+                  <p className="mt-3 text-pretty text-sm leading-7 text-muted-foreground">
+                    {selectedSkill.description} This {selectedSkill.category.toLowerCase()} skill
+                    is designed for the {selectedSkill.section.toLowerCase()} team to make
+                    recurring work faster, more consistent, and easier to pass into connected
+                    workflows.
+                  </p>
+                </section>
+
+                <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+                  <div className="rounded-lg bg-muted/50 p-4">
+                    <dt className="text-xs text-muted-foreground">Category</dt>
+                    <dd className="mt-1 font-medium">{selectedSkill.category}</dd>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-4">
+                    <dt className="text-xs text-muted-foreground">Section</dt>
+                    <dd className="mt-1 font-medium">{selectedSkill.section}</dd>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-4">
+                    <dt className="text-xs text-muted-foreground">Owner</dt>
+                    <dd className="mt-1 truncate font-medium">{selectedSkill.owner}</dd>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-4">
+                    <dt className="text-xs text-muted-foreground">Updated</dt>
+                    <dd className="mt-1 font-medium">{selectedSkill.updatedAt}</dd>
+                  </div>
+                </dl>
+
+                {selectedSkill.connectedApps &&
+                  selectedSkill.connectedApps.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-xs text-muted-foreground">
+                        Connected apps
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedSkill.connectedApps.map((app) => (
+                          <Badge key={app} variant="violet">
+                            {app}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

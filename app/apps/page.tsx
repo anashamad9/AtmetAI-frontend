@@ -7,6 +7,13 @@ import { Search } from "lucide-react"
 import { Badge } from "@/registry/spell-ui/badge"
 
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { Integration, IntegrationCategory } from "@/lib/integrations-store"
@@ -30,6 +37,7 @@ export default function AppsPage() {
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [categoryFilter, setCategoryFilter] = React.useState<"all" | IntegrationCategory>("all")
+  const [selectedIntegration, setSelectedIntegration] = React.useState<Integration | null>(null)
 
   const loadIntegrations = React.useCallback(async () => {
     setIsLoading(true)
@@ -143,7 +151,16 @@ export default function AppsPage() {
               {filteredIntegrations.map((integration) => (
                 <article
                   key={integration.slug}
-                  className="flex min-h-[184px] flex-col rounded-xl bg-sidebar p-3.5"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedIntegration(integration)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault()
+                      setSelectedIntegration(integration)
+                    }
+                  }}
+                  className="flex min-h-[184px] flex-col rounded-xl bg-sidebar p-3.5 transition-colors hover:bg-sidebar-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-md bg-sidebar-accent">
                     <img
@@ -176,7 +193,11 @@ export default function AppsPage() {
                     ) : null}
                   </div>
 
-                  <div className="mt-auto pt-3">
+                  <div
+                    className="mt-auto pt-3"
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
                     <Button
                       render={<Link href={`/apps/${integration.slug}`} />}
                       className={
@@ -198,6 +219,92 @@ export default function AppsPage() {
           )}
         </div>
       </section>
+
+      <Dialog
+        open={selectedIntegration !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedIntegration(null)
+        }}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto p-0 sm:max-w-2xl">
+          {selectedIntegration && (
+            <>
+              <DialogHeader className="border-b border-border p-6">
+                <div className="flex items-start gap-4 pr-8">
+                  <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-sidebar-accent">
+                    <img
+                      src={selectedIntegration.logo}
+                      alt={`${selectedIntegration.name} logo`}
+                      className="h-7 w-7 object-contain"
+                    />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <DialogTitle className="text-xl">
+                        {selectedIntegration.name}
+                      </DialogTitle>
+                      <Badge variant="blue" size="sm">
+                        {getAuthTypeLabel(selectedIntegration.authType)}
+                      </Badge>
+                      <Badge
+                        variant={selectedIntegration.connected ? "green" : "neutral"}
+                        size="sm"
+                      >
+                        {selectedIntegration.connected ? "Connected" : "Not connected"}
+                      </Badge>
+                    </div>
+                    <DialogDescription className="mt-2 text-pretty leading-6">
+                      {selectedIntegration.description}
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="space-y-6 p-6">
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="rounded-xl bg-muted/50 p-3">
+                    <p className="text-lg font-semibold">{selectedIntegration.triggers.length}</p>
+                    <p className="text-xs text-muted-foreground">Triggers</p>
+                  </div>
+                  <div className="rounded-xl bg-muted/50 p-3">
+                    <p className="text-lg font-semibold">{selectedIntegration.actions.length}</p>
+                    <p className="text-xs text-muted-foreground">Actions</p>
+                  </div>
+                  <div className="rounded-xl bg-muted/50 p-3">
+                    <p className="text-lg font-semibold">{selectedIntegration.scopes.length}</p>
+                    <p className="text-xs text-muted-foreground">Permissions</p>
+                  </div>
+                </div>
+
+                <section>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    About this integration
+                  </h3>
+                  <p className="mt-3 text-pretty text-sm leading-7 text-muted-foreground">
+                    {selectedIntegration.description} Connect {selectedIntegration.name} to
+                    bring its data and capabilities into your Atmet workflows. Once connected,
+                    teams can automate recurring work, respond to important activity, and keep
+                    information synchronized without switching between tools.
+                  </p>
+                  <p className="mt-3 text-pretty text-sm leading-7 text-muted-foreground">
+                    This integration uses {getAuthTypeLabel(selectedIntegration.authType)} and
+                    requests only the permissions needed for the workflows you choose to run.
+                  </p>
+                </section>
+
+                <Button
+                  render={<Link href={`/apps/${selectedIntegration.slug}`} />}
+                  className="w-full"
+                >
+                  {selectedIntegration.connected
+                    ? `Manage ${selectedIntegration.name}`
+                    : `Connect ${selectedIntegration.name}`}
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

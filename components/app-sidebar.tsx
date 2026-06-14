@@ -67,7 +67,6 @@ import {
 import {
   IconApps,
   IconBell,
-  IconBulb,
   IconBuilding,
   IconCalendar,
   IconChartBar,
@@ -95,6 +94,7 @@ import {
   IconShield,
   IconShieldCheck,
   IconSun,
+  IconTools,
   IconUser,
   IconUserPlus,
   IconUsers,
@@ -125,7 +125,6 @@ import {
   RefreshCw,
   Search,
   Share2,
-  Smile,
   SlidersHorizontal,
   Trash2,
   User,
@@ -134,7 +133,7 @@ import {
 
 const navItems = [
   {
-    title: "New Chat",
+    title: "Build Project",
     url: "/ai-core",
     iconType: "tabler" as const,
     icon: IconPlus,
@@ -149,13 +148,7 @@ const navItems = [
     title: "Skills",
     url: "/skills",
     iconType: "tabler" as const,
-    icon: IconBulb,
-  },
-  {
-    title: "Notifications",
-    url: "/notifications",
-    iconType: "tabler" as const,
-    icon: IconBell,
+    icon: IconTools,
   },
   {
     title: "Apps",
@@ -166,7 +159,6 @@ const navItems = [
 ]
 const baseSettingsSections = [
   "Account",
-  "Personalization",
   "Workspace",
   "General",
   "Notifications",
@@ -174,7 +166,6 @@ const baseSettingsSections = [
   "Integrations",
   "Usage and limits",
   "Data controls",
-  "Plans (soon)",
   "Refer and earn",
   "Billing",
   "Help Docs",
@@ -185,23 +176,15 @@ type SettingsSection = (typeof settingsSections)[number]
 const adminConsoleGroups = [
   {
     label: "Overview",
-    sections: ["Admin overview"],
+    sections: ["Admin overview", "Workspace provisioning"],
   },
   {
-    label: "Members & access",
-    sections: ["Members", "Roles & permissions", "Access policies"],
-  },
-  {
-    label: "Workspace",
-    sections: ["Workspace settings", "Data controls", "Notifications config"],
-  },
-  {
-    label: "Integrations & billing",
-    sections: ["Integrations management", "Billing & plan", "API keys"],
+    label: "Users & workspaces",
+    sections: ["Users & workspaces", "Roles & permissions", "Access policies"],
   },
   {
     label: "Logs",
-    sections: ["Audit logs", "Usage & limits"],
+    sections: ["Usage & limits"],
   },
 ] as const
 type AdminConsoleGroup = (typeof adminConsoleGroups)[number]
@@ -224,7 +207,21 @@ const accountProfile = {
 type WorkspaceProfile = WorkspaceSwitcherItem & {
   primaryEmail: string
   description: string
+  country: string
 }
+
+const workspaceCountries = [
+  "Jordan",
+  "United Arab Emirates",
+  "Saudi Arabia",
+  "United States",
+  "United Kingdom",
+  "Germany",
+  "France",
+  "Canada",
+  "Australia",
+  "Singapore",
+] as const
 
 const initialWorkspaces: WorkspaceProfile[] = [
   {
@@ -233,6 +230,7 @@ const initialWorkspaces: WorkspaceProfile[] = [
     primaryEmail: "workspace@atmet.ai",
     description:
       "Main workspace for collaboration, automations, and shared project operations.",
+    country: "Jordan",
     avatarUrl:
       "https://images.unsplash.com/photo-1556155092-490a1ba16284?auto=format&fit=crop&w=256&q=80",
     initials: "D",
@@ -245,6 +243,7 @@ const initialWorkspaces: WorkspaceProfile[] = [
     primaryEmail: "product@atmet.ai",
     description:
       "Plans releases, collects product feedback, and prioritizes roadmap delivery.",
+    country: "United Arab Emirates",
     avatarUrl: null,
     initials: "P",
     bgClass: "bg-indigo-500/20",
@@ -256,6 +255,7 @@ const initialWorkspaces: WorkspaceProfile[] = [
     primaryEmail: "operations@atmet.ai",
     description:
       "Runs operations playbooks, support workflows, and internal service quality.",
+    country: "Jordan",
     avatarUrl: null,
     initials: "O",
     bgClass: "bg-emerald-500/20",
@@ -267,6 +267,7 @@ const initialWorkspaces: WorkspaceProfile[] = [
     primaryEmail: "marketing@atmet.ai",
     description:
       "Owns campaign planning, brand assets, and performance reporting pipelines.",
+    country: "United States",
     avatarUrl: null,
     initials: "M",
     bgClass: "bg-amber-500/20",
@@ -293,11 +294,24 @@ type WorkspaceMemberApp = {
   lastUsed: string
 }
 
+type PlatformRole =
+  | "Super Admin"
+  | "Admin"
+  | "Workspace Admin"
+  | "Workspace Member"
+
+const platformRoles: readonly PlatformRole[] = [
+  "Super Admin",
+  "Admin",
+  "Workspace Admin",
+  "Workspace Member",
+]
+
 type WorkspaceMember = {
   id: string
   name: string
   email: string
-  role: "Super Admin" | "Admin" | "Member"
+  role: PlatformRole
   profileRole: string
   lastLogin: string
   initials: string
@@ -386,7 +400,7 @@ const workspaceMembers: WorkspaceMember[] = [
     id: "mem_003",
     name: "Omar Khaled",
     email: "omar.khaled@atmet.ai",
-    role: "Member",
+    role: "Workspace Admin",
     profileRole: "Operations Specialist",
     lastLogin: "Yesterday, 07:40 PM",
     initials: "OK",
@@ -418,7 +432,7 @@ const workspaceMembers: WorkspaceMember[] = [
     id: "mem_004",
     name: "Yara Nasser",
     email: "yara.nasser@atmet.ai",
-    role: "Member",
+    role: "Workspace Member",
     profileRole: "Marketing Specialist",
     lastLogin: "Yesterday, 11:05 AM",
     initials: "YN",
@@ -450,7 +464,7 @@ const workspaceMembers: WorkspaceMember[] = [
     id: "mem_005",
     name: "Fadi Mourad",
     email: "fadi.mourad@atmet.ai",
-    role: "Admin",
+    role: "Workspace Admin",
     profileRole: "Engineering Manager",
     lastLogin: "Mar 24, 2026",
     initials: "FM",
@@ -489,35 +503,28 @@ const workspaceMembers: WorkspaceMember[] = [
 
 const settingsContent: Record<SettingsSection, string[]> = {
   Account: ["Profile details", "Email and login", "Security"],
-  Personalization: ["About me", "Preferences", "Saved answers"],
   Notifications: [
     "Email notifications",
     "Push notifications",
     "Digest frequency",
   ],
   General: ["Theme and colors", "Font size", "Time zone", "Language"],
-  Workspace: ["Workspace name", "Default workflow", "Region"],
+  Workspace: ["Workspace name", "Default workflow", "Country"],
   Members: ["Members", "Roles and permissions", "Invites"],
   Integrations: ["Workspace apps", "Member access", "Enforcement policy"],
   "Usage and limits": ["Usage summary", "Rate limits", "Quota alerts"],
   "Data controls": ["Retention policy", "Data export", "Delete requests"],
-  "Plans (soon)": ["Current plan", "Billing", "Upgrade options"],
   "Refer and earn": ["Referral link", "Rewards", "Payout value"],
   Billing: ["Payment methods", "Invoices", "Billing history"],
   "Help Docs": ["Help center", "Guides", "API references"],
   "Contact Support": ["Support contact", "Live chat", "Report a bug"],
 }
 
-const PersonalizationIcon = ({ className }: { className?: string }) => (
-  <Smile className={className} strokeWidth={1.6} />
-)
-
 const settingsSectionIcons: Record<
   SettingsSection,
   React.ComponentType<{ className?: string }>
 > = {
   Account: IconUser,
-  Personalization: PersonalizationIcon,
   Notifications: IconBell,
   General: Monitor,
   Workspace: IconBuilding,
@@ -525,7 +532,6 @@ const settingsSectionIcons: Record<
   Integrations: IconApps,
   "Usage and limits": IconChartBar,
   "Data controls": IconShield,
-  "Plans (soon)": IconSettings,
   "Refer and earn": Gift,
   Billing: IconCreditCard,
   "Help Docs": IconFileText,
@@ -537,42 +543,24 @@ const adminConsoleSectionIcons: Record<
   React.ComponentType<{ className?: string }>
 > = {
   "Admin overview": IconLayoutDashboard,
-  Members: IconUsers,
+  "Workspace provisioning": IconBuilding,
+  "Users & workspaces": IconUsers,
   "Roles & permissions": IconShield,
   "Access policies": IconLock,
-  "Workspace settings": IconSettings,
-  "Data controls": IconDatabase,
-  "Notifications config": IconBell,
-  "Integrations management": IconPlug,
-  "Billing & plan": IconCreditCard,
-  "API keys": IconKey,
-  "Audit logs": IconListDetails,
   "Usage & limits": IconChartBar,
 }
 
 const adminConsoleDescriptions: Record<AdminConsoleSection, string> = {
   "Admin overview":
     "Monitor workspace health, recent activity, and common admin actions.",
-  Members:
-    "Manage workspace membership, invitations, roles, and account status.",
+  "Workspace provisioning":
+    "Create workspaces, assign initial users, and configure access, API, and usage defaults.",
+  "Users & workspaces":
+    "Manage users, workspace assignments, invitations, roles, and account status.",
   "Roles & permissions":
     "Review role capabilities and adjust editable workspace permissions.",
   "Access policies":
     "Configure authentication, domain, session, and network access rules.",
-  "Workspace settings":
-    "Update workspace identity, localization, branding, and destructive actions.",
-  "Data controls":
-    "Control retention, deletion, export, and privacy request workflows.",
-  "Notifications config":
-    "Set workspace alert thresholds, digests, recipients, and Slack delivery.",
-  "Integrations management":
-    "Administer connected apps, scopes, status, and workspace-wide enforcement.",
-  "Billing & plan":
-    "Review plan details, usage limits, payment method, and invoices.",
-  "API keys":
-    "Create, monitor, and revoke workspace API credentials.",
-  "Audit logs":
-    "Search and export security, workspace, member, and system events.",
   "Usage & limits":
     "Track usage by resource and member, then adjust workspace limits.",
 }
@@ -656,6 +644,7 @@ type OpenSettingsPanelDetail = {
   memberId?: string
   memberQuery?: string
   membersAction?: "invite"
+  returnToAdminSection?: AdminConsoleSection
 }
 
 const INITIAL_VISIBLE_CHATS = 4
@@ -764,7 +753,7 @@ function applyAppearanceColor(colorId: AppearanceColorId) {
   if (typeof document === "undefined") return
   const targetColor =
     appearanceColorOptions.find((option) => option.id === colorId) ??
-    appearanceColorOptions[0]
+    appearanceColorOptions[1]
   const root = document.documentElement
 
   root.style.setProperty("--primary", targetColor.primary)
@@ -1214,19 +1203,16 @@ function NotificationSettingsContent() {
     {
       key: "security",
       label: "Security alerts",
-      description: "Account sign-ins, password changes, and security activity.",
       icon: KeyRound,
     },
     {
       key: "product",
       label: "Product updates",
-      description: "New features, improvements, and release updates.",
       icon: Briefcase,
     },
     {
       key: "tips",
       label: "Tips and recommendations",
-      description: "Best practices and suggestions to improve your workflow.",
       icon: IconBell,
     },
   ] as const
@@ -1277,14 +1263,9 @@ function NotificationSettingsContent() {
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2">
                       <CategoryIcon className="h-3.5 w-3.5 text-muted-foreground/80" />
-                      <div className="space-y-0.5">
-                        <p className="text-sm font-medium text-foreground">
-                          {category.label}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {category.description}
-                        </p>
-                      </div>
+                      <p className="text-sm font-medium text-foreground">
+                        {category.label}
+                      </p>
                     </div>
                     <div className="flex items-center gap-3">
                       <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -1397,7 +1378,7 @@ function NotificationSettingsContent() {
       <div className="space-y-2 pt-5 pb-1">
         <section>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div className="space-y-0.5">
+            <div>
               <label className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <input
                   type="checkbox"
@@ -1412,9 +1393,6 @@ function NotificationSettingsContent() {
                 />
                 Quiet hours
               </label>
-              <p className="text-sm text-muted-foreground">
-                Pause non-critical notifications during your off-hours.
-              </p>
             </div>
             <div className="flex items-center gap-2">
               <Input
@@ -1507,7 +1485,7 @@ function GeneralSettingsContent({
   const [appearanceSettings, setAppearanceSettings] =
     React.useState<AppearanceSettings>({
       theme: "system",
-      colorId: "graphite",
+      colorId: "cobalt",
       timezone: inferredTimezone,
       language: "English",
       fontScale: "default",
@@ -1515,7 +1493,7 @@ function GeneralSettingsContent({
   const [savedAppearanceSettings, setSavedAppearanceSettings] =
     React.useState<AppearanceSettings>({
       theme: "system",
-      colorId: "graphite",
+      colorId: "cobalt",
       timezone: inferredTimezone,
       language: "English",
       fontScale: "default",
@@ -1525,9 +1503,15 @@ function GeneralSettingsContent({
     if (initializedRef.current) return
     initializedRef.current = true
 
+    const fallbackTheme: AppearanceTheme =
+      currentTheme === "light" ||
+      currentTheme === "dark" ||
+      currentTheme === "system"
+        ? currentTheme
+        : "system"
     const fallbackSettings: AppearanceSettings = {
-      theme: (currentTheme as AppearanceTheme) || "system",
-      colorId: "graphite",
+      theme: fallbackTheme,
+      colorId: "cobalt",
       timezone: inferredTimezone,
       language: "English",
       fontScale: "default",
@@ -1602,7 +1586,7 @@ function GeneralSettingsContent({
   const selectedAppearanceColor =
     appearanceColorOptions.find(
       (option) => option.id === appearanceSettings.colorId
-    ) ?? appearanceColorOptions[0]
+    ) ?? appearanceColorOptions[1]
 
   const themePreviewImageById: Record<"light" | "dark" | "system", string> = {
     light: "/white.png",
@@ -1897,9 +1881,11 @@ function WorkspaceSettingsContent({
     name: workspace.name,
     description: workspace.description,
     avatarUrl: workspace.avatarUrl ?? null,
+    country: workspace.country,
   })
   const [workspaceName, setWorkspaceName] = React.useState(workspace.name)
   const [description, setDescription] = React.useState(workspace.description)
+  const [country, setCountry] = React.useState(workspace.country)
   const [avatarUrl, setAvatarUrl] = React.useState<string | null>(
     workspace.avatarUrl ?? null
   )
@@ -1907,15 +1893,18 @@ function WorkspaceSettingsContent({
   React.useEffect(() => {
     setWorkspaceName(workspace.name)
     setDescription(workspace.description)
+    setCountry(workspace.country)
     setAvatarUrl(workspace.avatarUrl ?? null)
     setSavedWorkspace({
       name: workspace.name,
       description: workspace.description,
       avatarUrl: workspace.avatarUrl ?? null,
+      country: workspace.country,
     })
   }, [
     workspace.avatarUrl,
     workspace.description,
+    workspace.country,
     workspace.id,
     workspace.name,
   ])
@@ -1923,7 +1912,8 @@ function WorkspaceSettingsContent({
   const hasUnsavedChanges =
     workspaceName !== savedWorkspace.name ||
     description !== savedWorkspace.description ||
-    avatarUrl !== savedWorkspace.avatarUrl
+    avatarUrl !== savedWorkspace.avatarUrl ||
+    country !== savedWorkspace.country
 
   const handleWorkspaceImageUpload = (
     event: React.ChangeEvent<HTMLInputElement>
@@ -2073,6 +2063,18 @@ function WorkspaceSettingsContent({
         </div>
 
         <div className="space-y-1.5">
+          <Label className="text-muted-foreground">
+            <Globe2 className="h-3.5 w-3.5 text-muted-foreground/80" />
+            Country
+          </Label>
+          <AdminSelect
+            value={country}
+            options={workspaceCountries}
+            onChange={setCountry}
+          />
+        </div>
+
+        <div className="space-y-1.5">
           <Label
             className="text-muted-foreground"
             htmlFor="settings-workspace-description"
@@ -2139,12 +2141,14 @@ function WorkspaceSettingsContent({
               name: displayName,
               description,
               avatarUrl,
+              country,
               initials: deriveInitialsFromName(displayName),
             }
             setSavedWorkspace({
               name: displayName,
               description,
               avatarUrl,
+              country,
             })
             onSaveWorkspace(nextWorkspace)
           }}
@@ -2162,14 +2166,18 @@ function MembersSettingsContent({
   quickSearchQuery = "",
   quickSelectedMemberId = null,
   quickInviteToken = 0,
+  profileBackLabel = "Back to members",
+  onProfileBack,
 }: {
   quickActionToken?: number
   quickSearchQuery?: string
   quickSelectedMemberId?: string | null
   quickInviteToken?: number
+  profileBackLabel?: string
+  onProfileBack?: () => void
 }) {
-  const roleFilters = ["All users", "Super Admin", "Admin", "Member"] as const
-  const inviteRoleOptions = ["Member", "Admin", "Super Admin"] as const
+  const roleFilters = ["All users", ...platformRoles] as const
+  const inviteRoleOptions = platformRoles
   const creditsRanges = ["All time", "This month", "This week"] as const
   const seatsLimit = 10
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -2182,14 +2190,15 @@ function MembersSettingsContent({
     React.useState<(typeof creditsRanges)[number]>("All time")
   const [isInviteOpen, setIsInviteOpen] = React.useState(false)
   const [inviteRole, setInviteRole] =
-    React.useState<(typeof inviteRoleOptions)[number]>("Member")
+    React.useState<(typeof inviteRoleOptions)[number]>("Workspace Member")
   const [inviteInput, setInviteInput] = React.useState("")
   const [inviteEmails, setInviteEmails] = React.useState<string[]>([])
   const [inviteError, setInviteError] = React.useState("")
   const roleBadgeClasses: Record<WorkspaceMember["role"], BadgeVariant> = {
     "Super Admin": "violet",
     Admin: "blue",
-    Member: "neutral",
+    "Workspace Admin": "blue",
+    "Workspace Member": "neutral",
   }
   const appStatusClasses: Record<WorkspaceMemberApp["status"], BadgeVariant> = {
     Connected: "green",
@@ -2304,7 +2313,7 @@ function MembersSettingsContent({
     setIsInviteOpen(false)
     setInviteInput("")
     setInviteEmails([])
-    setInviteRole("Member")
+    setInviteRole("Workspace Member")
     setInviteError("")
   }, [])
 
@@ -2343,7 +2352,7 @@ function MembersSettingsContent({
     setInviteInput("")
     setInviteEmails([])
     setInviteError("")
-    setInviteRole("Member")
+    setInviteRole("Workspace Member")
     setIsInviteOpen(true)
   }, [quickInviteToken])
 
@@ -2379,10 +2388,13 @@ function MembersSettingsContent({
               variant="ghost"
               size="sm"
               className="-ml-1 text-muted-foreground hover:text-foreground"
-              onClick={() => setSelectedMemberId(null)}
+              onClick={() => {
+                setSelectedMemberId(null)
+                onProfileBack?.()
+              }}
             >
               <IconChevronLeft className="h-3.5 w-3.5" />
-              Back to members
+              {profileBackLabel}
             </Button>
           </div>
 
@@ -2758,7 +2770,7 @@ function MembersSettingsContent({
                 <Label className="text-muted-foreground">
                   Send invite to ...
                 </Label>
-                <div className="flex min-h-24 flex-wrap content-start items-start gap-1.5 rounded-lg border border-input bg-background px-2.5 py-2 focus-within:border-ring">
+                <div className="flex min-h-24 flex-wrap content-start items-start gap-1.5 rounded-lg border border-input bg-background px-2.5 py-2 focus-within:border-primary">
                   {inviteEmails.map((email) => (
                     <Badge
                       key={email}
@@ -3135,7 +3147,16 @@ function UsageLimitsSettingsContent() {
               {workspaceMembers.map((member) => (
                 <tr
                   key={member.id}
-                  className="border-b border-border/70 last:border-b-0"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openUserProfile(member.name)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault()
+                      openUserProfile(member.name)
+                    }
+                  }}
+                  className="cursor-pointer border-b border-border/70 transition-colors last:border-b-0 hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 >
                   <td className="px-2.5 py-1.5">
                     <div className="flex items-center gap-2.5">
@@ -3161,7 +3182,7 @@ function UsageLimitsSettingsContent() {
                   </td>
                   <td className="px-2.5 py-1.5">
                     <Badge
-                      variant={member.role === "Member" ? "neutral" : "violet"}
+                      variant={member.role === "Workspace Member" ? "neutral" : "violet"}
                     >
                       {member.role}
                     </Badge>
@@ -3172,6 +3193,8 @@ function UsageLimitsSettingsContent() {
                       min={0}
                       step={100}
                       value={userLimits[member.id] ?? 0}
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
                       onChange={(event) => {
                         const parsed = Number(event.target.value)
                         setUserLimits((previous) => ({
@@ -3968,7 +3991,7 @@ const adminActivityRows = [
     initials: "AH",
     type: "Member invited",
     tone: "info" as const,
-    description: "Invited dina.saleh@atmet.ai as Viewer.",
+    description: "Invited dina.saleh@atmet.ai as Workspace Member.",
   },
   {
     timestamp: "Yesterday, 01:05 PM",
@@ -4001,7 +4024,8 @@ const adminMembers = [
     id: "adm_mem_001",
     name: "Amir Haddad",
     email: "amir.haddad@atmet.ai",
-    role: "Admin",
+    role: "Super Admin",
+    workspace: "Documentation",
     status: "Active",
     lastActive: "Today, 10:42 AM",
     initials: "AH",
@@ -4012,6 +4036,7 @@ const adminMembers = [
     name: "Lina Saad",
     email: "lina.saad@atmet.ai",
     role: "Admin",
+    workspace: "Product",
     status: "Active",
     lastActive: "Today, 09:15 AM",
     initials: "LS",
@@ -4022,7 +4047,8 @@ const adminMembers = [
     id: "adm_mem_003",
     name: "Omar Khaled",
     email: "omar.khaled@atmet.ai",
-    role: "Member",
+    role: "Workspace Admin",
+    workspace: "Operations",
     status: "Active",
     lastActive: "Yesterday, 07:40 PM",
     initials: "OK",
@@ -4033,7 +4059,8 @@ const adminMembers = [
     id: "adm_mem_004",
     name: "Yara Nasser",
     email: "yara.nasser@atmet.ai",
-    role: "Member",
+    role: "Workspace Member",
+    workspace: "Marketing",
     status: "Invited",
     lastActive: "Pending invite",
     initials: "YN",
@@ -4044,7 +4071,8 @@ const adminMembers = [
     id: "adm_mem_005",
     name: "Fadi Mourad",
     email: "fadi.mourad@atmet.ai",
-    role: "Viewer",
+    role: "Workspace Admin",
+    workspace: "Documentation",
     status: "Suspended",
     lastActive: "Mar 24, 2026",
     initials: "FM",
@@ -4135,7 +4163,7 @@ const adminAuditRows = [
     tone: "info" as const,
     target: "dina.saleh@atmet.ai",
     ip: "10.14.20.19",
-    details: { role: "Viewer", inviteId: "inv_8831" },
+    details: { role: "Workspace Member", inviteId: "inv_8831" },
   },
 ] as const
 
@@ -4159,7 +4187,7 @@ function AdminPage({
         </div>
         {actions ? <div className="flex shrink-0 flex-wrap gap-1.5">{actions}</div> : null}
       </div>
-      <div className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-1 pb-1">
+      <div className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-1 pb-1 [&_input:not([type=checkbox])]:h-7">
         {children}
       </div>
     </div>
@@ -4180,20 +4208,31 @@ function AdminSelect({
   className?: string
 }) {
   return (
-    <label className={cn("space-y-1 text-[13px] text-muted-foreground", className)}>
+    <div className={cn("space-y-1 text-[13px] text-muted-foreground", className)}>
       {label ? <span>{label}</span> : null}
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="surface-sidebar-field h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm text-foreground outline-none focus-visible:border-ring"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </label>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="surface-sidebar-field h-7 w-full justify-between rounded-lg border-input bg-transparent px-2.5 text-sm font-normal text-foreground"
+            />
+          }
+        >
+          <span className="truncate">{value}</span>
+          <IconChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-40 rounded-lg p-1">
+          {options.map((option) => (
+            <DropdownMenuItem key={option} onClick={() => onChange(option)}>
+              {option}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }
 
@@ -4209,17 +4248,18 @@ function AdminToggle({
   return (
     <button
       type="button"
+      data-toggle-control="true"
       disabled={disabled}
       aria-pressed={checked}
       onClick={() => onChange?.(!checked)}
       className={cn(
-        "inline-flex h-6 w-11 shrink-0 items-center overflow-hidden rounded-[999px] border-[0.5px] border-border bg-muted px-0.5 transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex h-6 w-11 shrink-0 items-center overflow-hidden rounded-full border-[0.5px] border-border bg-muted px-0.5 transition-colors disabled:cursor-not-allowed disabled:opacity-60",
         checked && "bg-primary"
       )}
     >
       <span
         className={cn(
-          "block size-5 rounded-[999px] bg-background transition-transform",
+          "block size-5 rounded-full bg-background transition-transform",
           checked && "translate-x-5"
         )}
       />
@@ -4266,8 +4306,32 @@ function AdminEmptyState({
   )
 }
 
-function AdminAvatar({ initials, name }: { initials: string; name: string }) {
-  return (
+function openUserProfile(name: string, returnToAdminSection?: AdminConsoleSection) {
+  const member = workspaceMembers.find((candidate) => candidate.name === name)
+  if (!member) return
+
+  window.dispatchEvent(
+    new CustomEvent<OpenSettingsPanelDetail>(OPEN_SETTINGS_PANEL_EVENT, {
+      detail: {
+        section: "Members",
+        memberId: member.id,
+        memberQuery: member.name,
+        returnToAdminSection,
+      },
+    })
+  )
+}
+
+function AdminAvatar({
+  initials,
+  name,
+  returnToAdminSection,
+}: {
+  initials: string
+  name: string
+  returnToAdminSection?: AdminConsoleSection
+}) {
+  const avatar = (
     <Avatar className="size-7 !rounded-full">
       <AvatarFallback className="!rounded-full text-[10px] font-medium">
         {initials}
@@ -4275,28 +4339,107 @@ function AdminAvatar({ initials, name }: { initials: string; name: string }) {
       <span className="sr-only">{name}</span>
     </Avatar>
   )
+
+  if (!workspaceMembers.some((member) => member.name === name)) return avatar
+
+  return (
+    <button
+      type="button"
+      data-toggle-control="true"
+      onClick={(event) => {
+        event.stopPropagation()
+        openUserProfile(name, returnToAdminSection)
+      }}
+      className="rounded-full outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      aria-label={`Open ${name}'s profile`}
+    >
+      {avatar}
+    </button>
+  )
 }
 
 function AdminOverviewConsoleContent() {
-  const stats = [
-    { label: "Active users", value: "128" },
-    { label: "Workflow runs today", value: "1,842" },
-    { label: "Errors today", value: "7" },
-    { label: "Storage used", value: "42 GB" },
-  ] as const
+  const [datePeriod, setDatePeriod] = React.useState("Last 7 days")
+  const [activityQuery, setActivityQuery] = React.useState("")
+  const [activityType, setActivityType] = React.useState("All event types")
+  const [activityWorkspace, setActivityWorkspace] = React.useState("All workspaces")
+  const [activityActor, setActivityActor] = React.useState("All actors")
+  const statsByPeriod = {
+    Today: [
+      { label: "Active users", value: "128" },
+      { label: "New users", value: "8" },
+      { label: "New workspaces", value: "2" },
+      { label: "Workflow runs", value: "1,842" },
+      { label: "Errors", value: "7" },
+      { label: "Storage used", value: "42 GB" },
+    ],
+    "Last 7 days": [
+      { label: "Active users", value: "412" },
+      { label: "New users", value: "46" },
+      { label: "New workspaces", value: "11" },
+      { label: "Workflow runs", value: "9,684" },
+      { label: "Errors", value: "31" },
+      { label: "Storage used", value: "42 GB" },
+    ],
+    "Last 30 days": [
+      { label: "Active users", value: "1,284" },
+      { label: "New users", value: "186" },
+      { label: "New workspaces", value: "38" },
+      { label: "Workflow runs", value: "38,420" },
+      { label: "Errors", value: "124" },
+      { label: "Storage used", value: "42 GB" },
+    ],
+    "Last 90 days": [
+      { label: "Active users", value: "2,916" },
+      { label: "New users", value: "521" },
+      { label: "New workspaces", value: "96" },
+      { label: "Workflow runs", value: "112,680" },
+      { label: "Errors", value: "348" },
+      { label: "Storage used", value: "42 GB" },
+    ],
+  } as const
+  const stats = statsByPeriod[datePeriod as keyof typeof statsByPeriod]
+  const activityRows = adminActivityRows.map((row) => ({
+    ...row,
+    workspace:
+      adminMembers.find((member) => member.name === row.actor)?.workspace ??
+      "System",
+  }))
+  const filteredActivityRows = activityRows.filter((row) => {
+    const normalizedQuery = activityQuery.trim().toLowerCase()
+    const matchesQuery =
+      normalizedQuery.length === 0 ||
+      row.actor.toLowerCase().includes(normalizedQuery) ||
+      row.workspace.toLowerCase().includes(normalizedQuery) ||
+      row.description.toLowerCase().includes(normalizedQuery)
+    const matchesType =
+      activityType === "All event types" || row.type === activityType
+    const matchesWorkspace =
+      activityWorkspace === "All workspaces" ||
+      row.workspace === activityWorkspace
+    const matchesActor = activityActor === "All actors" || row.actor === activityActor
+    const matchesPeriod =
+      datePeriod === "Last 90 days" ||
+      datePeriod === "Last 30 days" ||
+      (datePeriod === "Last 7 days" && !row.timestamp.startsWith("Mar 24")) ||
+      (datePeriod === "Today" && row.timestamp.startsWith("Today"))
+    return matchesQuery && matchesType && matchesWorkspace && matchesActor && matchesPeriod
+  })
 
   return (
     <AdminPage
       section="Admin overview"
       actions={
         <>
+          <AdminSelect
+            value={datePeriod}
+            options={["Today", "Last 7 days", "Last 30 days", "Last 90 days"]}
+            onChange={setDatePeriod}
+            className="w-36"
+          />
           <Button type="button" size="sm">
             <IconUserPlus className="h-3.5 w-3.5" />
-            Invite member
-          </Button>
-          <Button type="button" variant="outline" size="sm">
-            <IconListDetails className="h-3.5 w-3.5" />
-            View audit log
+            Invite user
           </Button>
           <Button type="button" variant="outline" size="sm">
             <IconDownload className="h-3.5 w-3.5" />
@@ -4305,7 +4448,7 @@ function AdminOverviewConsoleContent() {
         </>
       }
     >
-      <section className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-lg bg-muted px-3 py-3">
             <p className="text-[13px] text-muted-foreground">{stat.label}</p>
@@ -4319,36 +4462,359 @@ function AdminOverviewConsoleContent() {
       <section className="overflow-hidden rounded-xl border border-border bg-background">
         <div className="border-b border-border px-3 py-2.5">
           <p className="text-sm font-medium text-foreground">Recent activity</p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_150px_150px_150px]">
+            <div className="relative">
+              <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={activityQuery}
+                onChange={(event) => setActivityQuery(event.target.value)}
+                placeholder="Search activity"
+                className="h-7 pl-8"
+              />
+            </div>
+            <AdminSelect
+              value={activityType}
+              options={["All event types", ...Array.from(new Set(activityRows.map((row) => row.type)))]}
+              onChange={setActivityType}
+            />
+            <AdminSelect
+              value={activityWorkspace}
+              options={["All workspaces", ...initialWorkspaces.map((workspace) => workspace.name), "System"]}
+              onChange={setActivityWorkspace}
+            />
+            <AdminSelect
+              value={activityActor}
+              options={["All actors", ...Array.from(new Set(activityRows.map((row) => row.actor)))]}
+              onChange={setActivityActor}
+            />
+          </div>
         </div>
         <div className="divide-y divide-border">
-          {adminActivityRows.map((row) => (
+          {filteredActivityRows.map((row) => (
             <div
               key={`${row.timestamp}-${row.actor}-${row.description}`}
-              className="grid gap-2 px-3 py-2.5 text-sm sm:grid-cols-[120px_160px_120px_1fr] sm:items-center"
+              onClick={() => openUserProfile(row.actor, "Admin overview")}
+              className={cn(
+                "grid gap-2 px-3 py-2.5 text-sm sm:grid-cols-[140px_1fr_160px_150px] sm:items-center",
+                row.actor !== "System" &&
+                  "cursor-pointer transition-colors hover:bg-muted/35"
+              )}
             >
               <span className="text-[13px] text-muted-foreground">{row.timestamp}</span>
               <span className="flex items-center gap-2 text-foreground">
-                <AdminAvatar initials={row.initials} name={row.actor} />
-                {row.actor}
+                <AdminAvatar
+                  initials={row.initials}
+                  name={row.actor}
+                  returnToAdminSection="Admin overview"
+                />
+                <button
+                  type="button"
+                  onClick={() => openUserProfile(row.actor, "Admin overview")}
+                  className="text-left"
+                >
+                  {row.actor}
+                </button>
               </span>
+              <span className="truncate text-[13px] text-foreground">{row.workspace}</span>
               <Badge variant={adminBadgeVariants[row.tone]}>{row.type}</Badge>
-              <span className="text-[13px] text-muted-foreground">{row.description}</span>
             </div>
           ))}
+          {filteredActivityRows.length === 0 ? (
+            <p className="px-3 py-8 text-center text-[13px] text-muted-foreground">
+              No activity matches the current filters.
+            </p>
+          ) : null}
         </div>
       </section>
     </AdminPage>
   )
 }
 
-function MembersConsoleContent() {
+function WorkspaceProvisioningConsoleContent() {
+  const [workspaceName, setWorkspaceName] = React.useState("")
+  const [workspaceSlug, setWorkspaceSlug] = React.useState("")
+  const [country, setCountry] = React.useState("Jordan")
+  const [plan, setPlan] = React.useState("Team")
+  const [ownerName, setOwnerName] = React.useState("")
+  const [ownerEmail, setOwnerEmail] = React.useState("")
+  const [ownerRole, setOwnerRole] = React.useState<PlatformRole>("Workspace Admin")
+  const [apiKeyName, setApiKeyName] = React.useState("Default workspace key")
+  const [apiExpiry, setApiExpiry] = React.useState("Never")
+  const [apiEnabled, setApiEnabled] = React.useState(true)
+  const [workflowsEnabled, setWorkflowsEnabled] = React.useState(true)
+  const [appsEnabled, setAppsEnabled] = React.useState(true)
+  const [monthlyTokenCap, setMonthlyTokenCap] = React.useState("50000")
+  const [seatLimit, setSeatLimit] = React.useState("10")
+  const [createdWorkspaces, setCreatedWorkspaces] = React.useState<
+    Array<{
+      id: string
+      name: string
+      owner: string
+      country: string
+      plan: string
+      apiKey: string | null
+    }>
+  >([])
+
+  const provisionWorkspace = () => {
+    const trimmedName = workspaceName.trim()
+    const trimmedEmail = ownerEmail.trim()
+    if (!trimmedName || !trimmedEmail) return
+
+    setCreatedWorkspaces((previous) => [
+      {
+        id: `provisioned_${Date.now()}`,
+        name: trimmedName,
+        owner: trimmedEmail,
+        country,
+        plan,
+        apiKey: apiEnabled
+          ? `ak_ws_${Math.random().toString(36).slice(2, 14)}`
+          : null,
+      },
+      ...previous,
+    ])
+    setWorkspaceName("")
+    setWorkspaceSlug("")
+    setOwnerName("")
+    setOwnerEmail("")
+  }
+
+  return (
+    <AdminPage
+      section="Workspace provisioning"
+      actions={
+        <Button
+          type="button"
+          size="sm"
+          disabled={!workspaceName.trim() || !ownerEmail.trim()}
+          onClick={provisionWorkspace}
+        >
+          <IconPlus className="h-3.5 w-3.5" />
+          Create workspace
+        </Button>
+      }
+    >
+      <section className="grid gap-3 lg:grid-cols-2">
+        <div className="space-y-3 rounded-xl border border-border bg-background p-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Workspace setup</p>
+            <p className="text-[13px] text-muted-foreground">
+              Define the workspace identity and commercial defaults.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="space-y-1 text-[13px] text-muted-foreground">
+              Workspace name
+              <Input
+                value={workspaceName}
+                onChange={(event) => {
+                  const name = event.target.value
+                  setWorkspaceName(name)
+                  setWorkspaceSlug(
+                    name
+                      .toLowerCase()
+                      .trim()
+                      .replace(/[^a-z0-9]+/g, "-")
+                      .replace(/^-|-$/g, "")
+                  )
+                }}
+                placeholder="Acme Operations"
+              />
+            </label>
+            <label className="space-y-1 text-[13px] text-muted-foreground">
+              Workspace slug
+              <Input
+                value={workspaceSlug}
+                onChange={(event) => setWorkspaceSlug(event.target.value)}
+                placeholder="acme-operations"
+              />
+            </label>
+            <AdminSelect
+              label="Country"
+              value={country}
+              options={workspaceCountries}
+              onChange={setCountry}
+            />
+            <AdminSelect
+              label="Plan"
+              value={plan}
+              options={["Free", "Team", "Business", "Enterprise"]}
+              onChange={setPlan}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-3 rounded-xl border border-border bg-background p-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Initial user</p>
+            <p className="text-[13px] text-muted-foreground">
+              Create the first user and assign workspace ownership.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="space-y-1 text-[13px] text-muted-foreground">
+              Full name
+              <Input
+                value={ownerName}
+                onChange={(event) => setOwnerName(event.target.value)}
+                placeholder="Workspace owner"
+              />
+            </label>
+            <label className="space-y-1 text-[13px] text-muted-foreground">
+              Email address
+              <Input
+                type="email"
+                value={ownerEmail}
+                onChange={(event) => setOwnerEmail(event.target.value)}
+                placeholder="owner@company.com"
+              />
+            </label>
+            <AdminSelect
+              label="Role"
+              value={ownerRole}
+              options={platformRoles}
+              onChange={(value) => setOwnerRole(value as PlatformRole)}
+              className="sm:col-span-2"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-3 rounded-xl border border-border bg-background p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">API access</p>
+              <p className="text-[13px] text-muted-foreground">
+                Generate a workspace API key during provisioning.
+              </p>
+            </div>
+            <AdminToggle checked={apiEnabled} onChange={setApiEnabled} />
+          </div>
+          {apiEnabled ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="space-y-1 text-[13px] text-muted-foreground">
+                Key name
+                <Input
+                  value={apiKeyName}
+                  onChange={(event) => setApiKeyName(event.target.value)}
+                />
+              </label>
+              <AdminSelect
+                label="Expiry"
+                value={apiExpiry}
+                options={["Never", "30 days", "90 days", "1 year"]}
+                onChange={setApiExpiry}
+              />
+              <div className="sm:col-span-2">
+                <p className="text-[13px] text-muted-foreground">Scopes</p>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {["Chat", "Workflows", "Files", "Apps", "Members"].map((scope) => (
+                    <Badge key={scope} variant="neutral">
+                      {scope}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="space-y-3 rounded-xl border border-border bg-background p-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Limits and features</p>
+            <p className="text-[13px] text-muted-foreground">
+              Apply the initial operating guardrails for the workspace.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="space-y-1 text-[13px] text-muted-foreground">
+              Monthly token cap
+              <Input
+                type="number"
+                value={monthlyTokenCap}
+                onChange={(event) => setMonthlyTokenCap(event.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-[13px] text-muted-foreground">
+              Seat limit
+              <Input
+                type="number"
+                value={seatLimit}
+                onChange={(event) => setSeatLimit(event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="space-y-2">
+            {[
+              ["Workflow creation", workflowsEnabled, setWorkflowsEnabled],
+              ["App connections", appsEnabled, setAppsEnabled],
+            ].map(([label, checked, setChecked]) => (
+              <div
+                key={label as string}
+                className="flex items-center justify-between gap-3 rounded-lg bg-muted/60 px-2.5 py-2"
+              >
+                <span className="text-[13px] font-medium text-foreground">
+                  {label as string}
+                </span>
+                <AdminToggle
+                  checked={checked as boolean}
+                  onChange={setChecked as React.Dispatch<React.SetStateAction<boolean>>}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {createdWorkspaces.length > 0 ? (
+        <section className="overflow-hidden rounded-xl border border-border bg-background">
+          <div className="border-b border-border px-3 py-2.5">
+            <p className="text-sm font-medium text-foreground">
+              Recently provisioned
+            </p>
+          </div>
+          <table className="w-full table-fixed border-collapse text-[0.8rem]">
+            <thead>
+              <tr className="border-b border-border text-muted-foreground">
+                <th className="w-[22%] px-2.5 py-1.5 text-left font-medium">Workspace</th>
+                <th className="w-[24%] px-2.5 py-1.5 text-left font-medium">Initial user</th>
+                <th className="w-[16%] px-2.5 py-1.5 text-left font-medium">Country</th>
+                <th className="w-[12%] px-2.5 py-1.5 text-left font-medium">Plan</th>
+                <th className="w-[26%] px-2.5 py-1.5 text-left font-medium">API key</th>
+              </tr>
+            </thead>
+            <tbody>
+              {createdWorkspaces.map((workspace) => (
+                <tr key={workspace.id} className="border-b border-border/70 last:border-b-0">
+                  <td className="px-2.5 py-2 font-medium text-foreground">{workspace.name}</td>
+                  <td className="truncate px-2.5 py-2 text-muted-foreground">{workspace.owner}</td>
+                  <td className="truncate px-2.5 py-2 text-foreground">{workspace.country}</td>
+                  <td className="px-2.5 py-2"><Badge variant="blue">{workspace.plan}</Badge></td>
+                  <td className="px-2.5 py-2 text-muted-foreground">
+                    {workspace.apiKey ? (
+                      <span className="font-mono text-xs">{workspace.apiKey}</span>
+                    ) : (
+                      "Disabled"
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+    </AdminPage>
+  )
+}
+
+function UsersWorkspacesConsoleContent() {
   const [query, setQuery] = React.useState("")
   const [roleFilter, setRoleFilter] = React.useState("All roles")
   const [statusFilter, setStatusFilter] = React.useState("All")
   const [selectedRows, setSelectedRows] = React.useState<string[]>([])
   const [inviteOpen, setInviteOpen] = React.useState(false)
   const [inviteEmail, setInviteEmail] = React.useState("")
-  const [inviteRole, setInviteRole] = React.useState("Member")
+  const [inviteRole, setInviteRole] = React.useState<PlatformRole>("Workspace Member")
   const statusTones: Record<string, AdminBadgeTone> = {
     Active: "success",
     Invited: "info",
@@ -4358,7 +4824,8 @@ function MembersConsoleContent() {
     const matchesQuery =
       query.trim().length === 0 ||
       member.name.toLowerCase().includes(query.toLowerCase()) ||
-      member.email.toLowerCase().includes(query.toLowerCase())
+      member.email.toLowerCase().includes(query.toLowerCase()) ||
+      member.workspace.toLowerCase().includes(query.toLowerCase())
     const matchesRole = roleFilter === "All roles" || member.role === roleFilter
     const matchesStatus = statusFilter === "All" || member.status === statusFilter
     return matchesQuery && matchesRole && matchesStatus
@@ -4368,7 +4835,7 @@ function MembersConsoleContent() {
     filteredMembers.every((member) => selectedRows.includes(member.id))
 
   return (
-    <AdminPage section="Members">
+    <AdminPage section="Users & workspaces">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
@@ -4376,13 +4843,13 @@ function MembersConsoleContent() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by name or email"
+              placeholder="Search by name, email, or workspace"
               className="h-8 pl-8"
             />
           </div>
           <AdminSelect
             value={roleFilter}
-            options={["All roles", "Admin", "Member", "Viewer"]}
+            options={["All roles", ...platformRoles]}
             onChange={setRoleFilter}
             className="sm:w-36"
           />
@@ -4395,7 +4862,7 @@ function MembersConsoleContent() {
         </div>
         <Button type="button" size="sm" onClick={() => setInviteOpen(true)}>
           <IconUserPlus className="h-3.5 w-3.5" />
-          Invite member
+          Invite user
         </Button>
       </div>
 
@@ -4426,8 +4893,8 @@ function MembersConsoleContent() {
             <AdminSelect
               label="Role"
               value={inviteRole}
-              options={["Admin", "Member", "Viewer"]}
-              onChange={setInviteRole}
+              options={platformRoles}
+              onChange={(value) => setInviteRole(value as PlatformRole)}
             />
             <Button
               type="button"
@@ -4435,7 +4902,7 @@ function MembersConsoleContent() {
               onClick={() => {
                 setInviteOpen(false)
                 setInviteEmail("")
-                setInviteRole("Member")
+                setInviteRole("Workspace Member")
               }}
             >
               Send invite
@@ -4447,11 +4914,11 @@ function MembersConsoleContent() {
       {filteredMembers.length === 0 ? (
         <AdminEmptyState
           icon={IconUsers}
-          title="No members found"
-          description="No workspace members match the current search and filters."
+          title="No users found"
+          description="No users or workspace assignments match the current search and filters."
           action={
             <Button type="button" size="sm" onClick={() => setInviteOpen(true)}>
-              Invite your first member
+              Invite your first user
             </Button>
           }
         />
@@ -4475,21 +4942,27 @@ function MembersConsoleContent() {
                     aria-label="Select all members"
                   />
                 </th>
-                <th className="w-[22%] px-2.5 py-1.5 text-left font-medium">Name</th>
-                <th className="w-[25%] px-2.5 py-1.5 text-left font-medium">Email</th>
-                <th className="w-[13%] px-2.5 py-1.5 text-left font-medium">Role</th>
-                <th className="w-[13%] px-2.5 py-1.5 text-left font-medium">Status</th>
-                <th className="w-[18%] px-2.5 py-1.5 text-left font-medium">Last active</th>
+                <th className="w-[18%] px-2.5 py-1.5 text-left font-medium">Name</th>
+                <th className="w-[21%] px-2.5 py-1.5 text-left font-medium">Email</th>
+                <th className="w-[14%] px-2.5 py-1.5 text-left font-medium">Workspace</th>
+                <th className="w-[10%] px-2.5 py-1.5 text-left font-medium">Role</th>
+                <th className="w-[11%] px-2.5 py-1.5 text-left font-medium">Status</th>
+                <th className="w-[17%] px-2.5 py-1.5 text-left font-medium">Last active</th>
                 <th className="w-[9%] px-2.5 py-1.5 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredMembers.map((member) => (
-                <tr key={member.id} className="border-b border-border/70 last:border-b-0">
+                <tr
+                  key={member.id}
+                  onClick={() => openUserProfile(member.name, "Users & workspaces")}
+                  className="cursor-pointer border-b border-border/70 transition-colors last:border-b-0 hover:bg-muted/35"
+                >
                   <td className="px-2 py-2">
                     <input
                       type="checkbox"
                       checked={selectedRows.includes(member.id)}
+                      onClick={(event) => event.stopPropagation()}
                       onChange={(event) =>
                         setSelectedRows((previous) =>
                           event.target.checked
@@ -4503,11 +4976,22 @@ function MembersConsoleContent() {
                   </td>
                   <td className="px-2.5 py-2">
                     <div className="flex min-w-0 items-center gap-2">
-                      <AdminAvatar initials={member.initials} name={member.name} />
-                      <span className="truncate font-medium text-foreground">{member.name}</span>
+                      <AdminAvatar
+                        initials={member.initials}
+                        name={member.name}
+                        returnToAdminSection="Users & workspaces"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => openUserProfile(member.name, "Users & workspaces")}
+                        className="truncate text-left font-medium text-foreground"
+                      >
+                        {member.name}
+                      </button>
                     </div>
                   </td>
                   <td className="truncate px-2.5 py-2 text-muted-foreground">{member.email}</td>
+                  <td className="truncate px-2.5 py-2 text-foreground">{member.workspace}</td>
                   <td className="px-2.5 py-2 text-foreground">{member.role}</td>
                   <td className="px-2.5 py-2">
                     <Badge variant={adminBadgeVariants[statusTones[member.status]]}>
@@ -4518,7 +5002,7 @@ function MembersConsoleContent() {
                   <td className="px-2.5 py-2 text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger
-                        render={<Button type="button" variant="ghost" size="icon-xs" aria-label={`${member.name} actions`} />}
+                        render={<Button type="button" variant="ghost" size="icon-xs" aria-label={`${member.name} actions`} onClick={(event) => event.stopPropagation()} />}
                       >
                         <IconDots className="h-3.5 w-3.5" />
                       </DropdownMenuTrigger>
@@ -4541,7 +5025,7 @@ function MembersConsoleContent() {
 }
 
 function RolesPermissionsConsoleContent() {
-  const roles = ["Admin", "Member", "Viewer"] as const
+  const roles = platformRoles
   const permissions = [
     ["aiChatAccess", "AI chat access", "Use workspace AI chat and model routing."],
     ["workflowCreation", "Workflow creation", "Create workflow drafts and internal automations."],
@@ -4558,30 +5042,28 @@ function RolesPermissionsConsoleContent() {
     permissions.map(([key]) => [key, true])
   ) as Record<PermissionKey, boolean>
   const [selectedRole, setSelectedRole] =
-    React.useState<(typeof roles)[number]>("Admin")
+    React.useState<PlatformRole>("Super Admin")
   const [rolePermissions, setRolePermissions] = React.useState<
-    Record<"Member" | "Viewer", Record<PermissionKey, boolean>>
+    Record<"Workspace Admin" | "Workspace Member", Record<PermissionKey, boolean>>
   >({
-    Member: {
+    "Workspace Admin": {
       ...adminDefaults,
       adminConsoleAccess: false,
       apiKeyAccess: false,
       billingAccess: false,
     },
-    Viewer: {
+    "Workspace Member": {
       ...adminDefaults,
-      workflowCreation: false,
       workflowPublishing: false,
-      skillCreation: false,
-      fileUpload: false,
-      appConnections: false,
       adminConsoleAccess: false,
       apiKeyAccess: false,
       billingAccess: false,
     },
   })
   const selectedPermissions =
-    selectedRole === "Admin" ? adminDefaults : rolePermissions[selectedRole]
+    selectedRole === "Super Admin" || selectedRole === "Admin"
+      ? adminDefaults
+      : rolePermissions[selectedRole]
 
   return (
     <AdminPage section="Roles & permissions">
@@ -4614,8 +5096,8 @@ function RolesPermissionsConsoleContent() {
         <section className="overflow-hidden rounded-xl border border-border bg-background">
           <div className="border-b border-border px-3 py-2.5">
             <p className="text-sm font-medium text-foreground">{selectedRole} permissions</p>
-            {selectedRole === "Admin" ? (
-              <p className="text-[13px] text-muted-foreground">Admin permissions are locked.</p>
+            {selectedRole === "Super Admin" || selectedRole === "Admin" ? (
+              <p className="text-[13px] text-muted-foreground">{selectedRole} permissions are locked.</p>
             ) : null}
           </div>
           <div className="divide-y divide-border">
@@ -4627,9 +5109,9 @@ function RolesPermissionsConsoleContent() {
                 </div>
                 <AdminToggle
                   checked={selectedPermissions[key]}
-                  disabled={selectedRole === "Admin"}
+                  disabled={selectedRole === "Super Admin" || selectedRole === "Admin"}
                   onChange={(checked) => {
-                    if (selectedRole === "Admin") return
+                    if (selectedRole === "Super Admin" || selectedRole === "Admin") return
                     setRolePermissions((previous) => ({
                       ...previous,
                       [selectedRole]: {
@@ -4768,7 +5250,7 @@ function WorkspaceSettingsConsoleContent() {
   const [deleteText, setDeleteText] = React.useState("")
 
   return (
-    <AdminPage section="Workspace settings">
+    <AdminPage section={"Workspace settings" as AdminConsoleSection}>
       <section className="grid gap-3 rounded-xl border border-border bg-background p-3 sm:grid-cols-2">
         <label className="space-y-1 text-[13px] text-muted-foreground">
           Workspace name
@@ -4840,7 +5322,7 @@ function DataControlsConsoleContent() {
   const [exportConfirmOpen, setExportConfirmOpen] = React.useState(false)
 
   return (
-    <AdminPage section="Data controls">
+    <AdminPage section={"Data controls" as AdminConsoleSection}>
       <section className="grid gap-3 rounded-xl border border-border bg-background p-3 sm:grid-cols-2">
         <AdminSelect label="Conversation history retention" value={retention} options={["30 days", "90 days", "1 year", "Forever"]} onChange={setRetention} />
         <div className="space-y-2">
@@ -4923,7 +5405,7 @@ function NotificationsConfigConsoleContent() {
   const [emails, setEmails] = React.useState(["ops@atmet.ai", "security@atmet.ai"])
 
   return (
-    <AdminPage section="Notifications config">
+    <AdminPage section={"Notifications config" as AdminConsoleSection}>
       <section className="space-y-3 rounded-xl border border-border bg-background p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -5012,7 +5494,7 @@ function IntegrationsManagementConsoleContent() {
 
   return (
     <AdminPage
-      section="Integrations management"
+      section={"Integrations management" as AdminConsoleSection}
       actions={<Button type="button" size="sm"><IconPlus className="h-3.5 w-3.5" />Add integration</Button>}
     >
       {integrationRows.length === 0 ? (
@@ -5080,7 +5562,7 @@ function BillingPlanConsoleContent() {
   ] as const
 
   return (
-    <AdminPage section="Billing & plan">
+    <AdminPage section={"Billing & plan" as AdminConsoleSection}>
       <section className="rounded-xl border border-border bg-background p-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -5160,7 +5642,7 @@ function ApiKeysConsoleContent() {
   ] as const
 
   return (
-    <AdminPage section="API keys" actions={<Button type="button" size="sm" onClick={() => setCreateOpen(true)}><IconKey className="h-3.5 w-3.5" />Create API key</Button>}>
+    <AdminPage section={"API keys" as AdminConsoleSection} actions={<Button type="button" size="sm" onClick={() => setCreateOpen(true)}><IconKey className="h-3.5 w-3.5" />Create API key</Button>}>
       <section className="overflow-hidden rounded-xl border border-border bg-background">
         <table className="w-full table-fixed border-collapse text-[0.8rem]">
           <thead>
@@ -5251,7 +5733,7 @@ function AuditLogsConsoleContent() {
   )
 
   return (
-    <AdminPage section="Audit logs" actions={<Button type="button" variant="outline" size="sm"><IconDownload className="h-3.5 w-3.5" />Export CSV</Button>}>
+    <AdminPage section={"Audit logs" as AdminConsoleSection} actions={<Button type="button" variant="outline" size="sm"><IconDownload className="h-3.5 w-3.5" />Export CSV</Button>}>
       <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
         <label className="relative">
           <IconCalendar className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -5312,15 +5794,32 @@ function AuditLogsConsoleContent() {
 }
 
 function UsageLimitsConsoleContent() {
-  const [sortKey, setSortKey] = React.useState<"name" | "tokens" | "runs" | "files" | "lastActive">("tokens")
+  const [sortKey, setSortKey] = React.useState<"name" | "workspace" | "tokens" | "runs" | "files" | "lastActive">("tokens")
+  const [query, setQuery] = React.useState("")
+  const [workspaceFilter, setWorkspaceFilter] = React.useState("All workspaces")
+  const [roleFilter, setRoleFilter] = React.useState("All roles")
   const usageRows = adminMembers.map((member, index) => ({
     ...member,
     tokens: [3120, 2710, 1840, 1390, 920][index] ?? 500,
     runs: [86, 72, 44, 31, 18][index] ?? 10,
     files: [24, 18, 9, 15, 4][index] ?? 2,
   }))
-  const sortedUsageRows = [...usageRows].sort((a, b) => {
-    if (sortKey === "name") return a.name.localeCompare(b.name)
+  const filteredUsageRows = usageRows.filter((row) => {
+    const normalizedQuery = query.trim().toLowerCase()
+    const matchesQuery =
+      normalizedQuery.length === 0 ||
+      row.name.toLowerCase().includes(normalizedQuery) ||
+      row.email.toLowerCase().includes(normalizedQuery) ||
+      row.workspace.toLowerCase().includes(normalizedQuery)
+    const matchesWorkspace =
+      workspaceFilter === "All workspaces" || row.workspace === workspaceFilter
+    const matchesRole = roleFilter === "All roles" || row.role === roleFilter
+    return matchesQuery && matchesWorkspace && matchesRole
+  })
+  const sortedUsageRows = [...filteredUsageRows].sort((a, b) => {
+    if (sortKey === "name" || sortKey === "workspace") {
+      return a[sortKey].localeCompare(b[sortKey])
+    }
     if (sortKey === "lastActive") return a.lastActive.localeCompare(b.lastActive)
     return b[sortKey] - a[sortKey]
   })
@@ -5344,18 +5843,43 @@ function UsageLimitsConsoleContent() {
         ))}
       </section>
 
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="relative min-w-0 flex-1">
+          <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by member, email, or workspace"
+            className="h-7 pl-8"
+          />
+        </div>
+        <AdminSelect
+          value={workspaceFilter}
+          options={["All workspaces", ...initialWorkspaces.map((workspace) => workspace.name)]}
+          onChange={setWorkspaceFilter}
+          className="sm:w-40"
+        />
+        <AdminSelect
+          value={roleFilter}
+          options={["All roles", ...platformRoles]}
+          onChange={setRoleFilter}
+          className="sm:w-32"
+        />
+      </div>
+
       <section className="overflow-hidden rounded-xl border border-border bg-background">
         <table className="w-full table-fixed border-collapse text-[0.8rem]">
           <thead>
             <tr className="border-b border-border text-muted-foreground">
               {[
-                ["name", "Name"],
-                ["tokens", "Tokens used"],
-                ["runs", "Workflow runs"],
-                ["files", "Files uploaded"],
-                ["lastActive", "Last active"],
-              ].map(([key, label]) => (
-                <th key={key} className="px-2.5 py-1.5 text-left font-medium">
+                ["name", "Name", "w-[22%] text-left"],
+                ["workspace", "Workspace", "w-[18%] text-left"],
+                ["tokens", "Tokens used", "w-[14%] text-left"],
+                ["runs", "Workflow runs", "w-[10%] text-center"],
+                ["files", "Files uploaded", "w-[10%] text-center"],
+                ["lastActive", "Last active", "w-[26%] text-left"],
+              ].map(([key, label, className]) => (
+                <th key={key} className={cn("px-2.5 py-1.5 font-medium", className)}>
                   <button type="button" onClick={() => setSortKey(key as typeof sortKey)} className="inline-flex items-center gap-1 hover:text-foreground">
                     {label}
                     <IconChevronDown className="h-3 w-3" />
@@ -5366,16 +5890,41 @@ function UsageLimitsConsoleContent() {
           </thead>
           <tbody>
             {sortedUsageRows.map((row) => (
-              <tr key={row.id} className="border-b border-border/70 last:border-b-0">
+              <tr
+                key={row.id}
+                onClick={() => openUserProfile(row.name, "Usage & limits")}
+                className="cursor-pointer border-b border-border/70 transition-colors last:border-b-0 hover:bg-muted/35"
+              >
                 <td className="px-2.5 py-2">
-                  <div className="flex items-center gap-2"><AdminAvatar initials={row.initials} name={row.name} /><span className="font-medium text-foreground">{row.name}</span></div>
+                  <div className="flex items-center gap-2">
+                    <AdminAvatar
+                      initials={row.initials}
+                      name={row.name}
+                      returnToAdminSection="Usage & limits"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => openUserProfile(row.name, "Usage & limits")}
+                      className="font-medium text-foreground"
+                    >
+                      {row.name}
+                    </button>
+                  </div>
                 </td>
+                <td className="truncate px-2.5 py-2 text-foreground">{row.workspace}</td>
                 <td className="px-2.5 py-2 text-muted-foreground">{row.tokens.toLocaleString()}</td>
-                <td className="px-2.5 py-2 text-muted-foreground">{row.runs}</td>
-                <td className="px-2.5 py-2 text-muted-foreground">{row.files}</td>
+                <td className="px-2.5 py-2 text-center text-muted-foreground">{row.runs}</td>
+                <td className="px-2.5 py-2 text-center text-muted-foreground">{row.files}</td>
                 <td className="px-2.5 py-2 text-muted-foreground">{row.lastActive}</td>
               </tr>
             ))}
+            {sortedUsageRows.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-3 py-8 text-center text-[13px] text-muted-foreground">
+                  No usage records match the current filters.
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </section>
@@ -5386,7 +5935,7 @@ function UsageLimitsConsoleContent() {
       </section>
 
       <section className="grid gap-3 rounded-xl border border-border bg-background p-3 sm:grid-cols-3">
-        <label className="space-y-1 text-[13px] text-muted-foreground">Token cap per user per month<Input type="number" defaultValue="50000" className="h-8" /></label>
+        <label className="space-y-1 text-[13px] text-muted-foreground">Token cap per workspace per month<Input type="number" defaultValue="50000" className="h-8" /></label>
         <label className="space-y-1 text-[13px] text-muted-foreground">Max file size<div className="flex gap-2"><Input type="number" defaultValue="250" className="h-8" /><AdminSelect value="MB" options={["MB", "GB"]} onChange={() => undefined} className="w-24" /></div></label>
         <label className="space-y-1 text-[13px] text-muted-foreground">Max files per workspace<Input type="number" defaultValue="10000" className="h-8" /></label>
         <div className="sm:col-span-3 sm:text-right">
@@ -5401,26 +5950,14 @@ function renderAdminConsoleContent(section: AdminConsoleSection) {
   switch (section) {
     case "Admin overview":
       return <AdminOverviewConsoleContent />
-    case "Members":
-      return <MembersConsoleContent />
+    case "Workspace provisioning":
+      return <WorkspaceProvisioningConsoleContent />
+    case "Users & workspaces":
+      return <UsersWorkspacesConsoleContent />
     case "Roles & permissions":
       return <RolesPermissionsConsoleContent />
     case "Access policies":
       return <AccessPoliciesConsoleContent />
-    case "Workspace settings":
-      return <WorkspaceSettingsConsoleContent />
-    case "Data controls":
-      return <DataControlsConsoleContent />
-    case "Notifications config":
-      return <NotificationsConfigConsoleContent />
-    case "Integrations management":
-      return <IntegrationsManagementConsoleContent />
-    case "Billing & plan":
-      return <BillingPlanConsoleContent />
-    case "API keys":
-      return <ApiKeysConsoleContent />
-    case "Audit logs":
-      return <AuditLogsConsoleContent />
     case "Usage & limits":
       return <UsageLimitsConsoleContent />
   }
@@ -5452,6 +5989,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     React.useState<SettingsSection>("Account")
   const [activeAdminConsoleSection, setActiveAdminConsoleSection] =
     React.useState<AdminConsoleSection>("Admin overview")
+  const [profileReturnAdminSection, setProfileReturnAdminSection] =
+    React.useState<AdminConsoleSection | null>(null)
   const [workspaceRecords, setWorkspaceRecords] =
     React.useState<WorkspaceProfile[]>(initialWorkspaces)
   const [selectedWorkspaceId, setSelectedWorkspaceId] = React.useState(
@@ -5690,6 +6229,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const handleOpenSettingsPanel = (event: Event) => {
       const detail = (event as CustomEvent<OpenSettingsPanelDetail>).detail
       const requestedSection = detail?.section
+      if (requestedSection === "Refer and earn") return
       const hasMemberTarget = Boolean(detail?.memberId || detail?.memberQuery)
       const fallbackSection = hasMemberTarget ? "Members" : undefined
       const targetSection = requestedSection ?? fallbackSection
@@ -5702,6 +6242,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
 
       if (targetSection === "Members") {
+        setProfileReturnAdminSection(detail?.returnToAdminSection ?? null)
         if (detail?.membersAction === "invite") {
           setMembersQuickSearchQuery("")
           setMembersQuickSelectedId(null)
@@ -5732,6 +6273,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return (
       <button
         key={section}
+        disabled={section === "Refer and earn"}
         onClick={() => {
           if (section === "Contact Support") {
             window.location.href = "mailto:support@atmet.ai"
@@ -5749,16 +6291,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         }}
         className={cn(
           "flex h-7 w-full items-center justify-between rounded-md px-2 text-left text-sm transition-colors",
+          section === "Refer and earn" && "cursor-not-allowed opacity-50",
           activeSettingsSection === section
             ? "bg-sidebar-accent text-sidebar-accent-foreground"
             : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         )}
       >
-        <span className="flex items-center gap-2">
+        <span className="flex min-w-0 items-center gap-2">
           <SectionIcon className="h-3.5 w-3.5 shrink-0 opacity-80" />
-          <span>{section}</span>
+          <span className="truncate">{section}</span>
         </span>
-        <IconChevronRight className="h-3.5 w-3.5 shrink-0 opacity-70" />
+        {section === "Refer and earn" ? (
+          <Badge
+            variant="red"
+            size="sm"
+            className="pointer-events-none shrink-0"
+          >
+            Coming later
+          </Badge>
+        ) : (
+          <IconChevronRight className="h-3.5 w-3.5 shrink-0 opacity-70" />
+        )}
       </button>
     )
   }
@@ -5837,16 +6390,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </SidebarMenuItem>
                 )
               })}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={pathname.startsWith("/my-data")}
-                  className="h-7"
-                  render={<Link href="/my-data" />}
-                >
-                  <IconDatabase className="h-3.5 w-3.5 shrink-0 opacity-80" stroke={1.6} />
-                  <span>My Data</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -5925,7 +6468,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                               }
                             }}
                             onBlur={() => submitRenamingChat(chat.id)}
-                            className="h-6 w-full rounded-sm border border-input bg-transparent px-1.5 text-sm outline-hidden focus-visible:border-ring"
+                            className="h-6 w-full rounded-sm border border-input bg-transparent px-1.5 text-sm outline-hidden focus-visible:border-primary"
                             aria-label="Rename chat"
                           />
                         </SidebarMenuButton>
@@ -6041,7 +6584,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                               }
                             }}
                             onBlur={() => submitRenamingChat(chat.id)}
-                            className="h-6 w-full rounded-sm border border-input bg-transparent px-1.5 text-sm outline-hidden focus-visible:border-ring"
+                            className="h-6 w-full rounded-sm border border-input bg-transparent px-1.5 text-sm outline-hidden focus-visible:border-primary"
                             aria-label="Rename chat"
                           />
                         </SidebarMenuButton>
@@ -6279,8 +6822,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     >
                       {activeSettingsSection === "Account" ? (
                         <AccountSettingsContent />
-                      ) : activeSettingsSection === "Personalization" ? (
-                        <PersonalizationSettingsContent />
                       ) : activeSettingsSection === "Notifications" ? (
                         <NotificationSettingsContent />
                       ) : activeSettingsSection === "General" ? (
@@ -6305,6 +6846,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           quickSearchQuery={membersQuickSearchQuery}
                           quickSelectedMemberId={membersQuickSelectedId}
                           quickInviteToken={membersQuickInviteToken}
+                          profileBackLabel={
+                            profileReturnAdminSection
+                              ? `Back to ${profileReturnAdminSection.toLowerCase()}`
+                              : "Back to members"
+                          }
+                          onProfileBack={
+                            profileReturnAdminSection
+                              ? () => {
+                                  setSettingsOpen(false)
+                                  setActiveAdminConsoleSection(
+                                    profileReturnAdminSection
+                                  )
+                                  setAdminConsoleOpen(true)
+                                  setProfileReturnAdminSection(null)
+                                }
+                              : undefined
+                          }
                         />
                       ) : activeSettingsSection === "Integrations" ? (
                         <IntegrationsSettingsContent />
@@ -6312,12 +6870,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <UsageLimitsSettingsContent />
                       ) : activeSettingsSection === "Data controls" ? (
                         <DataControlsSettingsContent />
-                      ) : activeSettingsSection === "Plans (soon)" ? (
-                        <div className="flex min-h-[calc(78vh-9rem)] items-center justify-center rounded-xl bg-primary px-6 py-10">
-                          <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
-                            Soon
-                          </h2>
-                        </div>
                       ) : activeSettingsSection === "Refer and earn" ? (
                         <ReferAndEarnSettingsContent />
                       ) : activeSettingsSection === "Billing" ? (
@@ -6429,7 +6981,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </span>
                 <IconChevronUp className="ms-auto h-4 w-4 text-muted-foreground group-data-[collapsible=icon]:hidden" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="top" className="w-44">
+              <DropdownMenuContent align="end" side="top" className="w-56">
                 <DropdownMenuItem
                   onClick={() =>
                     setTheme(resolvedTheme === "dark" ? "light" : "dark")
@@ -6447,13 +6999,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   Profile
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => {
-                    setActiveSettingsSection("Refer and earn")
-                    setSettingsOpen(true)
-                  }}
+                  className="justify-between gap-3"
+                  disabled
                 >
-                  <Gift className="h-4 w-4" strokeWidth={1.6} />
-                  Refer and earn
+                  <span className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+                    <Gift className="h-4 w-4" strokeWidth={1.6} />
+                    Refer and earn
+                  </span>
+                  <Badge
+                    variant="red"
+                    size="sm"
+                    className="pointer-events-none shrink-0"
+                  >
+                    Coming later
+                  </Badge>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive">

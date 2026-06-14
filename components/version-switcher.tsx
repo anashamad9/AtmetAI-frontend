@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/registry/spell-ui/badge"
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -20,8 +21,6 @@ import {
   SidebarLeftIcon,
 } from "@hugeicons/core-free-icons"
 import { Check, ChevronDown, Crown, Gift, Plus, Users } from "lucide-react"
-
-const OPEN_SETTINGS_PANEL_EVENT = "open-settings-panel"
 
 export type WorkspaceSwitcherItem = {
   id: string
@@ -154,16 +153,20 @@ export function VersionSwitcher({
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onSelect={() => {
-                  window.dispatchEvent(
-                    new CustomEvent(OPEN_SETTINGS_PANEL_EVENT, {
-                      detail: { section: "Refer and earn" },
-                    })
-                  )
-                }}
+                className="justify-between gap-3"
+                disabled
               >
-                <Gift className="h-4 w-4 opacity-80" />
-                Refer and earn
+                <span className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+                  <Gift className="h-4 w-4 opacity-80" />
+                  Refer and earn
+                </span>
+                <Badge
+                  variant="red"
+                  size="sm"
+                  className="pointer-events-none shrink-0"
+                >
+                  Coming later
+                </Badge>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem>

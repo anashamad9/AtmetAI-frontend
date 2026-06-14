@@ -111,17 +111,15 @@ export default function VerifyEmailPage() {
         </div>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Wrong email address?{" "}
           <Link
-            href="/sign-up"
+            href="/sign-in"
             className="text-foreground hover:underline"
             onClick={() => {
               sessionStorage.removeItem("pendingVerification")
             }}
           >
-            Go back
-          </Link>{" "}
-          and sign up again
+            Return to sign in
+          </Link>
         </p>
       </div>
 

@@ -1,4 +1,8 @@
 import Link from "next/link"
+import Image from "next/image"
+
+import { AuthModeSwitch } from "@/components/auth-mode-switch"
+import { AuthPageTransition } from "@/components/auth-page-transition"
 
 export default function AuthLayout({
   children,
@@ -6,26 +10,44 @@ export default function AuthLayout({
   children: React.ReactNode
 }>) {
   return (
-    <div
-      className="fixed inset-0 z-[90] flex min-h-screen items-center justify-center px-4 py-10"
-      style={{
-        backgroundColor:
-          "var(--color-background-tertiary, color-mix(in oklab, var(--color-sidebar-accent) 72%, var(--color-background)))",
-      }}
-    >
-      <div className="w-full max-w-[400px]">
-        <div className="mb-4 flex justify-center">
-          <Link href="/" className="text-2xl font-semibold tracking-tight text-foreground">
-            Atmet
+    <div className="fixed inset-0 z-[90] grid min-h-0 bg-black p-2 lg:grid-cols-2">
+      <section
+        data-auth-scope="true"
+        className="relative flex min-h-0 flex-col rounded-2xl bg-sidebar px-6 py-6 shadow-[0_18px_60px_-32px_rgba(0,0,0,0.45)] sm:px-10 sm:py-8 lg:px-16"
+      >
+        <header className="flex shrink-0 justify-center">
+          <Link
+            href="/"
+            aria-label="Atmet home"
+            className="group inline-flex min-h-10 items-center rounded-lg px-2"
+          >
+            <Image
+              src="/Logos/Atmet%20Whitemode.png"
+              alt="Atmet"
+              width={1781}
+              height={337}
+              priority
+              className="h-5 w-auto object-contain opacity-55 transition-opacity duration-200 group-hover:opacity-100 dark:hidden"
+            />
+            <Image
+              src="/Logos/Atmet%20Darkmode.png"
+              alt="Atmet"
+              width={1781}
+              height={337}
+              priority
+              className="hidden h-5 w-auto object-contain opacity-55 transition-opacity duration-200 group-hover:opacity-100 dark:block"
+            />
           </Link>
-        </div>
+        </header>
 
-        {children}
+        <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto py-16">
+          <AuthPageTransition>{children}</AuthPageTransition>
+        </main>
 
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          By continuing you agree to our Terms of Service and Privacy Policy
-        </p>
-      </div>
+        <AuthModeSwitch />
+      </section>
+
+      <aside aria-hidden="true" className="hidden bg-black lg:block" />
     </div>
   )
 }

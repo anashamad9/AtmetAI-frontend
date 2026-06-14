@@ -1412,6 +1412,12 @@ export default function WorkflowProjectPage() {
       const hasPrimaryModifier = event.metaKey || event.ctrlKey
       const key = event.key.toLowerCase()
 
+      if (key === "escape" && connectingSourceId) {
+        event.preventDefault()
+        clearWireDraft()
+        return
+      }
+
       if (hasPrimaryModifier && key === "z" && event.shiftKey) {
         if (!canRedo) return
         event.preventDefault()
@@ -1488,6 +1494,7 @@ export default function WorkflowProjectPage() {
     canRedo,
     canUndo,
     copySelectedNode,
+    connectingSourceId,
     deleteSelectedNode,
     duplicateSelectedNode,
     editSelectedNode,
@@ -1782,6 +1789,10 @@ export default function WorkflowProjectPage() {
       >
         <section
           ref={viewportRef}
+          data-workflow-viewport="true"
+          data-pan-cursor={
+            isPanning ? "grabbing" : isSpacePressed ? "grab" : "default"
+          }
           onWheel={handleViewportWheel}
           onPointerDownCapture={handleViewportPointerDownCapture}
           className={cn(
@@ -2014,10 +2025,14 @@ export default function WorkflowProjectPage() {
                     "hover:border-border",
                     connectingSourceId &&
                       connectingSourceId !== node.id &&
-                      "ring-1 ring-border/70",
-                    draggingNodeId === node.id ? "cursor-grabbing" : "cursor-grab"
+                      "ring-1 ring-border/70"
                   )}
-                  style={{ left: node.x, top: node.y, width: NODE_WIDTH }}
+                  style={{
+                    left: node.x,
+                    top: node.y,
+                    width: NODE_WIDTH,
+                    cursor: draggingNodeId === node.id ? "grabbing" : "default",
+                  }}
                 >
                   {shouldShowHandles &&
                     handleConfig.map((handle) => {
